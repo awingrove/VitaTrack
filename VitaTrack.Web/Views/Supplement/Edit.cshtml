@@ -1,0 +1,58 @@
+@{
+    ViewData["Title"] = "Edit";
+    Layout = "_Layout";
+}
+@using VitaTrack.Infrastructure.Models
+@model Supplement
+
+<h2>Edit Supplement</h2>
+<p class="text-muted">Serving: how much to take at once (e.g., "2 tablets"). Nutrients added separately below. If you change the manufacturer URL, it will be re-scraped on save.</p>
+
+<form asp-action="Edit">
+    <div class="form-group">
+        <input type="hidden" asp-for="Id" />
+    </div>
+    <div class="form-group">
+        <label asp-for="Name" class="control-label"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="Brand" class="control-label"></label>
+        <input asp-for="Brand" class="form-control" />
+        <span asp-validation-for="Brand" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="DailyDose" class="control-label">Serving</label>
+        <input asp-for="DailyDose" class="form-control" placeholder="e.g. 2 tablets, 5ml" />
+        <span asp-validation-for="DailyDose" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="ManufacturerUrl" class="control-label">Manufacturer URL</label>
+        <input asp-for="ManufacturerUrl" class="form-control" />
+        <span asp-validation-for="ManufacturerUrl" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="Cost" class="control-label"></label>
+        <input asp-for="Cost" class="form-control" type="number" step="0.01" />
+        <span asp-validation-for="Cost" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <input type="submit" value="Save" class="btn btn-primary" />
+    </div>
+</form>
+
+<hr />
+<h4>Nutrient Breakdown</h4>
+<p>
+    <a class="btn btn-sm btn-success" asp-controller="SupplementNutrient" asp-action="Create" asp-route-supplementId="@Model.Id">Add Nutrient</a>
+    <a class="btn btn-sm btn-outline-info" asp-controller="SupplementNutrient" asp-action="Index" asp-route-supplementId="@Model.Id">Manage All Nutrients</a>
+</p>
+<div id="nutrient-list">
+    @* Nutrient list will be loaded by the Index view *@
+    <p class="text-muted">Use the links above to view, add, or edit nutrients for this supplement.</p>
+</div>
+
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>

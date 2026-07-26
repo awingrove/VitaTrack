@@ -1,0 +1,30 @@
+@{
+    ViewData["Title"] = "Family Members";
+    Layout = "_Layout";
+}
+@using VitaTrack.Infrastructure.Models
+@model IEnumerable<FamilyMember>
+
+<h2>@ViewData["Title"]</h2>
+
+<p><a class="btn btn-success" asp-action="Create">Add New Family Member</a></p>
+
+<table class="table">
+    <thead>
+        <tr><th>Name</th><th>Display Name</th><th>Avatar URL</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+    @foreach (var m in Model)
+    {
+        <tr>
+            <td>@m.Name</td>
+            <td>@m.DisplayName</td>
+            <td>@m.AvatarUrl</td>
+            <td>
+                <a class="btn btn-sm btn-primary" asp-action="Edit" asp-route-id="@m.Id">Edit</a>
+                <a class="btn btn-sm btn-danger" asp-action="Delete" asp-route-id="@m.Id">Delete</a>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

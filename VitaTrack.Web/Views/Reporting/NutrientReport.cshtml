@@ -1,0 +1,54 @@
+@{
+    ViewData["Title"] = "Daily Nutrient Report";
+    Layout = "_Layout";
+}
+@using VitaTrack.Infrastructure.Models
+@model IEnumerable<Supplement>
+
+<h2>@ViewData["Title"]</h2>
+
+@{
+    var nutrientTotals = ViewData["NutrientTotals"] as Dictionary<string, decimal>;
+}
+
+<table class="table">
+    <thead>
+        <tr><th>Nutrient</th><th>Total Amount</th></tr>
+    </thead>
+    <tbody>
+    @if (nutrientTotals != null && nutrientTotals.Any())
+    {
+        foreach (var kvp in nutrientTotals.OrderBy(k => k.Key))
+        {
+            <tr>
+                <td>@kvp.Key</td>
+                <td>@kvp.Value</td>
+            </tr>
+        }
+    }
+    else
+    {
+        <tr>
+            <td colspan="2">No nutrient data available.</td>
+        </tr>
+    }
+    </tbody>
+</table>
+
+<h3>Supplements Included in Report</h3>
+<table class="table">
+    <thead>
+        <tr><th>Name</th><th>Brand</th><th>Daily Dose</th><th>Nutrition JSON</th></tr>
+    </thead>
+    <tbody>
+    @foreach (var s in Model)
+    {
+        <tr>
+            <td>@s.Name</td>
+            <td>@s.Brand</td>
+            <td>@s.DailyDose</td>
+            <td>@(s.NutritionJson ?? "none")</td>
+        </tr>
+    }
+    </tbody>
+</table>

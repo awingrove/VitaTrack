@@ -1,0 +1,185 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+.claude/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# .NET
+bin/
+obj/
+*.user
+*.vspscc
+*.vssscc
+*.csproj.user
+[Bb]in/
+[Oo]bj/
+[Vv]s[Ss]olution[Ss]_[Ee]x[pP]_[Ss][Oo][Ll]_[Uu][Ss][Ee][Rr]_[Ss][Ee][Tt][Tt][Ii][Nn][Gg][Ss]/
+[Vv]s[Ss][Ee][Tt][Ii][Nn][Gg][Ss]_[Pp][Ee][Rr][Ss][Oo][Nn][Aa][Ll]_[Ss][Ee][Tt][Tt][Ii][Nn][Gg][Ss]/
+[Vv]s[Ss][Ee][Tt][Ii][Nn][Gg][Ss]_[Cc][Oo][Mm][Pp][Aa][Nn][Yy]/
+[Vv]s[Ss][Tt][Ee][Mm][Pp]/
+*.ncrunchproject
+*_ReSharper*.*
+*.DotSettings.user
+*.vspscc
+*.vssscc
+*.csproj.user
+*.sss-iidef
+*.sln.DotSettings.user
+
+# Paket dependency manager
+.paket/
+paket.lock
+
+# FAKE - F# Make
+.fake/
+
+# JetBrains Rider
+.idea/
+*.sln.implicite
+
+# Fody
+*.xaml
+
+# Node.js Tools for Visual Studio
+ .ntvs_analysis.dat
+node_modules/
+
+# TypeScript
+*.tsbuildinfo
+
+# Office Lens Cache
+~*
+
+# Files built by Visual Studio
+*_i.c
+*_p.c
+*_h.m
+*.ilk
+*.map
+*.exp
+*.pdb
+*.idb
+*.ilk
+*.map
+*.sdf
+*.cachefile
+*.db
+*.log
+*.ibr
+
+# Bencher
+bencher.toml
+
+# AWS Toolkit
+.aws/
+awseb.yml
+.elasticbeanstalk/
+
+# Azure
+/artifacts/
+*PublishSettings/
+*.PublishSettings
+
+# Xamarin
+*.userprefs
+
+# MonoDevelop/Xamarin Studio
+*.userprefs
+
+# Cake
+# Add settings for addins and tools directories and their modules
+tools/
+**/bin/
+**/obj/
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Visual Studio 2017+ cache
+.vs/
+
+# Backup files
+*.bak
+*.backup
+
+# Playwright test artifacts
+**/playwright-report/
+**/test-results/
+**/.last-run.json
+
+# Playwright CLI config
+.playwright/
+
+# Package lock files (root)
+/package-lock.json
+/package.json

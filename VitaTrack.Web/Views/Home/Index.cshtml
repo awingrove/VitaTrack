@@ -1,0 +1,12 @@
+@{
+    ViewData["Title"] = "Home";
+    Layout = "_Layout";
+}
+<h2>@ViewData["Title"]</h2>
+<p>Welcome to VitaTrack – a family supplement tracker.</p>
+
+<ul>
+    <li><a asp-controller="Family" asp-action="Index">View Family</a></li>
+    <li><a asp-controller="Supplement" asp-action="Index">Supplement Library</a></li>
+    <li><a asp-controller="Llm" asp-action="Index">LLM Enrich (experimental)</a></li>
+</ul>

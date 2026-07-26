@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>
+    <UserSecretsId>4b4c6791-c1bc-4385-b3fa-fc559aa991cf</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Data access -->
+    <PackageReference Include="Dapper" Version="2.1.79" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
+    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.119" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VitaTrack.Infrastructure\VitaTrack.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- HTMX and Bootstrap are static assets; they will be placed under wwwroot -->
+    <Content Include="wwwroot\**\*" />
+    <CopyToPublishDirectory Include="wwwroot\**\*" />
+  </ItemGroup>
+
+</Project>

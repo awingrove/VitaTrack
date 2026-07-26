@@ -1,0 +1,172 @@
+@{
+    ViewData["Title"] = "Review Supplement";
+    Layout = "_Layout";
+}
+@using System.Text.Json
+@using VitaTrack.Infrastructure.Models
+@model Supplement
+@{
+    var nutrients = ViewData["ExtractedNutrients"] as List<SupplementNutrientDto>;
+    var extractionError = ViewData["ExtractionError"] as string;
+    var nutrientsJson = nutrients != null ? JsonSerializer.Serialize(nutrients) : "[]";
+}
+
+<h2>Review Supplement</h2>
+
+@if (!string.IsNullOrWhiteSpace(extractionError))
+{
+    <div class="alert alert-warning">
+        <strong>Note:</strong> @extractionError
+        <br /><small>You can still manually enter nutrients below.</small>
+    </div>
+}
+
+<form asp-action="@(Model.Id == 0 ? "ConfirmCreate" : "ConfirmEdit")" 
+      asp-route-id="@(Model.Id == 0 ? null : Model.Id)"
+      method="post">
+    <div class="form-group">
+        <input type="hidden" asp-for="Id" />
+    </div>
+    <input type="hidden" name="nutrientsJson" id="nutrientsJson" value='@nutrientsJson' />
+    <div class="form-group">
+        <label asp-for="Name" class="control-label"></label>
+        <input asp-for="Name" class="form-control" readonly />
+    </div>
+    <div class="form-group">
+        <label asp-for="Brand" class="control-label"></label>
+        <input asp-for="Brand" class="form-control" readonly />
+    </div>
+    <div class="form-group">
+        <label asp-for="DailyDose" class="control-label">Serving</label>
+        <input asp-for="DailyDose" class="form-control" readonly />
+    </div>
+    <div class="form-group">
+        <label asp-for="ManufacturerUrl" class="control-label">Manufacturer URL</label>
+        <input asp-for="ManufacturerUrl" class="form-control" readonly />
+    </div>
+    <div class="form-group">
+        <label asp-for="Cost" class="control-label"></label>
+        <input asp-for="Cost" class="form-control" readonly />
+    </div>
+
+    <hr />
+    <h4>Nutrients</h4>
+    <p class="text-muted">Edit the nutrient breakdown below. You can add or remove rows.</p>
+    <table class="table" id="nutrients-table">
+        <thead>
+            <tr>
+                <th>Generic Name</th>
+                <th>Specific Form</th>
+                <th>Dosage</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (nutrients != null && nutrients.Count > 0)
+            {
+                for (int i = 0; i < nutrients.Count; i++)
+                {
+                    <tr>
+                        <td><input name="nutrients[@i].GenericName" value="@nutrients[i].GenericName" class="form-control" /></td>
+                        <td><input name="nutrients[@i].SpecificForm" value="@nutrients[i].SpecificForm" class="form-control" /></td>
+                        <td><input name="nutrients[@i].Dosage" value="@nutrients[i].Dosage" class="form-control" /></td>
+                        <td><button type="button" class="btn btn-sm btn-danger remove-row">Remove</button></td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr class="empty-row">
+                    <td colspan="4" class="text-muted text-center">No nutrients extracted. Click "Add Nutrient" to start.</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <button type="button" class="btn btn-sm btn-success" id="add-nutrient-row">Add Nutrient</button>
+
+    <hr />
+    <h5>Swap Suggestion</h5>
+    <div class="form-group">
+        <input asp-for="SwapSuggestion" class="form-control" />
+        <span asp-validation-for="SwapSuggestion" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mt-3">
+        <input type="submit" value="Confirm & Save" class="btn btn-primary" />
+        <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        let nutrientIndex = @(nutrients?.Count ?? 0);
+
+        document.getElementById('add-nutrient-row').addEventListener('click', function() {
+            const tbody = document.querySelector('#nutrients-table tbody');
+            const emptyRow = tbody.querySelector('.empty-row');
+            if (emptyRow) emptyRow.remove();
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input name="nutrients[${nutrientIndex}].GenericName" class="form-control" /></td>
+                <td><input name="nutrients[${nutrientIndex}].SpecificForm" class="form-control" /></td>
+                <td><input name="nutrients[${nutrientIndex}].Dosage" class="form-control" /></td>
+                <td><button type="button" class="btn btn-sm btn-danger remove-row">Remove</button></td>
+            `;
+            tbody.appendChild(tr);
+            nutrientIndex++;
+
+            tr.querySelector('.remove-row').addEventListener('click', function() {
+                tr.remove();
+                reindexNutrients();
+            });
+        });
+
+        document.querySelectorAll('.remove-row').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.closest('tr').remove();
+                reindexNutrients();
+            });
+        });
+
+        function reindexNutrients() {
+            const rows = document.querySelectorAll('#nutrients-table tbody tr');
+            rows.forEach((row, index) => {
+                row.querySelectorAll('input').forEach(input => {
+                    const name = input.getAttribute('name');
+                    if (name && name.startsWith('nutrients[')) {
+                        input.setAttribute('name', `nutrients[${index}].${name.split('.')[1]}`);
+                    }
+                });
+            });
+
+            if (rows.length === 0) {
+                const tbody = document.querySelector('#nutrients-table tbody');
+                const emptyRow = document.createElement('tr');
+                emptyRow.className = 'empty-row';
+                emptyRow.innerHTML = '<td colspan="4" class="text-muted text-center">No nutrients defined. Click "Add Nutrient" to start.</td>';
+                tbody.appendChild(emptyRow);
+            }
+        }
+
+        // Serialize nutrients on form submit
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const rows = document.querySelectorAll('#nutrients-table tbody tr:not(.empty-row)');
+            const nutrients = [];
+            rows.forEach(row => {
+                const inputs = row.querySelectorAll('input');
+                if (inputs.length >= 3) {
+                    const genericName = inputs[0].value.trim();
+                    const specificForm = inputs[1].value.trim();
+                    const dosage = inputs[2].value.trim();
+                    if (genericName) {
+                        nutrients.push({ genericName, specificForm, dosage });
+                    }
+                }
+            });
+            const json = JSON.stringify(nutrients);
+            document.getElementById('nutrientsJson').value = json;
+            console.log('Serialized nutrients:', json);
+        });
+    </script>
+}

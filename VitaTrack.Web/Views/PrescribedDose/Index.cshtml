@@ -1,0 +1,43 @@
+@{
+    ViewData["Title"] = "Prescribed Doses";
+    Layout = "_Layout";
+}
+@using VitaTrack.Infrastructure.Models
+@model IEnumerable<PrescribedDose>
+
+<h2>@ViewData["Title"]</h2>
+
+<p><a class="btn btn-success" asp-action="Create">Add New Prescribed Dose</a></p>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Family Member</th>
+            <th>Supplement</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Dosage</th>
+            <th>Frequency/Day</th>
+            <th>Instructions</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var pd in Model)
+    {
+        <tr>
+            <td>@(pd.FamilyMember?.DisplayName ?? pd.FamilyMemberId.ToString())</td>
+            <td>@(pd.Supplement?.Name ?? pd.SupplementId.ToString())</td>
+            <td>@pd.StartDate.ToShortDateString()</td>
+            <td>@(pd.EndDate?.ToShortDateString() ?? "Ongoing")</td>
+            <td>@pd.Dosage</td>
+            <td>@pd.FrequencyPerDay</td>
+            <td>@pd.Instructions</td>
+            <td>
+                <a class="btn btn-sm btn-primary" asp-action="Edit" asp-route-id="@pd.Id">Edit</a>
+                <a class="btn btn-sm btn-danger" asp-action="Delete" asp-route-id="@pd.Id">Delete</a>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

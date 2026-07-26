@@ -1,0 +1,61 @@
+# Opencode ignore — expand here to tell opencode which files or folders to ignore
+
+# .NET build output
+**/bin/
+**/obj/
+*.user
+*.vspscc
+*.vssscc
+*.csproj.user
+*.sln.DotSettings.user
+*.DotSettings.user
+
+# IDE
+**/.vs/
+**/.vscode/
+**/.idea/
+*.swp
+*.swo
+*~
+
+# Node / Playwright dependencies
+**/node_modules/
+**/package-lock.json
+**/pnpm-lock.yaml
+**/yarn.lock
+
+# NuGet lock file
+**/packages.lock.json
+
+# Test output
+**/test-results/
+**/playwright-report/
+**/.last-run.json
+
+# Database files
+**/*.db
+**/*.db-shm
+**/*.db-wal
+
+# OS
+**/.DS_Store
+Thumbs.db
+
+# Git
+**/.git/
+
+# Tools
+**/.fake/
+**/.paket/
+**/tools/
+**/bencher.toml
+
+# Config with secrets
+**/appsettings.*.json
+!**/appsettings.json
+
+# Environment
+**/.env
+**/.venv/
+**/env/
+**/venv/

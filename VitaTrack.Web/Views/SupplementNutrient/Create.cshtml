@@ -1,0 +1,35 @@
+@{
+    ViewData["Title"] = "Add Nutrient";
+    Layout = "_Layout";
+}
+@using VitaTrack.Infrastructure.Models
+@model SupplementNutrient
+@{
+    var supplement = ViewData["Supplement"] as Supplement;
+}
+
+<h2>Add Nutrient to @supplement?.Name</h2>
+
+<form asp-action="Create">
+    <input type="hidden" asp-for="SupplementId" />
+
+    <div class="form-group">
+        <label asp-for="GenericName" class="control-label">Generic Name</label>
+        <input asp-for="GenericName" class="form-control" placeholder="e.g. Zinc" />
+        <span asp-validation-for="GenericName" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="SpecificForm" class="control-label">Specific Form</label>
+        <input asp-for="SpecificForm" class="form-control" placeholder="e.g. Zinc Picolinate" />
+        <span asp-validation-for="SpecificForm" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="Dosage" class="control-label">Dosage</label>
+        <input asp-for="Dosage" class="form-control" placeholder="e.g. 5mg" />
+        <span asp-validation-for="Dosage" class="text-danger"></span>
+    </div>
+    <div class="form-group mt-3">
+        <input type="submit" value="Add Nutrient" class="btn btn-primary" />
+        <a class="btn btn-secondary" asp-action="Index" asp-route-supplementId="@Model.SupplementId">Cancel</a>
+    </div>
+</form>

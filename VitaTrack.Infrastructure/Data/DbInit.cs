@@ -43,7 +43,7 @@ namespace VitaTrack.Infrastructure.Data
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 FamilyMemberId INTEGER NOT NULL,
                 SupplementId INTEGER NOT NULL,
-                StartDate TEXT NOT NULL,
+                StartDate TEXT NULL,
                 EndDate TEXT NULL,
                 Dosage TEXT NOT NULL,
                 Instructions TEXT NOT NULL,

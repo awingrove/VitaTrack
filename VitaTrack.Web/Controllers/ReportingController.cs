@@ -30,7 +30,7 @@ namespace VitaTrack.Web.Controllers
             var allDoses = await _prescribedDoseRepo.GetAllAsync();
             var today = System.DateTime.Today;
             var activeDoses = allDoses.Where(pd =>
-                pd.StartDate <= today &&
+                (!pd.StartDate.HasValue || pd.StartDate <= today) &&
                 (!pd.EndDate.HasValue || pd.EndDate >= today)).ToList();
 
             var supplementCache = new Dictionary<int, Supplement>();
@@ -70,12 +70,16 @@ namespace VitaTrack.Web.Controllers
                 foreach (var n in nutrientCache[pd.SupplementId])
                 {
                     var nutrientValue = ParseDosageValue(n.Dosage);
-                    var dailyAmount = nutrientValue * dosageAmount * dailyFrequency;
+                    var dailyAmount = nutrientValue * dosageAmount * pd.FrequencyPerDay;
 
                     if (memberTotals[pd.FamilyMemberId].ContainsKey(n.GenericName))
+                    {
                         memberTotals[pd.FamilyMemberId][n.GenericName] += dailyAmount;
+                    }
                     else
+                    {
                         memberTotals[pd.FamilyMemberId][n.GenericName] = dailyAmount;
+                    }
 
                     if (grandTotals.ContainsKey(n.GenericName))
                         grandTotals[n.GenericName] += dailyAmount;

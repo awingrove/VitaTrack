@@ -12,12 +12,12 @@
     <h4>PrescribedDose</h4>
     <hr />
     <dl class="dl-horizontal">
-        <dt>Family Member ID</dt>
-        <dd>@Model.FamilyMemberId</dd>
-        <dt>Supplement ID</dt>
-        <dd>@Model.SupplementId</dd>
+        <dt>Family Member</dt>
+        <dd>@(Model.FamilyMemberName ?? Model.FamilyMemberId.ToString())</dd>
+        <dt>Supplement</dt>
+        <dd>@(Model.SupplementName ?? Model.SupplementId.ToString())</dd>
         <dt>Start Date</dt>
-        <dd>@Model.StartDate.ToShortDateString()</dd>
+        <dd>@(Model.StartDate?.ToShortDateString() ?? "—")</dd>
         <dt>End Date</dt>
         <dd>@(Model.EndDate?.ToShortDateString() ?? "Ongoing")</dd>
         <dt>Dosage</dt>

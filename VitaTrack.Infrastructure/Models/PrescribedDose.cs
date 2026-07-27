@@ -7,14 +7,14 @@ namespace VitaTrack.Infrastructure.Models
         public int Id { get; set; }
         public int FamilyMemberId { get; set; }
         public int SupplementId { get; set; }
-        public DateTime StartDate { get; set; }
-        public DateTime? EndDate { get; set; } // null means ongoing
-        public string Dosage { get; set; } = string.Empty; // e.g., "500 mg"
-        public string Instructions { get; set; } = string.Empty; // e.g., "Take with food"
-        public int FrequencyPerDay { get; set; } = 1; // e.g., 1 for once daily, 2 for twice daily
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public string Dosage { get; set; } = string.Empty;
+        public string Instructions { get; set; } = string.Empty;
+        public int FrequencyPerDay { get; set; } = 1;
 
-        // Navigation properties (not required for Dapper, but useful for reference)
-        public FamilyMember? FamilyMember { get; set; }
-        public Supplement? Supplement { get; set; }
+        // Display names populated via JOIN query (not stored)
+        public string? FamilyMemberName { get; set; }
+        public string? SupplementName { get; set; }
     }
 }

@@ -17,20 +17,12 @@ namespace VitaTrack.Infrastructure.Data
             const string sql = @"
                 SELECT pd.Id, pd.FamilyMemberId, pd.SupplementId, pd.StartDate, pd.EndDate, 
                        pd.Dosage, pd.Instructions, pd.FrequencyPerDay,
-                       fm.Name as FamilyMember_Name, fm.DisplayName as FamilyMember_DisplayName,
-                       s.Name as Supplement_Name, s.Brand as Supplement_Brand
+                       fm.DisplayName as FamilyMemberName,
+                       s.Name as SupplementName
                 FROM PrescribedDoses pd
                 LEFT JOIN FamilyMembers fm ON pd.FamilyMemberId = fm.Id
                 LEFT JOIN Supplements s ON pd.SupplementId = s.Id";
-            var rows = await _db.QueryAsync<PrescribedDose, FamilyMember, Supplement, PrescribedDose>(
-                sql,
-                (pd, fm, s) => {
-                    pd.FamilyMember = fm;
-                    pd.Supplement = s;
-                    return pd;
-                },
-                splitOn: "FamilyMember_Name,Supplement_Name");
-            return rows.ToList();
+            return (await _db.QueryAsync<PrescribedDose>(sql)).ToList();
         }
 
         public async Task<PrescribedDose?> GetByIdAsync(int id)
@@ -38,31 +30,22 @@ namespace VitaTrack.Infrastructure.Data
             const string sql = @"
                 SELECT pd.Id, pd.FamilyMemberId, pd.SupplementId, pd.StartDate, pd.EndDate, 
                        pd.Dosage, pd.Instructions, pd.FrequencyPerDay,
-                       fm.Name as FamilyMember_Name, fm.DisplayName as FamilyMember_DisplayName,
-                       s.Name as Supplement_Name, s.Brand as Supplement_Brand
+                       fm.DisplayName as FamilyMemberName,
+                       s.Name as SupplementName
                 FROM PrescribedDoses pd
                 LEFT JOIN FamilyMembers fm ON pd.FamilyMemberId = fm.Id
                 LEFT JOIN Supplements s ON pd.SupplementId = s.Id
                 WHERE pd.Id = @Id";
-            var result = await _db.QueryAsync<PrescribedDose, FamilyMember, Supplement, PrescribedDose>(
-                sql,
-                (pd, fm, s) => {
-                    pd.FamilyMember = fm;
-                    pd.Supplement = s;
-                    return pd;
-                },
-                new { Id = id },
-                splitOn: "FamilyMember_Name,Supplement_Name");
-            return result.FirstOrDefault();
+            return await _db.QuerySingleOrDefaultAsync<PrescribedDose>(sql, new { Id = id });
         }
 
         public async Task<int> AddAsync(PrescribedDose prescribedDose)
         {
-            const string insertSql = @"
+            const string sql = @"
                 INSERT INTO PrescribedDoses (FamilyMemberId, SupplementId, StartDate, EndDate, Dosage, Instructions, FrequencyPerDay)
-                VALUES (@FamilyMemberId, @SupplementId, @StartDate, @EndDate, @Dosage, @Instructions, @FrequencyPerDay);";
-            await _db.ExecuteAsync(insertSql, prescribedDose);
-            return await _db.ExecuteScalarAsync<int>("SELECT last_insert_rowid();");
+                VALUES (@FamilyMemberId, @SupplementId, @StartDate, @EndDate, @Dosage, @Instructions, @FrequencyPerDay);
+                SELECT last_insert_rowid();";
+            return await _db.ExecuteScalarAsync<int>(sql, prescribedDose);
         }
 
         public async Task UpdateAsync(PrescribedDose prescribedDose)

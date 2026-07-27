@@ -26,9 +26,9 @@
     @foreach (var pd in Model)
     {
         <tr>
-            <td>@(pd.FamilyMember?.DisplayName ?? pd.FamilyMemberId.ToString())</td>
-            <td>@(pd.Supplement?.Name ?? pd.SupplementId.ToString())</td>
-            <td>@pd.StartDate.ToShortDateString()</td>
+            <td>@(pd.FamilyMemberName ?? pd.FamilyMemberId.ToString())</td>
+            <td>@(pd.SupplementName ?? pd.SupplementId.ToString())</td>
+            <td>@(pd.StartDate?.ToShortDateString() ?? "—")</td>
             <td>@(pd.EndDate?.ToShortDateString() ?? "Ongoing")</td>
             <td>@pd.Dosage</td>
             <td>@pd.FrequencyPerDay</td>

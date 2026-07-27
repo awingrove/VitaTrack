@@ -11,7 +11,7 @@ namespace VitaTrack.Infrastructure.Models
         public DateTime? EndDate { get; set; }
         public string Dosage { get; set; } = string.Empty;
         public string Instructions { get; set; } = string.Empty;
-        public int FrequencyPerDay { get; set; } = 1;
+        public decimal FrequencyPerDay { get; set; } = 1m;
 
         // Display names populated via JOIN query (not stored)
         public string? FamilyMemberName { get; set; }

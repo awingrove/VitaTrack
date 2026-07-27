@@ -41,8 +41,8 @@
         <span asp-validation-for="Dosage" class="text-danger"></span>
     </div>
     <div class="form-group">
-        <label asp-for="FrequencyPerDay" class="control-label"></label>
-        <input asp-for="FrequencyPerDay" class="form-control" type="number" min="1" />
+        <label asp-for="FrequencyPerDay" class="control-label">Times per day</label>
+        <input asp-for="FrequencyPerDay" class="form-control" type="number" step="0.25" min="0.25" />
         <span asp-validation-for="FrequencyPerDay" class="text-danger"></span>
     </div>
     <div class="form-group">

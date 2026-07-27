@@ -58,7 +58,7 @@ namespace VitaTrack.Infrastructure.Data
             if (columnExists == 0)
             {
                 db.Execute(@"
-                    ALTER TABLE PrescribedDoses ADD COLUMN FrequencyPerDay INTEGER NOT NULL DEFAULT 1;
+                    ALTER TABLE PrescribedDoses ADD COLUMN FrequencyPerDay REAL NOT NULL DEFAULT 1.0;
                 ");
             }
 

@@ -150,11 +150,12 @@ namespace VitaTrack.Infrastructure.Services
 
             try
             {
+                var model = _cfg["OpenRouter:Model"] ?? "openai/gpt-4o-mini";
                 var prompt = BuildExtractionPrompt(supplementName, brand);
 
                 var requestBody = new
                 {
-                    model = "openai/gpt-4o-mini",
+                    model = model,
                     messages = new[]
                     {
                         new { role = "system", content = "You are a supplement label parser. Extract structured nutrient information from supplement product pages. Return ONLY valid JSON. Do NOT include markdown formatting, code blocks, or any text outside the JSON." },

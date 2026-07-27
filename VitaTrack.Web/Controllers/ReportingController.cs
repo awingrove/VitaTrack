@@ -9,97 +9,123 @@ namespace VitaTrack.Web.Controllers
     {
         private readonly ISupplementRepository _supplementRepo;
         private readonly IPrescribedDoseRepository _prescribedDoseRepo;
+        private readonly IFamilyRepository _familyRepo;
+        private readonly ISupplementNutrientRepository _nutrientRepo;
 
-        public ReportingController(ISupplementRepository supplementRepo, IPrescribedDoseRepository prescribedDoseRepo)
+        public ReportingController(
+            ISupplementRepository supplementRepo,
+            IPrescribedDoseRepository prescribedDoseRepo,
+            IFamilyRepository familyRepo,
+            ISupplementNutrientRepository nutrientRepo)
         {
             _supplementRepo = supplementRepo;
             _prescribedDoseRepo = prescribedDoseRepo;
+            _familyRepo = familyRepo;
+            _nutrientRepo = nutrientRepo;
         }
 
         // GET: /Reporting/NutrientReport
         public async Task<IActionResult> NutrientReport()
         {
-            // Get all active prescribed doses (where today is within the date range)
-            var prescribedDoses = await _prescribedDoseRepo.GetAllAsync();
+            var allDoses = await _prescribedDoseRepo.GetAllAsync();
             var today = System.DateTime.Today;
-            var activeDoses = prescribedDoses.Where(pd =>
+            var activeDoses = allDoses.Where(pd =>
                 pd.StartDate <= today &&
                 (!pd.EndDate.HasValue || pd.EndDate >= today)).ToList();
 
-            // Cache for supplements to avoid repeated DB calls
             var supplementCache = new Dictionary<int, Supplement>();
-            var nutrientTotals = new System.Collections.Generic.Dictionary<string, decimal>();
+            var familyCache = new Dictionary<int, FamilyMember>();
+            var nutrientCache = new Dictionary<int, List<SupplementNutrient>>();
+
+            var memberTotals = new Dictionary<int, Dictionary<string, decimal>>();
+            var grandTotals = new Dictionary<string, decimal>();
+            decimal totalCost = 0;
 
             foreach (var pd in activeDoses)
             {
-                // Get the supplement for this prescribed dose
                 if (!supplementCache.TryGetValue(pd.SupplementId, out var supplement))
                 {
                     supplement = await _supplementRepo.GetByIdAsync(pd.SupplementId);
                     supplementCache[pd.SupplementId] = supplement;
                 }
-
                 if (supplement == null) continue;
 
-                // Parse the dosage amount from the Dosage string (e.g., "500 mg" -> 500)
+                if (!nutrientCache.TryGetValue(pd.SupplementId, out var nutrients))
+                {
+                    var list = await _nutrientRepo.GetBySupplementIdAsync(pd.SupplementId);
+                    nutrientCache[pd.SupplementId] = list.ToList();
+                }
+
                 decimal dosageAmount = 0;
                 if (!string.IsNullOrWhiteSpace(pd.Dosage))
                 {
-                    // Extract the first number from the string
                     var match = System.Text.RegularExpressions.Regex.Match(pd.Dosage, @"[\d]+\.?\d*");
-                    if (decimal.TryParse(match.Value, out var amount))
-                    {
-                        dosageAmount = amount;
-                    }
+                    decimal.TryParse(match.Value, out dosageAmount);
                 }
 
-                // Get the nutrition per unit from the supplement
-                if (!string.IsNullOrEmpty(supplement.NutritionJson))
+                var dailyFrequency = pd.FrequencyPerDay > 0 ? pd.FrequencyPerDay : 1;
+                if (!memberTotals.ContainsKey(pd.FamilyMemberId))
+                    memberTotals[pd.FamilyMemberId] = new Dictionary<string, decimal>();
+
+                foreach (var n in nutrientCache[pd.SupplementId])
                 {
-                    try
-                    {
-                        using var doc = JsonDocument.Parse(supplement.NutritionJson);
-                        if (doc.RootElement.TryGetProperty("nutrition", out var nutritionElement))
-                        {
-                            foreach (var nutrient in nutritionElement.EnumerateObject())
-                            {
-                                if (nutrient.Value.ValueKind == JsonValueKind.Number)
-                                {
-                                    var amountPerUnit = nutrient.Value.GetDecimal();
-                                    // Calculate the daily amount for this nutrient from this prescribed dose
-                                    var dailyAmount = amountPerUnit * dosageAmount * pd.FrequencyPerDay;
-                                    if (nutrientTotals.ContainsKey(nutrient.Name))
-                                    {
-                                        nutrientTotals[nutrient.Name] += dailyAmount;
-                                    }
-                                    else
-                                    {
-                                        nutrientTotals[nutrient.Name] = dailyAmount;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    catch (JsonException)
-                    {
-                        // Ignore malformed JSON
-                    }
+                    var nutrientValue = ParseDosageValue(n.Dosage);
+                    var dailyAmount = nutrientValue * dosageAmount * dailyFrequency;
+
+                    if (memberTotals[pd.FamilyMemberId].ContainsKey(n.GenericName))
+                        memberTotals[pd.FamilyMemberId][n.GenericName] += dailyAmount;
+                    else
+                        memberTotals[pd.FamilyMemberId][n.GenericName] = dailyAmount;
+
+                    if (grandTotals.ContainsKey(n.GenericName))
+                        grandTotals[n.GenericName] += dailyAmount;
+                    else
+                        grandTotals[n.GenericName] = dailyAmount;
+                }
+
+                if (supplement.Cost.HasValue)
+                {
+                    totalCost += supplement.Cost.Value * dailyFrequency;
                 }
             }
 
-            // Get the list of unique supplements that contributed to the report
+            // Build per-member data
+            var memberData = new List<Dictionary<string, string>>();
+            var memberNames = new List<string>();
+            foreach (var kvp in memberTotals)
+            {
+                if (!familyCache.TryGetValue(kvp.Key, out var member))
+                {
+                    member = await _familyRepo.GetByIdAsync(kvp.Key);
+                    familyCache[kvp.Key] = member;
+                }
+                var name = member?.DisplayName ?? $"Member #{kvp.Key}";
+                memberNames.Add(name);
+                memberData.Add(kvp.Value.ToDictionary(n => n.Key, n => n.Value.ToString("F2")));
+            }
+
+            ViewData["GrandTotals"] = JsonSerializer.Serialize(grandTotals);
+            ViewData["TotalCost"] = totalCost.ToString("F2");
+            ViewData["ReportDate"] = today.ToString("yyyy-MM-dd");
+            ViewData["MemberNames"] = JsonSerializer.Serialize(memberNames);
+            ViewData["MemberData"] = JsonSerializer.Serialize(memberData);
+
             var supplementIds = activeDoses.Select(pd => pd.SupplementId).Distinct();
             var supplements = new List<Supplement>();
             foreach (var id in supplementIds)
             {
                 if (supplementCache.TryGetValue(id, out var supp) && supp != null)
-                {
                     supplements.Add(supp);
-                }
             }
-
-            ViewData["NutrientTotals"] = nutrientTotals;
             return View(supplements);
+        }
+
+        private static decimal ParseDosageValue(string dosage)
+        {
+            if (string.IsNullOrWhiteSpace(dosage)) return 0;
+            var match = System.Text.RegularExpressions.Regex.Match(dosage, @"[\d]+\.?\d*");
+            if (decimal.TryParse(match.Value, out var val)) return val;
+            return 0;
         }
     }
 }

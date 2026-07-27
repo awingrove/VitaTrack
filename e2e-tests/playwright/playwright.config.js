@@ -11,9 +11,6 @@ module.exports = defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
 
-  // Clean the test database before running tests
-  globalSetup: require.resolve('./global-setup'),
-
   use: {
     actionTimeout: 0,
     baseURL: 'http://localhost:5000',
@@ -27,17 +24,11 @@ module.exports = defineConfig({
     },
   ],
 
-  /* Run your local dev server before starting the tests.
-     Uses a separate test database so the real app DB is never touched. */
   webServer: {
     command: 'dotnet run',
     cwd: '../../VitaTrack.Web',
     port: 5000,
     timeout: 120 * 1000,
     reuseExistingServer: !process.env.CI,
-    env: {
-      // Override connection string to use a dedicated test database
-      'ConnectionStrings__Default': 'Data Source=VitaTrack.Test.db',
-    },
   },
 });

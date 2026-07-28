@@ -56,6 +56,11 @@ This document defines the coding standards, architectural guidelines, testing ph
     *   Run Web: `dotnet run --project VitaTrack.Web`
     *   Test: `dotnet test`
 
+## 📋 Story Map
+*   **Location:** [`storymap.yaml`](storymap.yaml)
+*   **Purpose:** Machine-readable story map capturing all user activities, tasks, and stories with priority, status, and test coverage.
+*   **Usage:** Reference when adding new features to understand existing scope and where new stories fit.
+
 ## 🤖 AI Workflow Directives
 1.  **Understand Context:** Before modifying a file, check how it interacts with the layered folders (Controller -> Service -> Repository).
 2.  **Naming:** Ensure generated names clearly describe *intent* without needing supplementary comments.

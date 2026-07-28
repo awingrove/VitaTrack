@@ -1,0 +1,64 @@
+@{
+    ViewData["Title"] = "Cost Report";
+    Layout = "_Layout";
+}
+
+<h2>@ViewData["Title"]</h2>
+<p class="text-muted">Report date: @ViewData["ReportDate"]</p>
+
+<h3>Monthly Cost by Supplement</h3>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Supplement</th>
+            <th>Brand</th>
+            <th>Unit Cost</th>
+            <th>Monthly Cost</th>
+        </tr>
+    </thead>
+    <tbody>
+    @{
+        var supplementCosts = ViewData["SupplementCosts"] as dynamic;
+        if (supplementCosts != null)
+        {
+            foreach (var item in supplementCosts)
+            {
+                <tr>
+                    <td>@item.Name</td>
+                    <td>@item.Brand</td>
+                    <td>£@item.UnitCost.ToString("F2")</td>
+                    <td>£@item.MonthlyCost.ToString("F2")</td>
+                </tr>
+            }
+        }
+    }
+    </tbody>
+</table>
+
+<h3>Monthly Cost by Family Member</h3>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Family Member</th>
+            <th>Monthly Cost</th>
+        </tr>
+    </thead>
+    <tbody>
+    @{
+        var memberCosts = ViewData["MemberCosts"] as dynamic;
+        if (memberCosts != null)
+        {
+            foreach (var item in memberCosts)
+            {
+                <tr>
+                    <td>@item.Name</td>
+                    <td>£@item.MonthlyCost.ToString("F2")</td>
+                </tr>
+            }
+        }
+    }
+    </tbody>
+</table>
+
+<h3>Grand Total</h3>
+<p class="lead">£@ViewData["GrandTotal"]</p>

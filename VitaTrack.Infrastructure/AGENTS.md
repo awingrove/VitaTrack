@@ -2,10 +2,10 @@
 
 ## Responsibilities
 - Persist data using **Dapper** over SQLite.
-- Define repository interfaces (`IFamilyRepository`, `ISupplementRepository`).
+- Define repository interfaces (`IFamilyRepository`, `ISupplementRepository`, `ISupplementNutrientRepository`, `IPrescribedDoseRepository`).
 - Implement repositories with async CRUD methods.
 - Provide access to external services (LLM) via `ILlmService`.
-- Contain models (`FamilyMember`, `Supplement`, `LlmResult`) used across layers.
+- Contain models (`FamilyMember`, `Supplement`, `SupplementNutrient`, `PrescribedDose`, `LlmResult`) used across layers.
 - No direct HTTP or UI concerns; keep pure C#.
 
 ## Conventions
@@ -37,7 +37,7 @@
 1. Add model (if needed) to `VitaTrack.Infrastructure.Models`.
 2. Extend repository interface (if new entity) and implement.
 3. Register new interface/implementation in `VitaTrack.Web/Program.cs` via `builder.Services.AddScoped<...>()`.
-4. If external service, add to `VitaTrack.Infrastructure.Services` and register via `AddHttpClient<TInterface, TImplementation>()(you may also need to register HttpClient separately if not already).
+4. If external service, add to `VitaTrack.Infrastructure.Services` and register via `AddHttpClient<TInterface, TImplementation>()` (you may also need to register `HttpClient` separately if not already).
 5. Write unit tests in `VitaTrack.Tests` before or after implementation (TDD encouraged).
 
 ## Build

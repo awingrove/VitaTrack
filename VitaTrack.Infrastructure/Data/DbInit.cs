@@ -107,6 +107,17 @@ namespace VitaTrack.Infrastructure.Data
                         (3, 'Calcium', 'Calcium Carbonate', '200mg')
                     ");
                 }
+
+                var doseCount = db.QuerySingle<int>("SELECT COUNT(*) FROM PrescribedDoses;");
+                if (doseCount == 0)
+                {
+                    db.Execute(@"
+                        INSERT INTO PrescribedDoses (FamilyMemberId, SupplementId, Dosage, Instructions, FrequencyPerDay) VALUES 
+                        (1, 1, '500mg', 'Take with breakfast', 1.0),
+                        (1, 2, '1 softgel', 'Take with dinner', 1.0),
+                        (2, 3, '1 tablet', 'Take in the morning', 1.0)
+                    ");
+                }
             }
         }
     }

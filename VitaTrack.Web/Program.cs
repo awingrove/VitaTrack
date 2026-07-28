@@ -7,15 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Add MVC services
 builder.Services.AddControllersWithViews();
 
-// Load configuration (appsettings.json + environment specific)
-builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                      .AddJsonFile($"appsettings.{builder.Environment.IsDevelopment()}.json", optional: true)
-#if DEBUG
-                      .AddUserSecrets<Program>(optional: true)
-#endif
-                      .AddEnvironmentVariables();
-
 // Register a scoped SQLite connection (one per request)
+// Connection string comes from appsettings.json, overridden by env vars (ConnectionStrings__Default)
 builder.Services.AddScoped<IDbConnection>(sp =>
 {
     var connStr = builder.Configuration.GetConnectionString("Default");

@@ -43,4 +43,13 @@
 
 ## Coverage Goal
 - Aim for **≥80%** line coverage on repository and service layers.
-- UI layer tested via integration tests (WebApplicationFactory) if needed later.
+- UI layer tested via Playwright E2E tests (in `e2e-tests/playwright/`).
+
+## Playwright E2E Tests
+- Tests live in `e2e-tests/playwright/tests/`.
+- Run via `npx playwright test` from `e2e-tests/playwright/`.
+- **Never mock HTTP** — E2E tests hit the real running application.
+- **DB Isolation:** `global-setup.js` deletes `VitaTrack.Test.db` before each run. The server loads `appsettings.Test.json` via `--environment Test`.
+- **Shared DB state:** Tests run in parallel (4 workers) against one server. When mutating data, use dynamic assertions (`.first()`, `.last()`, relative counts) instead of exact values.
+- **Seeding:** Report tests depend on `PrescribedDoses` seed data in `DbInit.EnsureCreated`. If adding a new report, seed the required data there.
+- **Adding a new test file:** Create `tests/<feature>.spec.js`. Follow existing patterns (e.g., `home.spec.js` for simple navigation, `prescribed-dose.spec.js` for CRUD with create-before-edit/delete).

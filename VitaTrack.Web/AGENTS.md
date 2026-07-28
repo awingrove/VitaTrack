@@ -2,7 +2,7 @@
 
 ## Responsibilities
 - Serve HTTP requests (MVC controllers).
-- Render Razor views with Bootstrap 5 and HTMX.
+- Render Razor views with Bootstrap 5 and HTMX.
 - Map view models to/from infrastructure models (thin mapping only).
 - Handle form validation (data‑annotations).
 - No business logic; delegate to services/repositories.
@@ -20,6 +20,7 @@
 - Use `@model` with infrastructure model types (e.g., `IEnumerable<FamilyMember>`).
 - HTMX attributes: `hx-get`, `hx-post`, `hx-target`, `hx-swap`.
 - Avoid inline JavaScript; keep in separate `.js` files under `wwwroot/js` if needed.
+- **ViewData/ViewBag:** Pass data via `ViewData["Key"]`. Use **anonymous objects** (not ValueTuples) when passing structured data — Razor's `dynamic` context cannot resolve ValueTuple named fields. Example: `ViewData["Items"] = list.Select(x => new { x.Name, x.Value }).ToList()`.
 
 ## Static Files
 - Place custom CSS/JS/images in `wwwroot/css`, `wwwroot/js`, `wwwroot/img`.
@@ -29,6 +30,12 @@
 ## Dependencies
 - References: `VitaTrack.Infrastructure` (projects), Dapper, SQLite, Microsoft.AspNetCore.Mvc, etc.
 - Do **not** add direct data‑access code here; use repositories via constructor injection.
+
+## Error Handling
+- If `Program.cs` registers `app.UseExceptionHandler("/Home/Error")`, you **must** also provide:
+  - A `HomeController.Error()` action that returns `View()`.
+  - A `Views/Home/Error.cshtml` view.
+- Without these, any unhandled exception cascades into a bare 500 with no diagnostics.
 
 ## Testing
 - UI logic tested via `Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory` (in VitaTrack.Tests).

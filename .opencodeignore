@@ -1,14 +1,9 @@
-# Opencode ignore — expand here to tell opencode which files or folders to ignore
+# Opencode ignore — tells opencode which files/folders to skip
 
 # .NET build output
 **/bin/
 **/obj/
-*.user
-*.vspscc
-*.vssscc
-*.csproj.user
-*.sln.DotSettings.user
-*.DotSettings.user
+**/*.user
 
 # IDE
 **/.vs/
@@ -18,14 +13,15 @@
 *.swo
 *~
 
-# Node / Playwright dependencies
+# Node / Playwright dependencies & lock files
 **/node_modules/
 **/package-lock.json
 **/pnpm-lock.yaml
 **/yarn.lock
 
-# NuGet lock file
+# NuGet
 **/packages.lock.json
+**/packages/
 
 # Test output
 **/test-results/
@@ -37,6 +33,9 @@
 **/*.db-shm
 **/*.db-wal
 
+# Logs
+**/*.log
+
 # OS
 **/.DS_Store
 Thumbs.db
@@ -44,13 +43,7 @@ Thumbs.db
 # Git
 **/.git/
 
-# Tools
-**/.fake/
-**/.paket/
-**/tools/
-**/bencher.toml
-
-# Config with secrets
+# Config with secrets — do not let AI modify these
 **/appsettings.*.json
 !**/appsettings.json
 
@@ -59,3 +52,9 @@ Thumbs.db
 **/.venv/
 **/env/
 **/venv/
+
+# Tools
+**/.fake/
+**/.paket/
+**/tools/
+**/bencher.toml

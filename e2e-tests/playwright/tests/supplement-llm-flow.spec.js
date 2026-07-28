@@ -1,12 +1,10 @@
 const { test, expect } = require('@playwright/test');
 
-test.describe.configure({ mode: 'serial' });
-
 test.describe('Supplement LLM Enrichment Flow', () => {
 
   test('should show review page when creating a supplement without a URL', async ({ page }) => {
     await page.goto('/Supplement');
-    await page.waitForLoadState('networkidle');
+    await expect(page.locator('table tbody tr').first()).toBeVisible();
 
     await page.click('text=Add New Supplement');
 
@@ -34,7 +32,7 @@ test.describe('Supplement LLM Enrichment Flow', () => {
 
   test('should allow adding nutrients on the review page and saving', async ({ page }) => {
     await page.goto('/Supplement');
-    await page.waitForLoadState('networkidle');
+    await expect(page.locator('table tbody tr').first()).toBeVisible();
     await page.click('text=Add New Supplement');
 
     await page.fill('input[name="Name"]', 'Review Test E2E');
@@ -53,16 +51,11 @@ test.describe('Supplement LLM Enrichment Flow', () => {
     await page.locator('input[name="nutrients[0].Dosage"]').fill('200mg');
 
     // Save
-    const [request] = await Promise.all([
-        page.waitForRequest(req => req.url().includes('/Supplement/ConfirmCreate')),
-        page.click('input[type="submit"][value="Confirm & Save"]')
-    ]);
+    await page.click('input[type="submit"][value="Confirm & Save"]');
+    await page.waitForURL(/\/Supplement/, { timeout: 15000 });
 
-    await page.waitForTimeout(300);
-    await expect(page.locator('h2')).toHaveText('Supplements', { timeout: 15000 });
-
-    // Verify the supplement was saved
-    const supplementRow = page.locator('tr:has-text("Review Test E2E")');
+    // Verify the supplement was saved (use last to handle duplicate entries from parallel runs)
+    const supplementRow = page.locator('table tbody tr:has-text("Review Test E2E")').last();
     await expect(supplementRow).toBeVisible({ timeout: 10000 });
 
     // Verify the nutrients were saved
@@ -75,7 +68,7 @@ test.describe('Supplement LLM Enrichment Flow', () => {
 
   test('should allow removing nutrients on the review page using the remove button', async ({ page }) => {
     await page.goto('/Supplement');
-    await page.waitForLoadState('networkidle');
+    await expect(page.locator('table tbody tr').first()).toBeVisible();
     await page.click('text=Add New Supplement');
 
     await page.fill('input[name="Name"]', 'Remove Test E2E');

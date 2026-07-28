@@ -11,6 +11,9 @@ module.exports = defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
 
+  // Clean the test database before each test run
+  globalSetup: require.resolve('./global-setup'),
+
   use: {
     actionTimeout: 0,
     baseURL: 'http://localhost:5000',
@@ -25,10 +28,10 @@ module.exports = defineConfig({
   ],
 
   webServer: {
-    command: 'dotnet run',
+    command: 'dotnet run --urls http://localhost:5000 --environment Test',
     cwd: '../../VitaTrack.Web',
-    port: 5000,
+    url: 'http://localhost:5000',
     timeout: 120 * 1000,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
   },
 });

@@ -1,14 +1,15 @@
 const { test, expect } = require('@playwright/test');
 
-test.describe.configure({ mode: 'serial' });
-
 test.describe('Supplement LLM Integration (Real API)', () => {
 
   test('should extract nutrients from a real product URL using OpenRouter', async ({ page }) => {
-    test.setTimeout(180000); // 3 minutes — real API calls are slow
+    const apiKey = process.env.OPENROUTER_API_KEY || process.env.OpenRouter__ApiKey;
+    test.skip(!apiKey, 'Skipping — no API key configured');
+
+    test.setTimeout(180000);
 
     await page.goto('/Supplement');
-    await page.waitForLoadState('networkidle');
+    await expect(page.locator('table tbody tr').first()).toBeVisible();
     await page.click('text=Add New Supplement');
 
     await page.fill('input[name="Name"]', 'Children\'s Mindlinxr');

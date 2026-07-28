@@ -124,6 +124,70 @@ namespace VitaTrack.Web.Controllers
             return View(supplements);
         }
 
+        // GET: /Reporting/CostReport
+        public async Task<IActionResult> CostReport()
+        {
+            var allDoses = await _prescribedDoseRepo.GetAllAsync();
+            var today = System.DateTime.Today;
+            var activeDoses = allDoses.Where(pd =>
+                (!pd.StartDate.HasValue || pd.StartDate <= today) &&
+                (!pd.EndDate.HasValue || pd.EndDate >= today)).ToList();
+
+            var supplementCache = new Dictionary<int, Supplement>();
+            var familyCache = new Dictionary<int, FamilyMember>();
+
+            var supplementCosts = new Dictionary<int, (string Name, string Brand, decimal UnitCost, decimal MonthlyCost)>();
+            var memberCosts = new Dictionary<int, (string Name, decimal MonthlyCost)>();
+            decimal grandTotal = 0;
+
+            foreach (var pd in activeDoses)
+            {
+                if (!supplementCache.TryGetValue(pd.SupplementId, out var supplement))
+                {
+                    supplement = await _supplementRepo.GetByIdAsync(pd.SupplementId);
+                    supplementCache[pd.SupplementId] = supplement!;
+                }
+                if (supplement == null || !supplement.Cost.HasValue) continue;
+
+                var dailyFrequency = pd.FrequencyPerDay > 0 ? pd.FrequencyPerDay : 1;
+                var monthlyCost = supplement.Cost.Value * dailyFrequency;
+
+                if (supplementCosts.TryGetValue(pd.SupplementId, out var existing))
+                {
+                    supplementCosts[pd.SupplementId] = (existing.Name, existing.Brand, existing.UnitCost, existing.MonthlyCost + monthlyCost);
+                }
+                else
+                {
+                    supplementCosts[pd.SupplementId] = (supplement.Name, supplement.Brand, supplement.Cost.Value, monthlyCost);
+                }
+
+                if (!familyCache.TryGetValue(pd.FamilyMemberId, out var member))
+                {
+                    member = await _familyRepo.GetByIdAsync(pd.FamilyMemberId);
+                    familyCache[pd.FamilyMemberId] = member!;
+                }
+                var memberName = member?.DisplayName ?? $"Member #{pd.FamilyMemberId}";
+
+                if (memberCosts.TryGetValue(pd.FamilyMemberId, out var memberExisting))
+                {
+                    memberCosts[pd.FamilyMemberId] = (memberExisting.Name, memberExisting.MonthlyCost + monthlyCost);
+                }
+                else
+                {
+                    memberCosts[pd.FamilyMemberId] = (memberName, monthlyCost);
+                }
+
+                grandTotal += monthlyCost;
+            }
+
+            ViewData["SupplementCosts"] = supplementCosts.Values.Select(s => new { s.Name, s.Brand, s.UnitCost, s.MonthlyCost }).ToList();
+            ViewData["MemberCosts"] = memberCosts.Values.Select(m => new { m.Name, m.MonthlyCost }).ToList();
+            ViewData["GrandTotal"] = grandTotal.ToString("F2");
+            ViewData["ReportDate"] = today.ToString("yyyy-MM-dd");
+
+            return View();
+        }
+
         private static decimal ParseDosageValue(string dosage)
         {
             if (string.IsNullOrWhiteSpace(dosage)) return 0;

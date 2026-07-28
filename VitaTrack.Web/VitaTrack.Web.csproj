@@ -9,13 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Data access -->
-    <PackageReference Include="Dapper" Version="2.1.79" />
-    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.10" />
-    <PackageReference Include="SQLite" Version="3.53.4" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\VitaTrack.Infrastructure\VitaTrack.Infrastructure.csproj" />
   </ItemGroup>
 

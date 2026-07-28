@@ -22,7 +22,10 @@
             <td>@m.AvatarUrl</td>
             <td>
                 <a class="btn btn-sm btn-primary" asp-action="Edit" asp-route-id="@m.Id">Edit</a>
-                <a class="btn btn-sm btn-danger" asp-action="Delete" asp-route-id="@m.Id">Delete</a>
+                <form asp-action="Delete" asp-route-id="@m.Id" method="post" style="display:inline" onsubmit="return confirm('Delete this family member?')">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
             </td>
         </tr>
     }

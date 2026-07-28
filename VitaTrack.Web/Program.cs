@@ -12,7 +12,7 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<IDbConnection>(sp =>
 {
     var connStr = builder.Configuration.GetConnectionString("Default");
-    return new System.Data.SQLite.SQLiteConnection(connStr);
+    return new Microsoft.Data.Sqlite.SqliteConnection(connStr);
 });
 
 // Register repositories (scoped)

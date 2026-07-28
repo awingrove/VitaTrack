@@ -25,7 +25,10 @@
             <td>
                 <a class="btn btn-sm btn-outline-info" asp-controller="SupplementNutrient" asp-action="Index" asp-route-supplementId="@s.Id">Nutrients</a>
                 <a class="btn btn-sm btn-primary" asp-action="Edit" asp-route-id="@s.Id">Edit</a>
-                <a class="btn btn-sm btn-danger" asp-action="Delete" asp-route-id="@s.Id">Delete</a>
+                <form asp-action="Delete" asp-route-id="@s.Id" method="post" style="display:inline" onsubmit="return confirm('Delete this supplement?')">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
             </td>
         </tr>
     }

@@ -56,11 +56,11 @@ namespace VitaTrack.Tests
         private static IConfiguration CreateConfig(string apiKey = "test-real-api-key")
         {
             return new ConfigurationBuilder()
-                .AddInMemoryCollection(new[]
-                {
-                    new KeyValuePair<string,string>("OpenRouter:BaseUrl", "https://dummy.openrouter.ai/api/v1"),
-                    new KeyValuePair<string,string>("OpenRouter:ApiKey", apiKey)
-                })
+                .AddInMemoryCollection(
+                [
+                    new KeyValuePair<string,string?>("OpenRouter:BaseUrl", "https://dummy.openrouter.ai/api/v1"),
+                    new KeyValuePair<string,string?>("OpenRouter:ApiKey", apiKey)
+                ])
                 .Build();
         }
 

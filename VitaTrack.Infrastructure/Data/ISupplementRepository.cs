@@ -11,5 +11,6 @@ namespace VitaTrack.Infrastructure.Data
         Task<int> AddAsync(Supplement supplement);
         Task UpdateAsync(Supplement supplement);
         Task<int> DeleteAsync(int id);
+        Task<int> DeleteAsync(IEnumerable<int> ids);
     }
 }

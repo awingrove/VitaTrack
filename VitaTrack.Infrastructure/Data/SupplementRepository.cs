@@ -54,5 +54,13 @@ WHERE Id = @Id";
             const string sql = "DELETE FROM Supplements WHERE Id = @Id";
             return await _db.ExecuteAsync(sql, new { Id = id });
         }
+
+        public async Task<int> DeleteAsync(IEnumerable<int> ids)
+        {
+            var idList = ids.ToList();
+            if (idList.Count == 0) return 0;
+            const string sql = "DELETE FROM Supplements WHERE Id IN @Ids";
+            return await _db.ExecuteAsync(sql, new { Ids = idList });
+        }
     }
 }

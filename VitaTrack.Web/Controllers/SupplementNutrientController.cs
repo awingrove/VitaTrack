@@ -106,5 +106,17 @@ namespace VitaTrack.Web.Controllers
             await _nutrientRepo.DeleteAsync(id);
             return RedirectToAction(nameof(Index), new { supplementId });
         }
+
+        // POST: /SupplementNutrient/DeleteSelected
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteSelected(List<int> ids, int supplementId)
+        {
+            if (ids != null && ids.Count > 0)
+            {
+                await _nutrientRepo.DeleteAsync(ids);
+            }
+            return RedirectToAction(nameof(Index), new { supplementId });
+        }
     }
 }

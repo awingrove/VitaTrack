@@ -217,5 +217,30 @@ namespace VitaTrack.Tests
             Assert.AreEqual("Index", redirectResult.ActionName);
             _suppRepo.Verify(r => r.DeleteAsync(10), Times.Once);
         }
+
+        [TestMethod]
+        public async Task DeleteSelected_DeletesCheckedSupplementsAndRedirects()
+        {
+            var ids = new List<int> { 1, 3, 5 };
+            _suppRepo.Setup(r => r.DeleteAsync(ids)).ReturnsAsync(3);
+
+            var result = await _controller.DeleteSelected(ids);
+
+            var redirectResult = result as RedirectToActionResult;
+            Assert.IsNotNull(redirectResult);
+            Assert.AreEqual("Index", redirectResult.ActionName);
+            _suppRepo.Verify(r => r.DeleteAsync(ids), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task DeleteSelected_EmptyListDoesNotCallRepo()
+        {
+            var result = await _controller.DeleteSelected(new List<int>());
+
+            var redirectResult = result as RedirectToActionResult;
+            Assert.IsNotNull(redirectResult);
+            Assert.AreEqual("Index", redirectResult.ActionName);
+            _suppRepo.Verify(r => r.DeleteAsync(It.IsAny<IEnumerable<int>>()), Times.Never);
+        }
     }
 }

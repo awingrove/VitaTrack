@@ -46,7 +46,8 @@ namespace VitaTrack.Web.Controllers
                 if (!supplementCache.TryGetValue(pd.SupplementId, out var supplement))
                 {
                     supplement = await _supplementRepo.GetByIdAsync(pd.SupplementId);
-                    supplementCache[pd.SupplementId] = supplement;
+                    if (supplement != null)
+                        supplementCache[pd.SupplementId] = supplement;
                 }
                 if (supplement == null) continue;
 
@@ -101,7 +102,8 @@ namespace VitaTrack.Web.Controllers
                 if (!familyCache.TryGetValue(kvp.Key, out var member))
                 {
                     member = await _familyRepo.GetByIdAsync(kvp.Key);
-                    familyCache[kvp.Key] = member;
+                    if (member != null)
+                        familyCache[kvp.Key] = member;
                 }
                 var name = member?.DisplayName ?? $"Member #{kvp.Key}";
                 memberNames.Add(name);

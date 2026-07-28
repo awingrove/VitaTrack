@@ -8,19 +8,19 @@
 
 @{
     var grandTotals = ViewData["GrandTotals"] as string;
-    var grandTotalsDict = grandTotals != null
-        ? JsonSerializer.Deserialize<Dictionary<string, decimal>>(grandTotals)
-        : null;
+    var grandTotalsDict = new Dictionary<string, decimal>();
+    if (grandTotals != null)
+        grandTotalsDict = JsonSerializer.Deserialize<Dictionary<string, decimal>>(grandTotals) ?? new Dictionary<string, decimal>();
 
     var memberNames = ViewData["MemberNames"] as string;
-    var memberNamesList = memberNames != null
-        ? JsonSerializer.Deserialize<List<string>>(memberNames)
-        : new List<string>();
+    var memberNamesList = new List<string>();
+    if (memberNames != null)
+        memberNamesList = JsonSerializer.Deserialize<List<string>>(memberNames) ?? new List<string>();
 
     var memberData = ViewData["MemberData"] as string;
-    var memberDataList = memberData != null
-        ? JsonSerializer.Deserialize<List<Dictionary<string, string>>>(memberData)
-        : new List<Dictionary<string, string>>();
+    var memberDataList = new List<Dictionary<string, string>>();
+    if (memberData != null)
+        memberDataList = JsonSerializer.Deserialize<List<Dictionary<string, string>>>(memberData) ?? new List<Dictionary<string, string>>();
 
     var totalCost = ViewData["TotalCost"] as string;
     var reportDate = ViewData["ReportDate"] as string;
@@ -29,7 +29,7 @@
 <h2>@ViewData["Title"]</h2>
 <p class="text-muted">Report date: @reportDate</p>
 
-@if (grandTotalsDict == null || grandTotalsDict.Count == 0)
+@if (grandTotalsDict.Count == 0)
 {
     <div class="alert alert-info">No active prescribed doses found. Add a prescribed dose first.</div>
 }

@@ -69,5 +69,43 @@ namespace VitaTrack.Tests
             var all = await _repo.GetAllAsync();
             Assert.AreEqual(0, all.Count);
         }
+
+        [TestMethod]
+        public async Task DeleteMultiple_RemovesSelectedEntities()
+        {
+            var ids = new List<int>();
+            for (int i = 0; i < 3; i++)
+            {
+                var id = await _repo.AddAsync(new Supplement
+                {
+                    Name = $"Supp{i}",
+                    Brand = "Brand",
+                    DailyDose = "1 pill"
+                });
+                ids.Add(id);
+            }
+
+            await _repo.DeleteAsync(new[] { ids[0], ids[2] });
+
+            var all = await _repo.GetAllAsync();
+            Assert.AreEqual(1, all.Count);
+            Assert.AreEqual(ids[1], all[0].Id);
+        }
+
+        [TestMethod]
+        public async Task DeleteMultiple_EmptyListDeletesNothing()
+        {
+            await _repo.AddAsync(new Supplement
+            {
+                Name = "Keep",
+                Brand = "Brand",
+                DailyDose = "1 pill"
+            });
+
+            await _repo.DeleteAsync(new List<int>());
+
+            var all = await _repo.GetAllAsync();
+            Assert.AreEqual(1, all.Count);
+        }
     }
 }

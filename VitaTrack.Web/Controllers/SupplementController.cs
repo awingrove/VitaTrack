@@ -203,5 +203,16 @@ namespace VitaTrack.Web.Controllers
             await _suppRepo.DeleteAsync(id);
             return RedirectToAction(nameof(Index));
         }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteSelected(List<int> ids)
+        {
+            if (ids != null && ids.Count > 0)
+            {
+                await _suppRepo.DeleteAsync(ids);
+            }
+            return RedirectToAction(nameof(Index));
+        }
     }
 }

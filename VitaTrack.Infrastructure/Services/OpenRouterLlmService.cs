@@ -39,7 +39,7 @@ namespace VitaTrack.Infrastructure.Services
 
             // Check API key early to avoid unnecessary URL fetch
             var apiKey = _cfg["OpenRouter:ApiKey"];
-            if (string.IsNullOrWhiteSpace(apiKey) || apiKey == "YOUR_OPENROUTER_API_KEY")
+            if (string.IsNullOrWhiteSpace(apiKey))
             {
                 _logger.LogWarning("OpenRouter API key not configured, skipping LLM enrichment for {SupplementName}", supplement.Name);
                 result.ExtractionError = "OpenRouter API key not configured";

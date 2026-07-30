@@ -53,7 +53,7 @@ namespace VitaTrack.Tests
             return factoryMock.Object;
         }
 
-        private static IConfiguration CreateConfig(string apiKey = "test-real-api-key")
+        private static IConfiguration CreateConfig(string? apiKey = "test-real-api-key")
         {
             return new ConfigurationBuilder()
                 .AddInMemoryCollection(
@@ -91,7 +91,7 @@ namespace VitaTrack.Tests
         public async Task EnrichSupplementAsync_ReturnsEmpty_WhenApiKeyMissing()
         {
             var factory = CreateHttpClientFactory();
-            var config = CreateConfig("YOUR_OPENROUTER_API_KEY");
+            var config = CreateConfig(null);
             var logger = new NullLogger<OpenRouterLlmService>();
             var service = new OpenRouterLlmService(factory, config, logger);
 

@@ -24,6 +24,9 @@
 # VS cache
 .vs/
 
+# AI agent tools
+.claude/
+
 # IDE
 .vscode/*
 !.vscode/settings.json

@@ -11,15 +11,18 @@ namespace VitaTrack.Web.Controllers
         private readonly ISupplementRepository _suppRepo;
         private readonly ISupplementNutrientRepository _nutrientRepo;
         private readonly ILlmService _llmService;
+        private readonly ILogger<SupplementController> _logger;
 
         public SupplementController(
             ISupplementRepository suppRepo,
             ISupplementNutrientRepository nutrientRepo,
-            ILlmService llmService)
+            ILlmService llmService,
+            ILogger<SupplementController> logger)
         {
             _suppRepo = suppRepo;
             _nutrientRepo = nutrientRepo;
             _llmService = llmService;
+            _logger = logger;
         }
 
         public async Task<IActionResult> Index()
@@ -81,7 +84,10 @@ namespace VitaTrack.Web.Controllers
                                 Dosage = n.Dosage
                             });
                         }
-                        catch { }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to add nutrient {GenericName} for supplement {SupplementId}", n.GenericName, newId);
+                        }
                     }
                 }
             }
@@ -188,7 +194,10 @@ namespace VitaTrack.Web.Controllers
                                 Dosage = n.Dosage
                             });
                         }
-                        catch { /* skip failed saves */ }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to add nutrient {GenericName} for supplement {SupplementId}", n.GenericName, id);
+                        }
                     }
                 }
             }

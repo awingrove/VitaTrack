@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using VitaTrack.Infrastructure.Data;
@@ -15,6 +16,7 @@ namespace VitaTrack.Tests
         private Mock<ISupplementRepository> _suppRepo = null!;
         private Mock<ISupplementNutrientRepository> _nutrientRepo = null!;
         private Mock<ILlmService> _llmService = null!;
+        private Mock<ILogger<SupplementController>> _logger = null!;
         private SupplementController _controller = null!;
 
         [TestInitialize]
@@ -23,10 +25,12 @@ namespace VitaTrack.Tests
             _suppRepo = new Mock<ISupplementRepository>();
             _nutrientRepo = new Mock<ISupplementNutrientRepository>();
             _llmService = new Mock<ILlmService>();
+            _logger = new Mock<ILogger<SupplementController>>();
             _controller = new SupplementController(
                 _suppRepo.Object,
                 _nutrientRepo.Object,
-                _llmService.Object);
+                _llmService.Object,
+                _logger.Object);
         }
 
         [TestMethod]

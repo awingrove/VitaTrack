@@ -1,7 +1,6 @@
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Threading.Tasks;
 using AngleSharp.Dom;
 using AngleSharp.Html.Parser;
 using Microsoft.Extensions.Logging;
@@ -81,7 +80,7 @@ namespace VitaTrack.Infrastructure.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error enriching supplement {SupplementName}", supplement.Name);
-                result.ExtractionError = $"Error: {ex.Message}";
+                result.ExtractionError = "An error occurred while processing the supplement page.";
             }
 
             return result;
@@ -89,6 +88,12 @@ namespace VitaTrack.Infrastructure.Services
 
         private async Task<string?> FetchPageHtmlAsync(string url)
         {
+            if (!UrlSafetyValidator.IsUrlSafe(url))
+            {
+                _logger.LogWarning("Blocked unsafe URL: {Url}", url);
+                return null;
+            }
+
             try
             {
                 var response = await _scraperHttp.GetAsync(url);
@@ -182,7 +187,7 @@ Respond with ONLY this JSON structure (no markdown, no code fences):
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
                     _logger.LogWarning("OpenRouter API error: {StatusCode} - {Content}", response.StatusCode, errorContent);
-                    return new LlmResult { ExtractionError = $"LLM API error: {response.StatusCode} — {GetFirstErrorMessage(errorContent)}" };
+                    return new LlmResult { ExtractionError = "The AI service returned an error. Please try again or enter nutrients manually." };
                 }
 
                 var responseJson = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -257,7 +262,8 @@ Respond with ONLY this JSON structure (no markdown, no code fences):
             }
             catch (Exception ex)
             {
-                return new LlmResult { ExtractionError = $"LLM processing error: {ex.Message}" };
+                _logger.LogError(ex, "Error extracting nutrients via LLM for {SupplementName}", supplementName);
+                return new LlmResult { ExtractionError = "An error occurred while extracting nutrients from the page." };
             }
         }
 
@@ -275,23 +281,6 @@ For each nutrient found on the label, extract:
 Also provide a swapSuggestion if you can recommend a better form or alternative product.
 
 Return nutrients as an array. Only include nutrients explicitly listed on the label.";
-        }
-
-        private static string GetFirstErrorMessage(string jsonResponse)
-        {
-            try
-            {
-                using var doc = JsonDocument.Parse(jsonResponse);
-                if (doc.RootElement.TryGetProperty("error", out var error))
-                {
-                    if (error.TryGetProperty("message", out var msg))
-                    {
-                        return msg.GetString() ?? jsonResponse;
-                    }
-                }
-            }
-            catch { }
-            return jsonResponse.Length > 200 ? jsonResponse.Substring(0, 200) : jsonResponse;
         }
     }
 }

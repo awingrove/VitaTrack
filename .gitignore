@@ -24,6 +24,9 @@
 # VS cache
 .vs/
 
+# Environment-specific config (keep appsettings.json, ignore overrides)
+appsettings.*.json
+
 # AI agent tools
 .claude/
 

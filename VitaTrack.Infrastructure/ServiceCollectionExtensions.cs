@@ -11,11 +11,34 @@ namespace VitaTrack.Infrastructure
     {
         public static IServiceCollection AddInfra(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddScoped<IDbConnection>(sp =>
+            var connStr = configuration.GetConnectionString("Default");
+            var builder = new SqliteConnectionStringBuilder(connStr);
+
+            // Resolve relative file paths against the application base directory so the database
+            // file is created next to the executable, not in the current working directory.
+            if (!string.IsNullOrWhiteSpace(builder.DataSource)
+                && !Path.IsPathRooted(builder.DataSource)
+                && !builder.DataSource.Equals(":memory:", StringComparison.OrdinalIgnoreCase)
+                && builder.Mode != SqliteOpenMode.Memory)
             {
-                var connStr = configuration.GetConnectionString("Default");
-                return new SqliteConnection(connStr);
-            });
+                builder.DataSource = Path.Combine(AppContext.BaseDirectory, builder.DataSource);
+            }
+
+            var resolvedConnStr = builder.ConnectionString;
+
+            // For shared in-memory databases, keep one connection open for the lifetime of the
+            // application so the database is not destroyed when individual scopes are disposed.
+            if (builder.Mode == SqliteOpenMode.Memory)
+            {
+                services.AddSingleton(_ =>
+                {
+                    var keepAlive = new SqliteConnection(resolvedConnStr);
+                    keepAlive.Open();
+                    return keepAlive;
+                });
+            }
+
+            services.AddScoped<IDbConnection>(_ => new SqliteConnection(resolvedConnStr));
 
             services.AddScoped<IFamilyRepository, FamilyRepository>();
             services.AddScoped<ISupplementRepository, SupplementRepository>();
@@ -43,6 +66,11 @@ namespace VitaTrack.Infrastructure
 
         public static void InitDb(this IServiceProvider services)
         {
+            // For shared in-memory databases, ensure the keep-alive connection is opened first
+            // so the database is not destroyed when the initialization scope is disposed.
+            var keepAlive = services.GetService<Microsoft.Data.Sqlite.SqliteConnection>();
+            keepAlive?.Open();
+
             using var scope = services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<IDbConnection>();
             DbInit.EnsureCreated(db);

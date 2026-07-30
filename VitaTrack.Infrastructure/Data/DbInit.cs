@@ -7,6 +7,8 @@ namespace VitaTrack.Infrastructure.Data
     {
         public static void EnsureCreated(IDbConnection db, bool seedData = true)
         {
+            db.Open();
+
             db.Execute(@"
             CREATE TABLE IF NOT EXISTS FamilyMembers (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,

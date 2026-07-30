@@ -29,10 +29,13 @@ module.exports = defineConfig({
   ],
 
   webServer: {
-    command: 'dotnet run --urls http://localhost:5000 --environment Test',
+    command: 'dotnet run --urls http://localhost:5000',
     cwd: '../../VitaTrack.Web',
     url: 'http://localhost:5000',
     timeout: 120 * 1000,
     reuseExistingServer: false,
+    env: {
+      ASPNETCORE_ENVIRONMENT: 'Test',
+    },
   },
 });

@@ -1,8 +1,9 @@
 const { test, expect } = require('@playwright/test');
+const { screenshot } = require('../helpers/screenshot');
 
 test.describe('Supplement LLM Integration (Real API)', () => {
 
-  test('should extract nutrients from a real product URL using OpenRouter', async ({ page }) => {
+  test('should extract nutrients from a real product URL using OpenRouter', async ({ page }, testInfo) => {
     const apiKey = process.env.OPENROUTER_API_KEY || process.env.OpenRouter__ApiKey;
     test.skip(!apiKey, 'Skipping — no API key configured');
 
@@ -17,6 +18,7 @@ test.describe('Supplement LLM Integration (Real API)', () => {
     await page.fill('input[name="DailyDose"]', '1 scoop (5g)');
     await page.fill('input[name="ManufacturerUrl"]', 'https://www.biocare.co.uk/children-s-mindlinxr-multinutrient-150g');
     await page.fill('input[name="Cost"]', '29.99');
+    await screenshot(page, testInfo, 'llm-create-form-filled');
 
     // Submit — this will trigger LLM enrichment (may take 5-30s)
     await page.click('input[type="submit"][value="Create"]');
@@ -43,6 +45,7 @@ test.describe('Supplement LLM Integration (Real API)', () => {
     await expect(page.locator('input[name="Name"]')).toHaveValue('Children\'s Mindlinxr');
     await expect(page.locator('input[name="Brand"]')).toHaveValue('BioCare');
     await expect(page.locator('input[name="ManufacturerUrl"]')).toHaveValue('https://www.biocare.co.uk/children-s-mindlinxr-multinutrient-150g');
+    await screenshot(page, testInfo, 'llm-review-page');
 
     // Check if nutrients were extracted by the LLM
     // The empty row shows "No nutrients extracted" text — true rows have inputs
@@ -70,6 +73,7 @@ test.describe('Supplement LLM Integration (Real API)', () => {
         }
       }
       expect(foundMeaningful).toBeTruthy();
+      await screenshot(page, testInfo, 'llm-extracted-nutrients');
     } else {
       console.log('No LLM-extracted nutrients — adding a manual nutrient');
       await page.click('button#add-nutrient-row');
@@ -96,5 +100,6 @@ test.describe('Supplement LLM Integration (Real API)', () => {
 
     // Should have at least 1 nutrient saved
     expect(savedRowCount).toBeGreaterThan(0);
+    await screenshot(page, testInfo, 'llm-nutrients-saved');
   });
 });

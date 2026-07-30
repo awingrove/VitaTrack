@@ -1,8 +1,9 @@
 const { test, expect } = require('@playwright/test');
+const { screenshot } = require('../helpers/screenshot');
 
 test.describe('Supplement LLM Enrichment Flow', () => {
 
-  test('should show review page when creating a supplement without a URL', async ({ page }) => {
+  test('should show review page when creating a supplement without a URL', async ({ page }, testInfo) => {
     await page.goto('/Supplement');
     await expect(page.locator('table tbody tr').first()).toBeVisible();
 
@@ -14,6 +15,7 @@ test.describe('Supplement LLM Enrichment Flow', () => {
     await page.fill('input[name="DailyDose"]', '1 capsule');
     await page.fill('input[name="Cost"]', '19.99');
     // No ManufacturerUrl — ensures no API call
+    await screenshot(page, testInfo, 'create-form-no-url');
 
     await page.click('input[type="submit"][value="Create"]');
 
@@ -28,9 +30,10 @@ test.describe('Supplement LLM Enrichment Flow', () => {
 
     // Should show the editable nutrient section
     await expect(page.locator('h4')).toContainText('Nutrients');
+    await screenshot(page, testInfo, 'review-page-no-url');
   });
 
-  test('should allow adding nutrients on the review page and saving', async ({ page }) => {
+  test('should allow adding nutrients on the review page and saving', async ({ page }, testInfo) => {
     await page.goto('/Supplement');
     await expect(page.locator('table tbody tr').first()).toBeVisible();
     await page.click('text=Add New Supplement');
@@ -49,6 +52,7 @@ test.describe('Supplement LLM Enrichment Flow', () => {
     await page.locator('input[name="nutrients[0].GenericName"]').fill('Magnesium');
     await page.locator('input[name="nutrients[0].SpecificForm"]').fill('Magnesium Glycinate');
     await page.locator('input[name="nutrients[0].Dosage"]').fill('200mg');
+    await screenshot(page, testInfo, 'review-page-with-nutrient');
 
     // Save
     await page.click('input[type="submit"][value="Confirm & Save"]');
@@ -64,9 +68,10 @@ test.describe('Supplement LLM Enrichment Flow', () => {
     await expect(page.locator('table tbody tr:has-text("Magnesium")')).toBeVisible();
     await expect(page.locator('table tbody tr:has-text("Magnesium Glycinate")')).toBeVisible();
     await expect(page.locator('table tbody tr:has-text("200mg")')).toBeVisible();
+    await screenshot(page, testInfo, 'nutrients-saved');
   });
 
-  test('should allow removing nutrients on the review page using the remove button', async ({ page }) => {
+  test('should allow removing nutrients on the review page using the remove button', async ({ page }, testInfo) => {
     await page.goto('/Supplement');
     await expect(page.locator('table tbody tr').first()).toBeVisible();
     await page.click('text=Add New Supplement');
@@ -90,9 +95,11 @@ test.describe('Supplement LLM Enrichment Flow', () => {
     await page.locator('input[name="nutrients[1].GenericName"]').fill('Vitamin D');
     await page.locator('input[name="nutrients[1].SpecificForm"]').fill('Cholecalciferol');
     await page.locator('input[name="nutrients[1].Dosage"]').fill('1000IU');
+    await screenshot(page, testInfo, 'review-two-nutrients');
 
     // Remove the second nutrient
     await page.locator('button.remove-row').nth(1).click();
+    await screenshot(page, testInfo, 'review-one-nutrient-removed');
 
     // Save
     await page.click('input[type="submit"][value="Confirm & Save"]');
@@ -101,5 +108,6 @@ test.describe('Supplement LLM Enrichment Flow', () => {
     await page.click('tr:has-text("Remove Test E2E") >> text=Nutrients');
     await expect(page.locator('table tbody tr:has-text("Zinc")')).toBeVisible();
     await expect(page.locator('table tbody tr:has-text("Vitamin D")')).not.toBeVisible();
+    await screenshot(page, testInfo, 'final-saved-without-vitamin-d');
   });
 });

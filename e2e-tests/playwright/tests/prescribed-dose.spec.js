@@ -1,14 +1,16 @@
 const { test, expect } = require('@playwright/test');
+const { screenshot } = require('../helpers/screenshot');
 
 test.describe('Prescribed Doses', () => {
 
-  test('should display prescribed doses index page', async ({ page }) => {
+  test('should display prescribed doses index page', async ({ page }, testInfo) => {
     await page.goto('/PrescribedDose');
     await expect(page.locator('h2')).toHaveText('Prescribed Doses');
     await expect(page.locator('text=Add New Prescribed Dose')).toBeVisible();
+    await screenshot(page, testInfo, 'doses-list');
   });
 
-  test('should navigate to create form', async ({ page }) => {
+  test('should navigate to create form', async ({ page }, testInfo) => {
     await page.goto('/PrescribedDose');
     await expect(page.locator('h2')).toHaveText('Prescribed Doses');
 
@@ -18,9 +20,10 @@ test.describe('Prescribed Doses', () => {
     // Should have dropdowns for family member and supplement
     await expect(page.locator('select#FamilyMemberId')).toBeVisible();
     await expect(page.locator('select#SupplementId')).toBeVisible();
+    await screenshot(page, testInfo, 'dose-create-form');
   });
 
-  test('should create a new prescribed dose', async ({ page }) => {
+  test('should create a new prescribed dose', async ({ page }, testInfo) => {
     await page.goto('/PrescribedDose/Create');
     await expect(page.locator('h2')).toHaveText('Create');
 
@@ -38,6 +41,7 @@ test.describe('Prescribed Doses', () => {
 
     // Fill instructions
     await page.fill('input#Instructions', 'Take with food');
+    await screenshot(page, testInfo, 'dose-create-form-filled');
 
     // Submit
     await page.click('input[type="submit"][value="Create"]');
@@ -48,9 +52,10 @@ test.describe('Prescribed Doses', () => {
     // Should show the new dose in the table
     await expect(page.locator('table tbody tr').last()).toContainText('500mg');
     await expect(page.locator('table tbody tr').last()).toContainText('Take with food');
+    await screenshot(page, testInfo, 'doses-after-create');
   });
 
-  test('should edit a prescribed dose', async ({ page }) => {
+  test('should edit a prescribed dose', async ({ page }, testInfo) => {
     await page.goto('/PrescribedDose');
     await expect(page.locator('h2')).toHaveText('Prescribed Doses');
 
@@ -63,6 +68,7 @@ test.describe('Prescribed Doses', () => {
 
     // Should be on the edit page
     await expect(page.locator('h2')).toHaveText('Edit');
+    await screenshot(page, testInfo, 'dose-edit-form');
 
     // Modify the dosage
     await page.fill('input#Dosage', '1000mg');
@@ -73,9 +79,10 @@ test.describe('Prescribed Doses', () => {
     // Should redirect to index with updated value
     await expect(page.locator('h2')).toHaveText('Prescribed Doses');
     await expect(page.locator('td:has-text("1000mg")')).toBeVisible();
+    await screenshot(page, testInfo, 'doses-after-edit');
   });
 
-  test('should delete a prescribed dose', async ({ page }) => {
+  test('should delete a prescribed dose', async ({ page }, testInfo) => {
     // First create a dose to delete (to avoid race conditions with seed data)
     await page.goto('/PrescribedDose/Create');
     await expect(page.locator('h2')).toHaveText('Create');
@@ -86,6 +93,7 @@ test.describe('Prescribed Doses', () => {
     await page.fill('input#Instructions', 'Temporary dose');
     await page.click('input[type="submit"][value="Create"]');
     await expect(page.locator('h2')).toHaveText('Prescribed Doses');
+    await screenshot(page, testInfo, 'doses-before-delete');
 
     // Click Delete on the first row
     const firstRow = page.locator('table tbody tr').first();
@@ -94,6 +102,7 @@ test.describe('Prescribed Doses', () => {
 
     // Should be on the delete confirmation page
     await expect(page.locator('text=Are you sure')).toBeVisible();
+    await screenshot(page, testInfo, 'dose-delete-confirm');
 
     // Confirm deletion
     await page.click('input[type="submit"][value="Delete"]');
@@ -101,5 +110,6 @@ test.describe('Prescribed Doses', () => {
     // Should redirect to index — just verify the page loaded correctly
     await expect(page.locator('h2')).toHaveText('Prescribed Doses');
     await expect(page.locator('table tbody tr').first()).toBeVisible();
+    await screenshot(page, testInfo, 'doses-after-delete');
   });
 });

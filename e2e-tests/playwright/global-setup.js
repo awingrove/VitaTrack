@@ -4,14 +4,16 @@ const path = require('path');
 
 module.exports = async () => {
   // Delete the test database and its WAL/SHM files before each test run
-  const testDbPath = path.resolve(__dirname, '../../VitaTrack.Web/VitaTrack.Test.db');
-  const testDbShm = testDbPath + '-shm';
-  const testDbWal = testDbPath + '-wal';
+  const webDir = path.resolve(__dirname, '../../VitaTrack.Web');
+  const dbNames = ['VitaTrack.Test.db', 'VitaTrack.db'];
 
-  for (const file of [testDbPath, testDbPath + '-shm', testDbPath + '-wal']) {
-    if (fs.existsSync(file)) {
-      fs.unlinkSync(file);
-      console.log(`Cleaned test database file: ${file}`);
+  for (const name of dbNames) {
+    for (const suffix of ['', '-shm', '-wal']) {
+      const file = path.join(webDir, name + suffix);
+      if (fs.existsSync(file)) {
+        fs.unlinkSync(file);
+        console.log(`Cleaned: ${file}`);
+      }
     }
   }
   

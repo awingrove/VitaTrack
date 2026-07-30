@@ -51,6 +51,7 @@ package-lock.json
 **/test-results/
 **/.last-run.json
 .playwright/
+e2e-tests/playwright/screenshots/
 
 # Database files
 *.db

@@ -1,20 +1,23 @@
 const { test, expect } = require('@playwright/test');
+const { screenshot } = require('../helpers/screenshot');
 
 test.describe('Family Members', () => {
 
-  test('should display family members index page', async ({ page }) => {
+  test('should display family members index page', async ({ page }, testInfo) => {
     await page.goto('/Family');
     await expect(page.locator('h2')).toHaveText('Family Members');
     await expect(page.locator('text=Add New Family Member')).toBeVisible();
 
     // Seed data should show at least one member
     await expect(page.locator('table tbody tr').first()).toBeVisible();
+    await screenshot(page, testInfo, 'family-members-list');
   });
 
-  test('should create a new family member', async ({ page }) => {
+  test('should create a new family member', async ({ page }, testInfo) => {
     const unique = Date.now();
     await page.goto('/Family/Create');
     await expect(page.locator('h2')).toHaveText('Create');
+    await screenshot(page, testInfo, 'family-create-form');
 
     await page.fill('input#Name', `Person${unique}`);
     await page.fill('input#DisplayName', `Display${unique}`);
@@ -26,9 +29,10 @@ test.describe('Family Members', () => {
 
     // Should show the new member in the table
     await expect(page.locator(`table tbody tr:has-text("Person${unique}")`)).toBeVisible();
+    await screenshot(page, testInfo, 'family-after-create');
   });
 
-  test('should edit a family member', async ({ page }) => {
+  test('should edit a family member', async ({ page }, testInfo) => {
     const unique = Date.now();
 
     // Create a member first
@@ -44,6 +48,7 @@ test.describe('Family Members', () => {
 
     // Should be on edit page
     await expect(page.locator('h2')).toHaveText('Edit');
+    await screenshot(page, testInfo, 'family-edit-form');
 
     // Update the display name
     await page.fill('input#DisplayName', `Updated${unique}`);
@@ -53,9 +58,10 @@ test.describe('Family Members', () => {
     // Should redirect to index with updated value
     await expect(page.locator('h2')).toHaveText('Family Members');
     await expect(page.locator(`table tbody tr:has-text("Updated${unique}")`)).toBeVisible();
+    await screenshot(page, testInfo, 'family-after-edit');
   });
 
-  test('should delete a family member', async ({ page }) => {
+  test('should delete a family member', async ({ page }, testInfo) => {
     const unique = Date.now();
 
     // Create a member first
@@ -64,6 +70,7 @@ test.describe('Family Members', () => {
     await page.fill('input#DisplayName', `Doomed${unique}`);
     await page.click('input[type="submit"][value="Create"]');
     await expect(page.locator('h2')).toHaveText('Family Members');
+    await screenshot(page, testInfo, 'family-before-delete');
 
     // Click Delete on the new member
     const row = page.locator(`table tbody tr:has-text("Doom${unique}")`).first();
@@ -75,5 +82,6 @@ test.describe('Family Members', () => {
 
     // Member should be gone
     await expect(page.locator(`table tbody tr:has-text("Doom${unique}")`)).toHaveCount(0);
+    await screenshot(page, testInfo, 'family-after-delete');
   });
 });

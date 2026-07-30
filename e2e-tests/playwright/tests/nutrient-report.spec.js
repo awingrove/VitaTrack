@@ -1,13 +1,15 @@
 const { test, expect } = require('@playwright/test');
+const { screenshot } = require('../helpers/screenshot');
 
 test.describe('Nutrient Report', () => {
 
-  test('should display nutrient report page', async ({ page }) => {
+  test('should display nutrient report page', async ({ page }, testInfo) => {
     await page.goto('/Reporting/NutrientReport');
     await expect(page.locator('h2')).toHaveText('Daily Nutrient Report');
+    await screenshot(page, testInfo, 'nutrient-report-loaded');
   });
 
-  test('should show supplements in report table', async ({ page }) => {
+  test('should show supplements in report table', async ({ page }, testInfo) => {
     await page.goto('/Reporting/NutrientReport');
     await expect(page.locator('h2')).toHaveText('Daily Nutrient Report');
 
@@ -18,9 +20,10 @@ test.describe('Nutrient Report', () => {
     const supplementsTable = page.locator('table').last();
     await expect(supplementsTable.locator('th:has-text("Name")')).toBeVisible();
     await expect(supplementsTable.locator('th:has-text("Brand")')).toBeVisible();
+    await screenshot(page, testInfo, 'nutrient-report-supplements-table');
   });
 
-  test('should show no-active-doses message or nutrient data', async ({ page }) => {
+  test('should show no-active-doses message or nutrient data', async ({ page }, testInfo) => {
     await page.goto('/Reporting/NutrientReport');
     await expect(page.locator('h2')).toHaveText('Daily Nutrient Report');
 
@@ -33,14 +36,16 @@ test.describe('Nutrient Report', () => {
 
     // One of these should be visible
     expect(hasAlert + hasGrandTotal).toBeGreaterThan(0);
+    await screenshot(page, testInfo, 'nutrient-report-data-or-empty');
   });
 
-  test('should have link to manage prescribed doses', async ({ page }) => {
+  test('should have link to manage prescribed doses', async ({ page }, testInfo) => {
     await page.goto('/Reporting/NutrientReport');
     await expect(page.locator('h2')).toHaveText('Daily Nutrient Report');
 
     await expect(page.locator('text=Manage Prescribed Doses')).toBeVisible();
     await page.click('text=Manage Prescribed Doses');
     await expect(page.locator('h2')).toHaveText('Prescribed Doses');
+    await screenshot(page, testInfo, 'navigated-to-doses');
   });
 });

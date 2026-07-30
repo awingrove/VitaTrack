@@ -71,7 +71,7 @@ namespace VitaTrack.Web.Controllers
                 foreach (var n in nutrientCache[pd.SupplementId])
                 {
                     var nutrientValue = ParseDosageValue(n.Dosage);
-                    var dailyAmount = nutrientValue * dosageAmount * pd.FrequencyPerDay;
+                    var dailyAmount = nutrientValue * pd.FrequencyPerDay;
 
                     if (memberTotals[pd.FamilyMemberId].ContainsKey(n.GenericName))
                     {

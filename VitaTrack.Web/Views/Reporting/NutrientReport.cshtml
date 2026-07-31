@@ -111,7 +111,7 @@ else
             <td>@s.Name</td>
             <td>@s.Brand</td>
             <td>@s.DailyDose</td>
-            <td>@(s.Cost?.ToString("C") ?? "N/A")</td>
+            <td>@(s.Cost.HasValue ? $"£{s.Cost.Value:F2}" : "N/A")</td>
         </tr>
     }
     </tbody>

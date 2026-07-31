@@ -35,7 +35,7 @@
             <td>@s.Brand</td>
             <td>@s.DailyDose</td>
             <td>@(s.ManufacturerUrl ?? "none")</td>
-            <td>@(s.Cost?.ToString("C") ?? "N/A")</td>
+                <td>@(s.Cost.HasValue ? $"£{s.Cost.Value:F2}" : "N/A")</td>
             <td>
                 <a class="btn btn-sm btn-outline-info" asp-controller="SupplementNutrient" asp-action="Index" asp-route-supplementId="@s.Id">Nutrients</a>
                 <a class="btn btn-sm btn-primary" asp-action="Edit" asp-route-id="@s.Id">Edit</a>

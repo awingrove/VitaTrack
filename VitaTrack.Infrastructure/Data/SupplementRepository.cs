@@ -5,40 +5,39 @@ using System.Threading.Tasks;
 using Dapper;
 using VitaTrack.Infrastructure.Models;
 
-namespace VitaTrack.Infrastructure.Data
+namespace VitaTrack.Infrastructure.Data;
+
+public class SupplementRepository(IDbConnection db) : ISupplementRepository
 {
-    public class SupplementRepository : ISupplementRepository
+    private readonly IDbConnection _db = db;
+
+    public async Task<IReadOnlyList<Supplement>> GetAllAsync()
     {
-        private readonly IDbConnection _db;
-        public SupplementRepository(IDbConnection db) => _db = db;
+        const string sql = "SELECT Id, Name, Brand, DailyDose, ManufacturerUrl, NutritionJson, SwapSuggestion, Cost FROM Supplements";
+        var rows = await _db.QueryAsync<Supplement>(sql);
+        return rows.ToList();
+    }
 
-        public async Task<IReadOnlyList<Supplement>> GetAllAsync()
-        {
-            const string sql = "SELECT Id, Name, Brand, DailyDose, ManufacturerUrl, NutritionJson, SwapSuggestion, Cost FROM Supplements";
-            var rows = await _db.QueryAsync<Supplement>(sql);
-            return rows.ToList();
-        }
-
-        public async Task<Supplement?> GetByIdAsync(int id)
-        {
-            const string sql = @"
+    public async Task<Supplement?> GetByIdAsync(int id)
+    {
+        const string sql = @"
 SELECT Id, Name, Brand, DailyDose, ManufacturerUrl, NutritionJson, SwapSuggestion, Cost
 FROM Supplements WHERE Id = @Id";
-            return await _db.QuerySingleOrDefaultAsync<Supplement>(sql, new { Id = id });
-        }
+        return await _db.QuerySingleOrDefaultAsync<Supplement>(sql, new { Id = id });
+    }
 
-        public async Task<int> AddAsync(Supplement supplement)
-        {
-            const string sql = @"
+    public async Task<int> AddAsync(Supplement supplement)
+    {
+        const string sql = @"
 INSERT INTO Supplements (Name, Brand, DailyDose, ManufacturerUrl, NutritionJson, SwapSuggestion, Cost)
 VALUES (@Name, @Brand, @DailyDose, @ManufacturerUrl, @NutritionJson, @SwapSuggestion, @Cost);
 SELECT last_insert_rowid();";
-            return await _db.ExecuteScalarAsync<int>(sql, supplement);
-        }
+        return await _db.ExecuteScalarAsync<int>(sql, supplement);
+    }
 
-        public async Task UpdateAsync(Supplement supplement)
-        {
-            const string sql = @"
+    public async Task UpdateAsync(Supplement supplement)
+    {
+        const string sql = @"
 UPDATE Supplements
 SET Name = @Name, Brand = @Brand, DailyDose = @DailyDose,
     ManufacturerUrl = @ManufacturerUrl,
@@ -46,21 +45,20 @@ SET Name = @Name, Brand = @Brand, DailyDose = @DailyDose,
     SwapSuggestion = @SwapSuggestion,
     Cost = @Cost
 WHERE Id = @Id";
-            await _db.ExecuteAsync(sql, supplement);
-        }
+        await _db.ExecuteAsync(sql, supplement);
+    }
 
-        public async Task<int> DeleteAsync(int id)
-        {
-            const string sql = "DELETE FROM Supplements WHERE Id = @Id";
-            return await _db.ExecuteAsync(sql, new { Id = id });
-        }
+    public async Task<int> DeleteAsync(int id)
+    {
+        const string sql = "DELETE FROM Supplements WHERE Id = @Id";
+        return await _db.ExecuteAsync(sql, new { Id = id });
+    }
 
-        public async Task<int> DeleteAsync(IEnumerable<int> ids)
-        {
-            var idList = ids.ToList();
-            if (idList.Count == 0) return 0;
-            const string sql = "DELETE FROM Supplements WHERE Id IN @Ids";
-            return await _db.ExecuteAsync(sql, new { Ids = idList });
-        }
+    public async Task<int> DeleteAsync(IEnumerable<int> ids)
+    {
+        var idList = ids.ToList();
+        if (idList.Count == 0) return 0;
+        const string sql = "DELETE FROM Supplements WHERE Id IN @Ids";
+        return await _db.ExecuteAsync(sql, new { Ids = idList });
     }
 }

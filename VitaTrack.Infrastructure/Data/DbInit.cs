@@ -1,15 +1,15 @@
 using System.Data;
 using Dapper;
 
-namespace VitaTrack.Infrastructure.Data
-{
-    public static class DbInit
-    {
-        public static void EnsureCreated(IDbConnection db, bool seedData = true)
-        {
-            db.Open();
+namespace VitaTrack.Infrastructure.Data;
 
-            db.Execute(@"
+public static class DbInit
+{
+    public static void EnsureCreated(IDbConnection db, bool seedData = true)
+    {
+        db.Open();
+
+        db.Execute(@"
             CREATE TABLE IF NOT EXISTS FamilyMembers (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 Name TEXT NOT NULL,
@@ -17,7 +17,7 @@ namespace VitaTrack.Infrastructure.Data
                 AvatarUrl TEXT NULL
             );");
 
-            db.Execute(@"
+        db.Execute(@"
             CREATE TABLE IF NOT EXISTS Supplements (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 Name TEXT NOT NULL,
@@ -29,7 +29,7 @@ namespace VitaTrack.Infrastructure.Data
                 Cost REAL NULL
             );");
 
-            db.Execute(@"
+        db.Execute(@"
             CREATE TABLE IF NOT EXISTS SupplementNutrients (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 SupplementId INTEGER NOT NULL,
@@ -39,8 +39,8 @@ namespace VitaTrack.Infrastructure.Data
                 FOREIGN KEY (SupplementId) REFERENCES Supplements(Id)
             );");
 
-            // Create PrescribedDoses table if it doesn't exist
-            db.Execute(@"
+        // Create PrescribedDoses table if it doesn't exist
+        db.Execute(@"
             CREATE TABLE IF NOT EXISTS PrescribedDoses (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 FamilyMemberId INTEGER NOT NULL,
@@ -53,50 +53,50 @@ namespace VitaTrack.Infrastructure.Data
                 FOREIGN KEY (SupplementId) REFERENCES Supplements(Id)
             );");
 
-            // Add FrequencyPerDay column if it doesn't exist
-            var columnExists = db.QuerySingle<int>(@"
+        // Add FrequencyPerDay column if it doesn't exist
+        var columnExists = db.QuerySingle<int>(@"
                 SELECT COUNT(*) FROM pragma_table_info('PrescribedDoses') WHERE name = 'FrequencyPerDay';
             ");
-            if (columnExists == 0)
-            {
-                db.Execute(@"
+        if (columnExists == 0)
+        {
+            db.Execute(@"
                     ALTER TABLE PrescribedDoses ADD COLUMN FrequencyPerDay REAL NOT NULL DEFAULT 1.0;
                 ");
-            }
+        }
 
-            // Insert sample data if tables are empty and seeding is enabled
-            if (seedData)
+        // Insert sample data if tables are empty and seeding is enabled
+        if (seedData)
+        {
+            var familyCount = db.QuerySingle<int>("SELECT COUNT(*) FROM FamilyMembers;");
+            if (familyCount == 0)
             {
-                var familyCount = db.QuerySingle<int>("SELECT COUNT(*) FROM FamilyMembers;");
-                if (familyCount == 0)
-                {
-                    db.Execute(@"
+                db.Execute(@"
                         INSERT INTO FamilyMembers (Name, DisplayName, AvatarUrl) VALUES 
                         ('Alice Smith', 'Alice', 'https://example.com/alice.jpg'),
                         ('Bob Johnson', 'Bob', 'https://example.com/bob.jpg'),
                         ('Carol Williams', 'Carol', 'https://example.com/carol.jpg')
                     ");
-                }
+            }
 
-                var supplementCount = db.QuerySingle<int>("SELECT COUNT(*) FROM Supplements;");
-                if (supplementCount == 0)
-                {
-                    db.Execute(@"
+            var supplementCount = db.QuerySingle<int>("SELECT COUNT(*) FROM Supplements;");
+            if (supplementCount == 0)
+            {
+                db.Execute(@"
                         INSERT INTO Supplements (Name, Brand, DailyDose, NutritionJson, Cost) VALUES 
                         ('Vitamin C', 'NatureMade', '2 tablets', @nutrition1, 15.99),
                         ('Fish Oil', 'Kirkland', '1 softgel', @nutrition2, 25.50),
                         ('Multivitamin', 'Centrum', '1 tablet', @nutrition3, 19.99)
                     ", new {
-                        nutrition1 = "{\"vitamin_c\": 500, \"iron\": 0}",
-                        nutrition2 = "{\"omega_3\": 1000, \"vitamin_d\": 200}",
-                        nutrition3 = "{\"vitamin_a\": 900, \"vitamin_c\": 90, \"vitamin_d\": 20, \"iron\": 18, \"calcium\": 200}"
-                    });
-                }
+                    nutrition1 = "{\"vitamin_c\": 500, \"iron\": 0}",
+                    nutrition2 = "{\"omega_3\": 1000, \"vitamin_d\": 200}",
+                    nutrition3 = "{\"vitamin_a\": 900, \"vitamin_c\": 90, \"vitamin_d\": 20, \"iron\": 18, \"calcium\": 200}"
+                });
+            }
 
-                var nutrientCount = db.QuerySingle<int>("SELECT COUNT(*) FROM SupplementNutrients;");
-                if (nutrientCount == 0)
-                {
-                    db.Execute(@"
+            var nutrientCount = db.QuerySingle<int>("SELECT COUNT(*) FROM SupplementNutrients;");
+            if (nutrientCount == 0)
+            {
+                db.Execute(@"
                         INSERT INTO SupplementNutrients (SupplementId, GenericName, SpecificForm, Dosage) VALUES 
                         (1, 'Vitamin C', 'Ascorbic Acid', '500mg'),
                         (1, 'Iron', 'Ferrous Sulfate', '0mg'),
@@ -108,18 +108,17 @@ namespace VitaTrack.Infrastructure.Data
                         (3, 'Iron', 'Ferrous Fumarate', '18mg'),
                         (3, 'Calcium', 'Calcium Carbonate', '200mg')
                     ");
-                }
+            }
 
-                var doseCount = db.QuerySingle<int>("SELECT COUNT(*) FROM PrescribedDoses;");
-                if (doseCount == 0)
-                {
-                    db.Execute(@"
+            var doseCount = db.QuerySingle<int>("SELECT COUNT(*) FROM PrescribedDoses;");
+            if (doseCount == 0)
+            {
+                db.Execute(@"
                         INSERT INTO PrescribedDoses (FamilyMemberId, SupplementId, Dosage, Instructions, FrequencyPerDay) VALUES 
                         (1, 1, '500mg', 'Take with breakfast', 1.0),
                         (1, 2, '1 softgel', 'Take with dinner', 1.0),
                         (2, 3, '1 tablet', 'Take in the morning', 1.0)
                     ");
-                }
             }
         }
     }

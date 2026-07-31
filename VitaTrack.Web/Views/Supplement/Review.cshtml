@@ -2,13 +2,11 @@
     ViewData["Title"] = "Review Supplement";
     Layout = "_Layout";
 }
-@using System.Text.Json
 @using VitaTrack.Infrastructure.Models
 @model Supplement
 @{
     var nutrients = ViewData["ExtractedNutrients"] as List<SupplementNutrientDto>;
     var extractionError = ViewData["ExtractionError"] as string;
-    var nutrientsJson = nutrients != null ? JsonSerializer.Serialize(nutrients) : "[]";
 }
 
 <h2>Review Supplement</h2>
@@ -26,8 +24,6 @@
       method="post">
     <div class="form-group">
         <input type="hidden" asp-for="Id" />
-    </div>
-    <input type="hidden" name="nutrientsJson" id="nutrientsJson" value='@nutrientsJson' />
     <div class="form-group">
         <label asp-for="Name" class="control-label"></label>
         <input asp-for="Name" class="form-control" readonly />
@@ -148,24 +144,5 @@
                 tbody.appendChild(emptyRow);
             }
         }
-
-        // Serialize nutrients on form submit
-        document.querySelector('form').addEventListener('submit', function(e) {
-            const rows = document.querySelectorAll('#nutrients-table tbody tr:not(.empty-row)');
-            const nutrients = [];
-            rows.forEach(row => {
-                const inputs = row.querySelectorAll('input');
-                if (inputs.length >= 3) {
-                    const genericName = inputs[0].value.trim();
-                    const specificForm = inputs[1].value.trim();
-                    const dosage = inputs[2].value.trim();
-                    if (genericName) {
-                        nutrients.push({ genericName, specificForm, dosage });
-                    }
-                }
-            });
-            const json = JSON.stringify(nutrients);
-            document.getElementById('nutrientsJson').value = json;
-        });
     </script>
 }

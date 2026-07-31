@@ -27,11 +27,11 @@ namespace VitaTrack.Infrastructure.Data
 
         public async Task<int> AddAsync(FamilyMember member)
         {
-            const string insertSql = @"
+            const string sql = @"
 INSERT INTO FamilyMembers (Name, DisplayName, AvatarUrl)
-VALUES (@Name, @DisplayName, @AvatarUrl);";
-            await _db.ExecuteAsync(insertSql, member);
-            return await _db.ExecuteScalarAsync<int>("SELECT last_insert_rowid();");
+VALUES (@Name, @DisplayName, @AvatarUrl);
+SELECT last_insert_rowid();";
+            return await _db.ExecuteScalarAsync<int>(sql, member);
         }
 
         public async Task UpdateAsync(FamilyMember member)

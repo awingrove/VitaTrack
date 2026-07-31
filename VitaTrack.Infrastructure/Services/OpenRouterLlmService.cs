@@ -73,7 +73,7 @@ namespace VitaTrack.Infrastructure.Services
                 {
                     var nutritionDict = llmResult.Nutrients.ToDictionary(
                         n => n.GenericName,
-                        n => decimal.TryParse(n.Dosage.Replace("mg", "").Replace("mcg", "").Replace("IU", "").Trim(), out var val) ? val : 0m);
+                        n => DosageParser.ParseAmount(n.Dosage));
                     result.NutritionJson = JsonSerializer.Serialize(new { nutrition = nutritionDict });
                 }
             }

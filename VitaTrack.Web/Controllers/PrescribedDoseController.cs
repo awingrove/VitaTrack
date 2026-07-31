@@ -31,12 +31,7 @@ namespace VitaTrack.Web.Controllers
         // GET: /PrescribedDose/Create
         public async Task<IActionResult> Create()
         {
-            var familyMembers = await _familyRepo.GetAllAsync();
-            var supplements = await _supplementRepo.GetAllAsync();
-            
-            ViewData["FamilyMemberId"] = new SelectList(familyMembers, "Id", "DisplayName");
-            ViewData["SupplementId"] = new SelectList(supplements, "Id", "Name");
-            
+            await PopulateDropdowns();
             return View();
         }
 
@@ -50,14 +45,8 @@ namespace VitaTrack.Web.Controllers
                 await _prescribedDoseRepo.AddAsync(prescribedDose);
                 return RedirectToAction(nameof(Index));
             }
-            
-            // Repopulate dropdowns on validation error
-            var familyMembers = await _familyRepo.GetAllAsync();
-            var supplements = await _supplementRepo.GetAllAsync();
-            
-            ViewData["FamilyMemberId"] = new SelectList(familyMembers, "Id", "DisplayName", prescribedDose.FamilyMemberId);
-            ViewData["SupplementId"] = new SelectList(supplements, "Id", "Name", prescribedDose.SupplementId);
-            
+
+            await PopulateDropdowns(prescribedDose.FamilyMemberId, prescribedDose.SupplementId);
             return View(prescribedDose);
         }
 
@@ -65,17 +54,9 @@ namespace VitaTrack.Web.Controllers
         public async Task<IActionResult> Edit(int id)
         {
             var prescribedDose = await _prescribedDoseRepo.GetByIdAsync(id);
-            if (prescribedDose == null)
-            {
-                return NotFound();
-            }
-            
-            var familyMembers = await _familyRepo.GetAllAsync();
-            var supplements = await _supplementRepo.GetAllAsync();
-            
-            ViewData["FamilyMemberId"] = new SelectList(familyMembers, "Id", "DisplayName", prescribedDose.FamilyMemberId);
-            ViewData["SupplementId"] = new SelectList(supplements, "Id", "Name", prescribedDose.SupplementId);
-            
+            if (prescribedDose == null) return NotFound();
+
+            await PopulateDropdowns(prescribedDose.FamilyMemberId, prescribedDose.SupplementId);
             return View(prescribedDose);
         }
 
@@ -84,24 +65,15 @@ namespace VitaTrack.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, PrescribedDose prescribedDose)
         {
-            if (id != prescribedDose.Id)
-            {
-                return NotFound();
-            }
-            
+            if (id != prescribedDose.Id) return NotFound();
+
             if (ModelState.IsValid)
             {
                 await _prescribedDoseRepo.UpdateAsync(prescribedDose);
                 return RedirectToAction(nameof(Index));
             }
-            
-            // Repopulate dropdowns on validation error
-            var familyMembers = await _familyRepo.GetAllAsync();
-            var supplements = await _supplementRepo.GetAllAsync();
-            
-            ViewData["FamilyMemberId"] = new SelectList(familyMembers, "Id", "DisplayName", prescribedDose.FamilyMemberId);
-            ViewData["SupplementId"] = new SelectList(supplements, "Id", "Name", prescribedDose.SupplementId);
-            
+
+            await PopulateDropdowns(prescribedDose.FamilyMemberId, prescribedDose.SupplementId);
             return View(prescribedDose);
         }
 
@@ -109,10 +81,7 @@ namespace VitaTrack.Web.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             var prescribedDose = await _prescribedDoseRepo.GetByIdAsync(id);
-            if (prescribedDose == null)
-            {
-                return NotFound();
-            }
+            if (prescribedDose == null) return NotFound();
             return View(prescribedDose);
         }
 
@@ -123,6 +92,15 @@ namespace VitaTrack.Web.Controllers
         {
             await _prescribedDoseRepo.DeleteAsync(id);
             return RedirectToAction(nameof(Index));
+        }
+
+        private async Task PopulateDropdowns(int? selectedFamilyMemberId = null, int? selectedSupplementId = null)
+        {
+            var familyMembers = await _familyRepo.GetAllAsync();
+            var supplements = await _supplementRepo.GetAllAsync();
+
+            ViewData["FamilyMemberId"] = new SelectList(familyMembers, "Id", "DisplayName", selectedFamilyMemberId);
+            ViewData["SupplementId"] = new SelectList(supplements, "Id", "Name", selectedSupplementId);
         }
     }
 }

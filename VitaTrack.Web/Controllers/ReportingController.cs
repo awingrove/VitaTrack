@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using VitaTrack.Infrastructure;
 using VitaTrack.Infrastructure.Data;
 using VitaTrack.Infrastructure.Models;
 
@@ -51,17 +52,10 @@ namespace VitaTrack.Web.Controllers
                 }
                 if (supplement == null) continue;
 
-                if (!nutrientCache.TryGetValue(pd.SupplementId, out var nutrients))
+                if (!nutrientCache.TryGetValue(pd.SupplementId, out _))
                 {
                     var list = await _nutrientRepo.GetBySupplementIdAsync(pd.SupplementId);
                     nutrientCache[pd.SupplementId] = list.ToList();
-                }
-
-                decimal dosageAmount = 0;
-                if (!string.IsNullOrWhiteSpace(pd.Dosage))
-                {
-                    var match = System.Text.RegularExpressions.Regex.Match(pd.Dosage, @"[\d]+\.?\d*");
-                    decimal.TryParse(match.Value, out dosageAmount);
                 }
 
                 var dailyFrequency = pd.FrequencyPerDay > 0 ? pd.FrequencyPerDay : 1;
@@ -70,7 +64,7 @@ namespace VitaTrack.Web.Controllers
 
                 foreach (var n in nutrientCache[pd.SupplementId])
                 {
-                    var nutrientValue = ParseDosageValue(n.Dosage);
+                    var nutrientValue = DosageParser.ParseAmount(n.Dosage);
                     var dailyAmount = nutrientValue * pd.FrequencyPerDay;
 
                     if (memberTotals[pd.FamilyMemberId].ContainsKey(n.GenericName))
@@ -188,14 +182,6 @@ namespace VitaTrack.Web.Controllers
             ViewData["ReportDate"] = today.ToString("yyyy-MM-dd");
 
             return View();
-        }
-
-        private static decimal ParseDosageValue(string dosage)
-        {
-            if (string.IsNullOrWhiteSpace(dosage)) return 0;
-            var match = System.Text.RegularExpressions.Regex.Match(dosage, @"[\d]+\.?\d*");
-            if (decimal.TryParse(match.Value, out var val)) return val;
-            return 0;
         }
     }
 }

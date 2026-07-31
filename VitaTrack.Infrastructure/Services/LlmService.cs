@@ -149,6 +149,7 @@ public class LlmService(
         try
         {
             var model = _cfg["Llm:Model"] ?? "gpt-4o-mini";
+            var maxTokens = int.TryParse(_cfg["Llm:MaxTokens"], out var mt) ? mt : 16384;
             var prompt = BuildExtractionPrompt(supplementName, brand);
 
             var requestBody = new
@@ -170,20 +171,21 @@ Respond with ONLY this JSON structure (no markdown, no code fences):
   ""swapSuggestion"": ""...""
 }}" }
                 },
-                max_tokens = 2000,
+                max_tokens = maxTokens,
                 temperature = 0.1
             };
 
             var response = await _http.PostAsJsonAsync("v1/chat/completions", requestBody);
-            
+
+            var rawBody = await response.Content.ReadAsStringAsync();
+
             if (!response.IsSuccessStatusCode)
             {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                _logger.LogWarning("LLM API error: {StatusCode} - {Content}", response.StatusCode, errorContent);
+                _logger.LogWarning("LLM API error: {StatusCode} - {Content}", response.StatusCode, rawBody);
                 return new LlmResult { ExtractionError = "The AI service returned an error. Please try again or enter nutrients manually." };
             }
 
-            var responseJson = await response.Content.ReadFromJsonAsync<JsonElement>();
+            var responseJson = JsonSerializer.Deserialize<JsonElement>(rawBody);
             var choices = responseJson.GetProperty("choices");
             if (choices.GetArrayLength() == 0)
             {

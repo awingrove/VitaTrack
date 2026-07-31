@@ -48,7 +48,7 @@
     <hr />
     <h4>Nutrients</h4>
     <p class="text-muted">Edit the nutrient breakdown below. You can add or remove rows.</p>
-    <table class="table" id="nutrients-table">
+    <table class="table" id="nutrients-table" data-nutrient-count="@(nutrients?.Count ?? 0)">
         <thead>
             <tr>
                 <th>Generic Name</th>
@@ -94,55 +94,5 @@
 </form>
 
 @section Scripts {
-    <script>
-        let nutrientIndex = @(nutrients?.Count ?? 0);
-
-        document.getElementById('add-nutrient-row').addEventListener('click', function() {
-            const tbody = document.querySelector('#nutrients-table tbody');
-            const emptyRow = tbody.querySelector('.empty-row');
-            if (emptyRow) emptyRow.remove();
-
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><input name="nutrients[${nutrientIndex}].GenericName" class="form-control" /></td>
-                <td><input name="nutrients[${nutrientIndex}].SpecificForm" class="form-control" /></td>
-                <td><input name="nutrients[${nutrientIndex}].Dosage" class="form-control" /></td>
-                <td><button type="button" class="btn btn-sm btn-danger remove-row">Remove</button></td>
-            `;
-            tbody.appendChild(tr);
-            nutrientIndex++;
-
-            tr.querySelector('.remove-row').addEventListener('click', function() {
-                tr.remove();
-                reindexNutrients();
-            });
-        });
-
-        document.querySelectorAll('.remove-row').forEach(btn => {
-            btn.addEventListener('click', function() {
-                this.closest('tr').remove();
-                reindexNutrients();
-            });
-        });
-
-        function reindexNutrients() {
-            const rows = document.querySelectorAll('#nutrients-table tbody tr');
-            rows.forEach((row, index) => {
-                row.querySelectorAll('input').forEach(input => {
-                    const name = input.getAttribute('name');
-                    if (name && name.startsWith('nutrients[')) {
-                        input.setAttribute('name', `nutrients[${index}].${name.split('.')[1]}`);
-                    }
-                });
-            });
-
-            if (rows.length === 0) {
-                const tbody = document.querySelector('#nutrients-table tbody');
-                const emptyRow = document.createElement('tr');
-                emptyRow.className = 'empty-row';
-                emptyRow.innerHTML = '<td colspan="4" class="text-muted text-center">No nutrients defined. Click "Add Nutrient" to start.</td>';
-                tbody.appendChild(emptyRow);
-            }
-        }
-    </script>
+    <script src="~/js/review.js"></script>
 }

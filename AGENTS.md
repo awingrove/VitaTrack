@@ -13,7 +13,7 @@ This document defines the coding standards, architectural guidelines, testing ph
 
 ## 🖥️ UI & Frontend Stack
 *   **Views:** Razor Pages (`.cshtml`) using the `_Layout.cshtml` template.
-*   **Interactivity:** Use **HTMX** for AJAX-style updates (`hx-get`, `hx-post`, `hx-target`).
+*   **Interactivity:** Vanilla JavaScript for client-side behavior (checkbox selection, dynamic nutrient rows).
 *   **Styling:** Bootstrap 5. Avoid custom CSS unless absolutely necessary.
 *   **Razor Gotcha — ValueTuples and `dynamic`:** Do **not** pass `ValueTuple` types through `ViewData` and cast to `dynamic` in Razor views. Razor's DLR cannot resolve named tuple fields (`Item1`, `Item2`) as properties. Always project tuples into **anonymous objects** before assigning to `ViewData` (e.g., `ViewData["Items"] = list.Select(x => new { x.Name, x.Value }).ToList()`).
 

@@ -12,10 +12,4 @@
     <ProjectReference Include="..\VitaTrack.Infrastructure\VitaTrack.Infrastructure.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- HTMX and Bootstrap are static assets; they will be placed under wwwroot -->
-    <Content Include="wwwroot\**\*" />
-    <CopyToPublishDirectory Include="wwwroot\**\*" />
-  </ItemGroup>
-
 </Project>

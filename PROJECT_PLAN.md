@@ -10,7 +10,7 @@ This project aims to develop a comprehensive health tracking application that wi
 
 ## Tech Stack
 - **Backend**: ASP.NET Core MVC (.NET 10), Dapper, SQLite (`VitaTrack.db`)
-- **Frontend**: Razor views + Bootstrap 5 + HTMX
+- **Frontend**: Razor views + Bootstrap 5 + vanilla JavaScript
 - **LLM**: OpenRouter API (`openai/gpt-4o-mini`), AngleSharp for HTML parsing
 - **Unit tests**: MSTest + in-memory SQLite + Moq
 - **E2E tests**: Playwright (Chromium), auto-provisioned web server
@@ -35,7 +35,7 @@ This project aims to develop a comprehensive health tracking application that wi
 
 ### Phase 1 — Research & Architecture [DONE]
 - ✅ Design the application architecture (layered MVC: Controllers → Services → Repositories)
-- ✅ Set up project structure, SQLite, Dapper, BootStrap 5, HTMX
+- ✅ Set up project structure, SQLite, Dapper, Bootstrap 5
 
 ### Phase 2 — CRUD & Core Features [DONE]
 

@@ -9,7 +9,7 @@
 
 <p><a class="btn btn-success" asp-action="Create">Add New Supplement</a></p>
 
-<form asp-action="DeleteSelected" method="post" id="delete-selected-form">
+<form asp-action="DeleteSelected" method="post" id="delete-selected-form" data-entity-name="supplement">
     @Html.AntiForgeryToken()
     <button type="submit" class="btn btn-danger mb-3" id="delete-selected-btn" disabled>Delete Selected</button>
 </form>
@@ -49,34 +49,4 @@
     </tbody>
 </table>
 
-<script>
-    (function () {
-        const selectAll = document.getElementById('select-all');
-        const checkboxes = document.querySelectorAll('.row-checkbox');
-        const deleteBtn = document.getElementById('delete-selected-btn');
-        const form = document.getElementById('delete-selected-form');
-
-        function updateDeleteBtn() {
-            const anyChecked = document.querySelectorAll('.row-checkbox:checked').length > 0;
-            deleteBtn.disabled = !anyChecked;
-        }
-
-        selectAll.addEventListener('change', function () {
-            checkboxes.forEach(cb => cb.checked = selectAll.checked);
-            updateDeleteBtn();
-        });
-
-        checkboxes.forEach(cb => cb.addEventListener('change', updateDeleteBtn));
-
-        form.addEventListener('submit', function (e) {
-            const checked = document.querySelectorAll('.row-checkbox:checked');
-            if (checked.length === 0) {
-                e.preventDefault();
-                return;
-            }
-            if (!confirm('Delete ' + checked.length + ' selected supplement(s)?')) {
-                e.preventDefault();
-            }
-        });
-    })();
-</script>
+<script src="~/js/delete-selected.js"></script>

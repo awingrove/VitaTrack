@@ -50,7 +50,10 @@ public class SupplementController(
     public async Task<IActionResult> ConfirmCreate(Supplement supplement, List<SupplementNutrientDto> nutrients)
     {
         if (!ModelState.IsValid)
+        {
+            ViewData["ExtractedNutrients"] = nutrients;
             return View("Review", supplement);
+        }
 
         var newId = await _suppRepo.AddAsync(supplement);
 
@@ -145,7 +148,10 @@ public class SupplementController(
         if (id != supplement.Id) return NotFound();
 
         if (!ModelState.IsValid)
+        {
+            ViewData["ExtractedNutrients"] = nutrients;
             return View("Review", supplement);
+        }
 
         await _suppRepo.UpdateAsync(supplement);
 

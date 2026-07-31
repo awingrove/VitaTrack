@@ -13,7 +13,7 @@ using VitaTrack.Infrastructure.Services;
 namespace VitaTrack.Tests;
 
 [TestClass]
-public class OpenRouterLlmServiceTests
+public class LlmServiceTests
 {
     private static Mock<HttpMessageHandler> CreateHandlerMock(HttpStatusCode status, string content)
     {
@@ -33,7 +33,7 @@ public class OpenRouterLlmServiceTests
 
     private static IHttpClientFactory CreateHttpClientFactory(
         HttpMessageHandler? scraperHandler = null,
-        HttpMessageHandler? openRouterHandler = null)
+        HttpMessageHandler? llmHandler = null)
     {
         var factoryMock = new Mock<IHttpClientFactory>();
 
@@ -43,13 +43,13 @@ public class OpenRouterLlmServiceTests
             factoryMock.Setup(f => f.CreateClient("scraper")).Returns(client);
         }
 
-        if (openRouterHandler != null)
+        if (llmHandler != null)
         {
-            var client = new HttpClient(openRouterHandler)
+            var client = new HttpClient(llmHandler)
             {
-                BaseAddress = new System.Uri("https://dummy.openrouter.ai/api/v1")
+                BaseAddress = new System.Uri("https://dummy.example.com/v1")
             };
-            factoryMock.Setup(f => f.CreateClient("openrouter")).Returns(client);
+            factoryMock.Setup(f => f.CreateClient("llm")).Returns(client);
         }
 
         return factoryMock.Object;
@@ -60,8 +60,8 @@ public class OpenRouterLlmServiceTests
         return new ConfigurationBuilder()
             .AddInMemoryCollection(
             [
-                new KeyValuePair<string,string?>("OpenRouter:BaseUrl", "https://dummy.openrouter.ai/api/v1"),
-                new KeyValuePair<string,string?>("OpenRouter:ApiKey", apiKey)
+                new KeyValuePair<string,string?>("Llm:BaseUrl", "https://dummy.example.com/v1"),
+                new KeyValuePair<string,string?>("Llm:ApiKey", apiKey)
             ])
             .Build();
     }
@@ -71,8 +71,8 @@ public class OpenRouterLlmServiceTests
     {
         var factory = CreateHttpClientFactory();
         var config = CreateConfig();
-        var logger = new NullLogger<OpenRouterLlmService>();
-        var service = new OpenRouterLlmService(factory, config, logger);
+        var logger = new NullLogger<LlmService>();
+        var service = new LlmService(factory, config, logger);
 
         var supplement = new Supplement
         {
@@ -94,8 +94,8 @@ public class OpenRouterLlmServiceTests
     {
         var factory = CreateHttpClientFactory();
         var config = CreateConfig(null);
-        var logger = new NullLogger<OpenRouterLlmService>();
-        var service = new OpenRouterLlmService(factory, config, logger);
+        var logger = new NullLogger<LlmService>();
+        var service = new LlmService(factory, config, logger);
 
         var supplement = new Supplement
         {
@@ -119,8 +119,8 @@ public class OpenRouterLlmServiceTests
         var scraperHandlerMock = CreateHandlerMock(HttpStatusCode.NotFound, "");
         var factory = CreateHttpClientFactory(scraperHandlerMock.Object);
         var config = CreateConfig();
-        var logger = new NullLogger<OpenRouterLlmService>();
-        var service = new OpenRouterLlmService(factory, config, logger);
+        var logger = new NullLogger<LlmService>();
+        var service = new LlmService(factory, config, logger);
 
         var supplement = new Supplement
         {
@@ -162,8 +162,8 @@ public class OpenRouterLlmServiceTests
         var apiMock = CreateHandlerMock(HttpStatusCode.OK, apiResponse);
         var factory = CreateHttpClientFactory(scraperMock.Object, apiMock.Object);
         var config = CreateConfig();
-        var logger = new NullLogger<OpenRouterLlmService>();
-        var service = new OpenRouterLlmService(factory, config, logger);
+        var logger = new NullLogger<LlmService>();
+        var service = new LlmService(factory, config, logger);
 
         var supplement = new Supplement
         {
@@ -221,8 +221,8 @@ public class OpenRouterLlmServiceTests
         var apiMock = CreateHandlerMock(HttpStatusCode.OK, apiResponse);
         var factory = CreateHttpClientFactory(scraperMock.Object, apiMock.Object);
         var config = CreateConfig();
-        var logger = new NullLogger<OpenRouterLlmService>();
-        var service = new OpenRouterLlmService(factory, config, logger);
+        var logger = new NullLogger<LlmService>();
+        var service = new LlmService(factory, config, logger);
 
         var supplement = new Supplement
         {
@@ -250,8 +250,8 @@ public class OpenRouterLlmServiceTests
         var scraperMock = CreateHandlerMock(HttpStatusCode.OK, htmlContent);
         var factory = CreateHttpClientFactory(scraperMock.Object);
         var config = CreateConfig();
-        var logger = new NullLogger<OpenRouterLlmService>();
-        var service = new OpenRouterLlmService(factory, config, logger);
+        var logger = new NullLogger<LlmService>();
+        var service = new LlmService(factory, config, logger);
 
         var supplement = new Supplement
         {

@@ -3,8 +3,8 @@ const { screenshot } = require('../helpers/screenshot');
 
 test.describe('Supplement LLM Integration (Real API)', () => {
 
-  test('should extract nutrients from a real product URL using OpenRouter', async ({ page }, testInfo) => {
-    const apiKey = process.env.OPENROUTER_API_KEY || process.env.OpenRouter__ApiKey;
+  test('should extract nutrients from a real product URL using LLM', async ({ page }, testInfo) => {
+    const apiKey = process.env.LLM_API_KEY || process.env.Llm__ApiKey;
     test.skip(!apiKey, 'Skipping — no API key configured');
 
     test.setTimeout(180000);

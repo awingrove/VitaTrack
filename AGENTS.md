@@ -24,7 +24,7 @@ This document defines the coding standards, architectural guidelines, testing ph
 *   **Seed Data:** `DbInit.EnsureCreated` seeds test data (family members, supplements, nutrients, prescribed doses) when tables are empty. When adding new entity types, always add corresponding seed data here so reports and E2E tests have realistic data to work with.
 *   **Configuration Layering:** `appsettings.json` holds defaults. Environment-specific overrides go in `appsettings.{Environment}.json`. For test environments, create `appsettings.Test.json` with test-specific connection strings. **Do not** rely on `ConnectionStrings__Default` env var via Playwright's `webServer.env` — it does not propagate to `dotnet run` child processes. Use `--environment Test` flag instead.
 *   **Error Views:** If `Program.cs` uses `app.UseExceptionHandler("/Home/Error")`, you **must** provide a `Views/Home/Error.cshtml` and a `HomeController.Error()` action. Without them, any controller exception cascades into a bare 500 with no diagnostics.
-*   **LLM Integration:** The app uses `OpenRouterLlmService` (reading `OpenRouter:BaseUrl` and `OpenRouter:ApiKey` from config) to enrich supplements. 
+*   **LLM Integration:** The app uses `LlmService` (reading `Llm:BaseUrl`, `Llm:ApiKey`, and `Llm:Model` from config) to enrich supplements. Any OpenAI-compatible API endpoint works (e.g., OpenRouter, OpenAI, local servers).
 
 ## 💻 C# Coding Standards & Style
 *   **Modern C#:** Utilize modern C# 10+ features (e.g., file-scoped namespaces, implicit usings, pattern matching).

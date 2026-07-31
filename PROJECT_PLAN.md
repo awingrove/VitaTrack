@@ -11,7 +11,7 @@ This project aims to develop a comprehensive health tracking application that wi
 ## Tech Stack
 - **Backend**: ASP.NET Core MVC (.NET 10), Dapper, SQLite (`VitaTrack.db`)
 - **Frontend**: Razor views + Bootstrap 5 + vanilla JavaScript
-- **LLM**: OpenRouter API (`openai/gpt-4o-mini`), AngleSharp for HTML parsing
+- **LLM**: Any OpenAI-compatible API (OpenRouter, OpenAI, local servers), AngleSharp for HTML parsing
 - **Unit tests**: MSTest + in-memory SQLite + Moq
 - **E2E tests**: Playwright (Chromium), auto-provisioned web server
 
@@ -27,7 +27,7 @@ This project aims to develop a comprehensive health tracking application that wi
 | 4 | **Prescribed Doses** | ✅ Done | Full CRUD, dropdowns, `FrequencyPerDay`, 3 seeded doses |
 | 5 | **Cost Tracking** | ✅ Done | `Cost` field on Supplement; dedicated Cost Report view with per-supplement and per-member breakdown |
 | 6 | **Daily Nutrient Reporting** | ✅ Done | Per-family-member matrix, grand totals, monthly cost estimate |
-| 7 | **LLM Supplement Enrichment** | ✅ Done | Scrapes manufacturer URL → cleans HTML → OpenRouter API → structured nutrients → Review → save |
+| 7 | **LLM Supplement Enrichment** | ✅ Done | Scrapes manufacturer URL → cleans HTML → LLM API → structured nutrients → Review → save |
 
 ---
 

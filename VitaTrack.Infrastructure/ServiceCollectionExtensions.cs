@@ -45,11 +45,13 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISupplementNutrientRepository, SupplementNutrientRepository>();
         services.AddScoped<IPrescribedDoseRepository, PrescribedDoseRepository>();
 
-        services.AddHttpClient("openrouter", (sp, client) =>
+        services.AddHttpClient("llm", (sp, client) =>
         {
             var cfg = sp.GetRequiredService<IConfiguration>();
-            client.BaseAddress = new Uri(cfg["OpenRouter:BaseUrl"] ?? "https://openrouter.ai/api/v1");
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {cfg["OpenRouter:ApiKey"]}");
+            var baseUrl = cfg["Llm:BaseUrl"];
+            if (!string.IsNullOrWhiteSpace(baseUrl))
+                client.BaseAddress = new Uri(baseUrl);
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {cfg["Llm:ApiKey"]}");
             client.Timeout = TimeSpan.FromSeconds(120);
         });
 
@@ -59,7 +61,7 @@ public static class ServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(30);
         });
 
-        services.AddScoped<ILlmService, OpenRouterLlmService>();
+        services.AddScoped<ILlmService, LlmService>();
 
         return services;
     }

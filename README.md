@@ -14,7 +14,7 @@ A family vitamin and supplement tracker. Track who takes what, how often, what i
 
 - **Family members** — CRUD for the people in your household
 - **Supplement library** — CRUD with serving size, cost, and per-nutrient breakdown
-- **AI nutrient extraction (optional)** — paste a manufacturer product URL and an LLM (via OpenRouter) parses the page into structured nutrients; you review and edit before saving
+- **AI nutrient extraction (optional)** — paste a manufacturer product URL and an LLM (via any OpenAI-compatible API) parses the page into structured nutrients; you review and edit before saving
 - **Prescribed doses** — assign supplements to family members with dosage, frequency, and date ranges
 - **Reports** — daily nutrient totals per family member, and monthly cost breakdown by supplement and by member
 
@@ -22,7 +22,7 @@ A family vitamin and supplement tracker. Track who takes what, how often, what i
 
 - ASP.NET Core MVC (.NET 10), Razor views, Bootstrap 5
 - SQLite via Dapper (database file created automatically on first run)
-- LLM enrichment through [OpenRouter](https://openrouter.ai) (AngleSharp for page scraping)
+- LLM enrichment through any OpenAI-compatible API (AngleSharp for page scraping)
 - Tests: MSTest (34 unit tests, in-memory SQLite + Moq) and Playwright (33 E2E tests against the real running app)
 
 ## Getting started
@@ -36,12 +36,15 @@ dotnet run --project VitaTrack.Web
 
 ## Configuration
 
-LLM enrichment is **optional** — the app works fully without it (you can always enter nutrients manually). To enable it, set your OpenRouter API key as an environment variable (never commit secrets):
+LLM enrichment is **optional** — the app works fully without it (you can always enter nutrients manually). To enable it, configure an OpenAI-compatible API endpoint:
 
 ```bash
-export OpenRouter__ApiKey="sk-or-..."
+export Llm__BaseUrl="https://openrouter.ai/api/v1"
+export Llm__ApiKey="sk-or-..."
 dotnet run --project VitaTrack.Web
 ```
+
+Any provider with an OpenAI-compatible `/v1/chat/completions` endpoint works (OpenRouter, OpenAI, local servers, etc.).
 
 ## Tests
 
@@ -54,7 +57,7 @@ E2E tests spin up the real app against an isolated in-memory SQLite database.
 
 ## Security posture
 
-This app is designed to run on **localhost only**. It has no authentication and no authorization. Do not expose it to a network or the internet. LLM enrichment sends supplement names and manufacturer page content to OpenRouter — no personal data is transmitted.
+This app is designed to run on **localhost only**. It has no authentication and no authorization. Do not expose it to a network or the internet. LLM enrichment sends supplement names and manufacturer page content to the configured LLM provider — no personal data is transmitted.
 
 Controllers bind entity classes directly from forms (no dedicated input DTOs). For a local-only app this is acceptable — overposting is a theoretical risk but not a practical one without network exposure.
 

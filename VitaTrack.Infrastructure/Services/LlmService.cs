@@ -9,15 +9,15 @@ using VitaTrack.Infrastructure.Services;
 
 namespace VitaTrack.Infrastructure.Services;
 
-public class OpenRouterLlmService(
+public class LlmService(
     IHttpClientFactory httpClientFactory,
     Microsoft.Extensions.Configuration.IConfiguration cfg,
-    ILogger<OpenRouterLlmService> logger) : ILlmService
+    ILogger<LlmService> logger) : ILlmService
 {
-    private readonly HttpClient _http = httpClientFactory.CreateClient("openrouter");
+    private readonly HttpClient _http = httpClientFactory.CreateClient("llm");
     private readonly HttpClient _scraperHttp = httpClientFactory.CreateClient("scraper");
     private readonly Microsoft.Extensions.Configuration.IConfiguration _cfg = cfg;
-    private readonly ILogger<OpenRouterLlmService> _logger = logger;
+    private readonly ILogger<LlmService> _logger = logger;
 
     public async Task<LlmResult> EnrichSupplementAsync(Supplement supplement)
     {
@@ -30,11 +30,12 @@ public class OpenRouterLlmService(
         }
 
         // Check API key early to avoid unnecessary URL fetch
-        var apiKey = _cfg["OpenRouter:ApiKey"];
-        if (string.IsNullOrWhiteSpace(apiKey))
+        var apiKey = _cfg["Llm:ApiKey"];
+        var baseUrl = _cfg["Llm:BaseUrl"];
+        if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(baseUrl))
         {
-            _logger.LogWarning("OpenRouter API key not configured, skipping LLM enrichment for {SupplementName}", supplement.Name);
-            result.ExtractionError = "OpenRouter API key not configured";
+            _logger.LogWarning("LLM API key or base URL not configured, skipping LLM enrichment for {SupplementName}", supplement.Name);
+            result.ExtractionError = "LLM API key not configured";
             return result;
         }
 
@@ -147,7 +148,7 @@ public class OpenRouterLlmService(
 
         try
         {
-            var model = _cfg["OpenRouter:Model"] ?? "openai/gpt-4o-mini";
+            var model = _cfg["Llm:Model"] ?? "gpt-4o-mini";
             var prompt = BuildExtractionPrompt(supplementName, brand);
 
             var requestBody = new
@@ -178,7 +179,7 @@ Respond with ONLY this JSON structure (no markdown, no code fences):
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                _logger.LogWarning("OpenRouter API error: {StatusCode} - {Content}", response.StatusCode, errorContent);
+                _logger.LogWarning("LLM API error: {StatusCode} - {Content}", response.StatusCode, errorContent);
                 return new LlmResult { ExtractionError = "The AI service returned an error. Please try again or enter nutrients manually." };
             }
 

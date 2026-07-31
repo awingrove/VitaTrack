@@ -50,7 +50,11 @@ public static class ServiceCollectionExtensions
             var cfg = sp.GetRequiredService<IConfiguration>();
             var baseUrl = cfg["Llm:BaseUrl"];
             if (!string.IsNullOrWhiteSpace(baseUrl))
+            {
+                if (!baseUrl.EndsWith('/'))
+                    baseUrl += '/';
                 client.BaseAddress = new Uri(baseUrl);
+            }
             client.DefaultRequestHeaders.Add("Authorization", $"Bearer {cfg["Llm:ApiKey"]}");
             client.Timeout = TimeSpan.FromSeconds(120);
         });

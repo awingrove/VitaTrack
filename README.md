@@ -30,9 +30,11 @@ A family vitamin and supplement tracker. Track who takes what, how often, what i
 **Prerequisites:** .NET 10 SDK. Node.js 18+ (E2E tests only).
 
 ```bash
-dotnet run --project VitaTrack.Web
+./run.sh
 # → http://localhost:5000
 ```
+
+`run.sh` will prompt for LLM configuration on first run if not already set.
 
 ## Configuration
 

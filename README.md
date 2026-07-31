@@ -66,7 +66,10 @@ VitaTrack.Infrastructure/  # Dapper repositories, models, LLM service
 VitaTrack.Tests/           # MSTest unit tests
 e2e-tests/playwright/      # Playwright E2E tests
 docs/screenshots/          # App screenshots used in this README
+docs/plans/                # Draft feature plans
 ```
+
+The SQLite database file (`VitaTrack.db`) is created next to the executable on first run — in `bin/Debug/net10.0/` during development.
 
 `AGENTS.md` documents the architecture conventions, testing philosophy, and coding standards used throughout the repo.
 

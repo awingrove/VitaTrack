@@ -19,12 +19,12 @@ activities:
               - e2e: home navigation
       - name: Add a family member
         stories:
-          - title: Fill out name and date of birth
+          - title: Fill out name and display name
             status: done
             priority: high
       - name: Edit a family member
         stories:
-          - title: Update name or date of birth
+          - title: Update name or display name
             status: done
             priority: high
       - name: Delete a family member

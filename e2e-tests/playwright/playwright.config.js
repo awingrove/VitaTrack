@@ -5,6 +5,9 @@ module.exports = defineConfig({
   testDir: './tests',
   timeout: 30 * 1000,
   expect: { timeout: 5000 },
+  // Tests run in parallel against a single shared in-memory SQLite database.
+  // Concurrent writes can occasionally cause flaky failures ("database is locked").
+  // In CI, consider setting workers: 1 to eliminate this.
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

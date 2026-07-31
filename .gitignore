@@ -56,6 +56,9 @@ package-lock.json
 .playwright/
 e2e-tests/playwright/screenshots/
 
+# MSTest artifacts
+**/TestResults/
+
 # Database files
 *.db
 *.db-shm

@@ -56,6 +56,8 @@ E2E tests spin up the real app against an isolated in-memory SQLite database.
 
 This app is designed to run on **localhost only**. It has no authentication and no authorization. Do not expose it to a network or the internet. LLM enrichment sends supplement names and manufacturer page content to OpenRouter — no personal data is transmitted.
 
+Controllers bind entity classes directly from forms (no dedicated input DTOs). For a local-only app this is acceptable — overposting is a theoretical risk but not a practical one without network exposure.
+
 ## Project structure
 
 ```

@@ -56,29 +56,37 @@ test.describe('Prescribed Doses', () => {
   });
 
   test('should edit a prescribed dose', async ({ page }, testInfo) => {
-    await page.goto('/PrescribedDose');
+    const unique = Date.now();
+    const origDosage = `EditMe${unique}`;
+
+    // Create a dose to edit (avoids race conditions with seed data)
+    await page.goto('/PrescribedDose/Create');
+    await expect(page.locator('h2')).toHaveText('Create');
+    await page.selectOption('select#FamilyMemberId', { index: 1 });
+    await page.selectOption('select#SupplementId', { index: 1 });
+    await page.fill('input#Dosage', origDosage);
+    await page.fill('input#FrequencyPerDay', '1');
+    await page.fill('input#Instructions', 'Original instructions');
+    await page.click('input[type="submit"][value="Create"]');
     await expect(page.locator('h2')).toHaveText('Prescribed Doses');
 
-    // There should be at least one row (from seed data)
-    await expect(page.locator('table tbody tr').first()).toBeVisible();
-
-    // Click Edit on the first row
-    const firstRow = page.locator('table tbody tr').first();
-    await firstRow.locator('text=Edit').click();
+    // Click Edit on the new dose
+    const row = page.locator(`table tbody tr:has-text("${origDosage}")`).last();
+    await row.locator('a.btn-primary').click();
 
     // Should be on the edit page
     await expect(page.locator('h2')).toHaveText('Edit');
     await screenshot(page, testInfo, 'dose-edit-form');
 
     // Modify the dosage
-    await page.fill('input#Dosage', '1000mg');
+    await page.fill('input#Dosage', `${unique}mg`);
 
     // Save
     await page.click('input[type="submit"][value="Save"]');
 
     // Should redirect to index with updated value
     await expect(page.locator('h2')).toHaveText('Prescribed Doses');
-    await expect(page.locator('td:has-text("1000mg")')).toBeVisible();
+    await expect(page.locator(`table tbody tr:has-text("${unique}mg")`)).toBeVisible();
     await screenshot(page, testInfo, 'doses-after-edit');
   });
 
@@ -107,9 +115,9 @@ test.describe('Prescribed Doses', () => {
     // Confirm deletion
     await page.click('input[type="submit"][value="Delete"]');
 
-    // Should redirect to index — just verify the page loaded correctly
+    // Should redirect to index and the deleted dose should be gone
     await expect(page.locator('h2')).toHaveText('Prescribed Doses');
-    await expect(page.locator('table tbody tr').first()).toBeVisible();
+    await expect(page.locator('table tbody tr:has-text("DeleteMe")')).toHaveCount(0);
     await screenshot(page, testInfo, 'doses-after-delete');
   });
 });

@@ -18,6 +18,41 @@ test.describe('Supplement CRUD', () => {
     await screenshot(page, testInfo, 'supplement-list');
   });
 
+  test('should create a new supplement', async ({ page }, testInfo) => {
+    const unique = Date.now();
+    const suppName = `NewSupp${unique}`;
+    const suppBrand = `NewBrand${unique}`;
+
+    await page.goto('/Supplement/Create');
+    await expect(page.locator('h2')).toHaveText('Create');
+    await screenshot(page, testInfo, 'supplement-create-form');
+
+    await page.fill('input#Name', suppName);
+    await page.fill('input#Brand', suppBrand);
+    await page.fill('input#DailyDose', '1 tablet');
+    await page.fill('input#Cost', '12.99');
+    await screenshot(page, testInfo, 'supplement-create-filled');
+
+    // Submit — no URL so LLM enrichment is skipped
+    await page.click('input[type="submit"][value="Create"]');
+
+    // Should land on Review page
+    await expect(page.locator('h2')).toHaveText('Review Supplement');
+    await expect(page.locator('input#Name')).toHaveValue(suppName);
+    await screenshot(page, testInfo, 'supplement-create-review');
+
+    // Confirm & Save
+    await page.click('input[type="submit"][value="Confirm & Save"]');
+
+    // Should redirect to supplements list
+    await expect(page.locator('h2')).toHaveText('Supplements');
+
+    // Verify the new supplement appears in the table
+    await expect(page.locator(`table tbody tr:has-text("${suppName}")`)).toBeVisible();
+    await expect(page.locator(`table tbody tr:has-text("${suppName}")`)).toContainText(suppBrand);
+    await screenshot(page, testInfo, 'supplement-create-verified');
+  });
+
   test('should edit a supplement', async ({ page }, testInfo) => {
     await page.goto('/Supplement');
     await expect(page.locator('table tbody tr').first()).toBeVisible();

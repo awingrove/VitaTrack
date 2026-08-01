@@ -65,13 +65,17 @@ test.describe('Supplement Nutrients', () => {
     await screenshot(page, testInfo, 'nutrients-after-add');
 
     // Clean up: delete the nutrient we just created
-    await newRow.locator('text=Delete').click();
+    await newRow.locator('a.btn-danger').click();
     await expect(page.locator('text=Are you sure')).toBeVisible();
     await page.click('input[type="submit"][value="Delete"]');
     await expect(page.locator('h2')).toHaveText(/Nutrients for/);
   });
 
   test('should edit an existing nutrient', async ({ page }, testInfo) => {
+    const unique = Date.now();
+    const nutrientName = `EditMe${unique}`;
+    const specificForm = `Form${unique}`;
+
     await page.goto('/Supplement');
     await expect(page.locator('table tbody tr').first()).toBeVisible();
 
@@ -79,17 +83,25 @@ test.describe('Supplement Nutrients', () => {
     await page.click('tr:has-text("Vitamin C") >> text=Nutrients');
     await expect(page.locator('h2')).toHaveText(/Vitamin C/);
 
-    // Record current count
-    const countBefore = await page.locator('table tbody tr').count();
+    // Create a nutrient to edit (avoids race conditions with seed data)
+    await page.click('text=Add Nutrient');
+    await page.fill('input[name="GenericName"]', nutrientName);
+    await page.fill('input[name="SpecificForm"]', specificForm);
+    await page.fill('input[name="Dosage"]', '25mcg');
+    await page.click('input[type="submit"][value="Add Nutrient"]');
+    await expect(page.locator('h2')).toHaveText(/Nutrients for/);
 
-    // Click Edit on the first row (Vitamin C / Ascorbic Acid)
-    const firstRow = page.locator('table tbody tr').nth(0);
-    await firstRow.locator('text=Edit').click();
+    // Verify the new nutrient exists
+    const newRow = page.locator(`table tbody tr:has-text("${nutrientName}")`);
+    await expect(newRow).toBeVisible();
+
+    // Click Edit on the new nutrient
+    await newRow.locator('a.btn-primary').click();
     await screenshot(page, testInfo, 'nutrient-edit-form');
 
     // Modify the form
-    await page.fill('input[name="Dosage"]', '1000mg');
-    await page.fill('input[name="SpecificForm"]', 'Sodium Ascorbate');
+    await page.fill('input[name="Dosage"]', '500mg');
+    await page.fill('input[name="SpecificForm"]', `Updated${unique}`);
 
     // Submit the form
     await page.click('input[type="submit"][value="Save"]');
@@ -97,29 +109,44 @@ test.describe('Supplement Nutrients', () => {
     // Should redirect back to index with updated values
     await expect(page.locator('h2')).toHaveText(/Nutrients for/);
 
-    // Check the updated row (may have been reordered by parallel tests)
-    const updatedRow = page.locator('table tbody tr:has-text("Sodium Ascorbate")');
+    const updatedRow = page.locator(`table tbody tr:has-text("Updated${unique}")`);
     await expect(updatedRow).toBeVisible();
-    await expect(updatedRow).toContainText('1000mg');
+    await expect(updatedRow).toContainText('500mg');
     await screenshot(page, testInfo, 'nutrients-after-edit');
+
+    // Clean up: delete the nutrient we just edited
+    await updatedRow.locator('text=Delete').click();
+    await expect(page.locator('text=Are you sure')).toBeVisible();
+    await page.click('input[type="submit"][value="Delete"]');
+    await expect(page.locator('h2')).toHaveText(/Nutrients for/);
   });
 
   test('should delete a nutrient', async ({ page }, testInfo) => {
+    const unique = Date.now();
+    const nutrientName = `DeleteMe${unique}`;
+
     await page.goto('/Supplement');
     await expect(page.locator('table tbody tr').first()).toBeVisible();
 
-    // Navigate to Multivitamin's nutrients (has more variety)
+    // Navigate to Multivitamin's nutrients
     await page.click('tr:has-text("Multivitamin") >> text=Nutrients');
     await expect(page.locator('h2')).toHaveText(/Multivitamin/);
 
-    // Skip if no nutrients exist (deleted by parallel tests)
+    // Create a nutrient to delete (avoids race conditions with seed data)
+    await page.click('text=Add Nutrient');
+    await page.fill('input[name="GenericName"]', nutrientName);
+    await page.fill('input[name="SpecificForm"]', `Form${unique}`);
+    await page.fill('input[name="Dosage"]', '10mcg');
+    await page.click('input[type="submit"][value="Add Nutrient"]');
+    await expect(page.locator('h2')).toHaveText(/Nutrients for/);
+
+    // Record current count
     const beforeCount = await page.locator('table tbody tr').count();
-    if (beforeCount === 0) return;
     await screenshot(page, testInfo, 'nutrients-before-delete');
 
-    // Click Delete on the first nutrient row
-    const firstRow = page.locator('table tbody tr').first();
-    await firstRow.locator('text=Delete').click();
+    // Click Delete on the new nutrient
+    const targetRow = page.locator(`table tbody tr:has-text("${nutrientName}")`);
+    await targetRow.locator('a.btn-danger').click();
 
     // Should be on the delete confirmation page
     await expect(page.locator('text=Are you sure')).toBeVisible();
@@ -132,6 +159,7 @@ test.describe('Supplement Nutrients', () => {
     await expect(page.locator('h2')).toHaveText(/Nutrients for/);
     const afterCount = await page.locator('table tbody tr').count();
     expect(afterCount).toBe(beforeCount - 1);
+    await expect(page.locator(`table tbody tr:has-text("${nutrientName}")`)).toHaveCount(0);
     await screenshot(page, testInfo, 'nutrients-after-delete');
   });
 

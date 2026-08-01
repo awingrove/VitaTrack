@@ -34,6 +34,9 @@ test.describe('Cost Report', () => {
     // Should show the family member costs table (second table)
     const memberTable = page.locator('table').nth(1);
     await expect(memberTable.locator('th:has-text("Family Member")')).toBeVisible();
+
+    // Should have at least one family member row with seed data
+    await expect(memberTable.locator('tbody tr').first()).toBeVisible();
     await screenshot(page, testInfo, 'cost-report-family-table');
   });
 

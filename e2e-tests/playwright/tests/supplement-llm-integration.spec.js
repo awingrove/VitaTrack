@@ -90,6 +90,10 @@ test.describe('Supplement LLM Integration (Real API)', () => {
     const savedRow = page.locator('tr:has-text("Children\'s Mindlinxr")').last();
     await expect(savedRow).toBeVisible({ timeout: 10000 });
 
+    // Verify the supplement details appear in the list
+    await expect(savedRow).toContainText('BioCare');
+    await expect(savedRow).toContainText('29.99');
+
     // Check the nutrients were saved
     await savedRow.locator('text=Nutrients').click();
     await expect(page.locator('h2')).toHaveText(/Nutrients for/);

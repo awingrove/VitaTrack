@@ -62,6 +62,10 @@ test.describe('Supplement LLM Enrichment Flow', () => {
     const supplementRow = page.locator('table tbody tr:has-text("Review Test E2E")').last();
     await expect(supplementRow).toBeVisible({ timeout: 10000 });
 
+    // Verify the supplement appears in the list with correct details
+    await expect(supplementRow).toContainText('Test Brand');
+    await expect(supplementRow).toContainText('15.00');
+
     // Verify the nutrients were saved
     await supplementRow.locator('text=Nutrients').click();
     await expect(page.locator('h2')).toHaveText(/Nutrients for/);
@@ -104,8 +108,15 @@ test.describe('Supplement LLM Enrichment Flow', () => {
     // Save
     await page.click('input[type="submit"][value="Confirm & Save"]');
 
+    // Should redirect to supplements list
+    await expect(page.locator('h2')).toHaveText('Supplements', { timeout: 15000 });
+
+    // Verify the supplement was saved (use last to handle parallel runs)
+    const savedRow = page.locator('table tbody tr:has-text("Remove Test E2E")').last();
+    await expect(savedRow).toBeVisible({ timeout: 10000 });
+
     // Verify only the Zinc nutrient was saved
-    await page.click('tr:has-text("Remove Test E2E") >> text=Nutrients');
+    await savedRow.locator('text=Nutrients').click();
     await expect(page.locator('table tbody tr:has-text("Zinc")')).toBeVisible();
     await expect(page.locator('table tbody tr:has-text("Vitamin D")')).not.toBeVisible();
     await screenshot(page, testInfo, 'final-saved-without-vitamin-d');

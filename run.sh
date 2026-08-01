@@ -22,9 +22,9 @@ write_setting() {
     fi
 }
 
-base_url=$(read_setting BaseUrl)
-api_key=$(read_setting ApiKey)
-model=$(read_setting Model)
+base_url="${Llm__BaseUrl:-$(read_setting BaseUrl)}"
+api_key="${Llm__ApiKey:-$(read_setting ApiKey)}"
+model="${Llm__Model:-$(read_setting Model)}"
 
 if [[ -z "$base_url" || -z "$api_key" ]]; then
     echo ""

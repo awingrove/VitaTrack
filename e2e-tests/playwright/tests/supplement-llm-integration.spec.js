@@ -87,7 +87,7 @@ test.describe('Supplement LLM Integration (Real API)', () => {
     await expect(page.locator('h2')).toHaveText('Supplements', { timeout: 15000 });
 
     // Verify the supplement was saved
-    const savedRow = page.locator('tr:has-text("Children\'s Mindlinxr")');
+    const savedRow = page.locator('tr:has-text("Children\'s Mindlinxr")').last();
     await expect(savedRow).toBeVisible({ timeout: 10000 });
 
     // Check the nutrients were saved

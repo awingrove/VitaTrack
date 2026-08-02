@@ -4,7 +4,7 @@ const { screenshot } = require('../helpers/screenshot');
 test.describe('Supplement LLM Integration (Real API)', () => {
 
   test('should extract nutrients from a real product URL using LLM', async ({ page }, testInfo) => {
-    const apiKey = process.env.LLM_API_KEY || process.env.Llm__ApiKey;
+    const apiKey = process.env.LLM_API_KEY || process.env.VitaTrack__ApiKey;
     test.skip(!apiKey, 'Skipping — no API key configured');
 
     test.setTimeout(180000);

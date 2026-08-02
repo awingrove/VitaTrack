@@ -28,9 +28,9 @@
 
 ## Writing Service Tests (LLM)
 - Mock `HttpClient` using `Moq.Protected().Setup<...>("SendAsync", ...)`.
-- Provide a fake `IConfiguration` with `OpenRouter:BaseUrl` and `OpenRouter:ApiKey`.
+- Provide `IOptions<VitaTrackOptions>` via `Options.Create(new VitaTrackOptions { ... })`.
 - Verify the service returns a `LlmResult` with expected fields.
-- Do **not** hit the real OpenRouter API in unit tests.
+- Do **not** hit the real LLM API in unit tests.
 
 ## Naming
 - Test method names describe the scenario: `Add_GetAll_GetById_Update_Works`, `GetAll_ReturnsEmpty_WhenNoData`.

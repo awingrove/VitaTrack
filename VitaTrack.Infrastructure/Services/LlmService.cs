@@ -4,6 +4,7 @@ using System.Text.Json;
 using AngleSharp.Dom;
 using AngleSharp.Html.Parser;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using VitaTrack.Infrastructure.Models;
 using VitaTrack.Infrastructure.Services;
 
@@ -11,12 +12,12 @@ namespace VitaTrack.Infrastructure.Services;
 
 public class LlmService(
     IHttpClientFactory httpClientFactory,
-    Microsoft.Extensions.Configuration.IConfiguration cfg,
+    IOptions<VitaTrackOptions> options,
     ILogger<LlmService> logger) : ILlmService
 {
     private readonly HttpClient _http = httpClientFactory.CreateClient("llm");
     private readonly HttpClient _scraperHttp = httpClientFactory.CreateClient("scraper");
-    private readonly Microsoft.Extensions.Configuration.IConfiguration _cfg = cfg;
+    private readonly VitaTrackOptions _options = options.Value;
     private readonly ILogger<LlmService> _logger = logger;
 
     public async Task<LlmResult> EnrichSupplementAsync(Supplement supplement)
@@ -30,9 +31,7 @@ public class LlmService(
         }
 
         // Check API key early to avoid unnecessary URL fetch
-        var apiKey = _cfg["Llm:ApiKey"];
-        var baseUrl = _cfg["Llm:BaseUrl"];
-        if (string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(baseUrl))
+        if (string.IsNullOrWhiteSpace(_options.ApiKey) || string.IsNullOrWhiteSpace(_options.BaseUrl))
         {
             _logger.LogWarning("LLM API key or base URL not configured, skipping LLM enrichment for {SupplementName}", supplement.Name);
             result.ExtractionError = "LLM API key not configured";
@@ -148,14 +147,14 @@ public class LlmService(
 
         try
         {
-            var model = _cfg["Llm:Model"] ?? "gpt-4o-mini";
-            var maxTokens = int.TryParse(_cfg["Llm:MaxTokens"], out var mt) ? mt : 16384;
+            var model = _options.Model ?? "gpt-4o-mini";
+            var maxTokens = _options.MaxTokens;
             var prompt = BuildExtractionPrompt(supplementName, brand);
 
-            var requestBody = new
+            var requestBody = new Dictionary<string, object>
             {
-                model,
-                messages = new[]
+                ["model"] = model,
+                ["messages"] = new[]
                 {
                     new { role = "system", content = "You are a supplement label parser. Extract structured nutrient information from supplement product pages. Return ONLY valid JSON. Do NOT include markdown formatting, code blocks, or any text outside the JSON." },
                     new { role = "user", content = $@"{prompt}
@@ -171,9 +170,14 @@ Respond with ONLY this JSON structure (no markdown, no code fences):
   ""swapSuggestion"": ""...""
 }}" }
                 },
-                max_tokens = maxTokens,
-                temperature = 0.1
+                ["max_tokens"] = maxTokens,
+                ["temperature"] = _options.Temperature
             };
+
+            if (!string.IsNullOrWhiteSpace(_options.ReasoningEffort))
+            {
+                requestBody["reasoning_effort"] = _options.ReasoningEffort;
+            }
 
             var response = await _http.PostAsJsonAsync("v1/chat/completions", requestBody);
 

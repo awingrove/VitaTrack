@@ -2,6 +2,7 @@ using System.Data;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using VitaTrack.Infrastructure.Data;
 using VitaTrack.Infrastructure.Services;
 
@@ -47,15 +48,15 @@ public static class ServiceCollectionExtensions
 
         services.AddHttpClient("llm", (sp, client) =>
         {
-            var cfg = sp.GetRequiredService<IConfiguration>();
-            var baseUrl = cfg["Llm:BaseUrl"];
+            var options = sp.GetRequiredService<IOptions<VitaTrackOptions>>().Value;
+            var baseUrl = options.BaseUrl;
             if (!string.IsNullOrWhiteSpace(baseUrl))
             {
                 if (!baseUrl.EndsWith('/'))
                     baseUrl += '/';
                 client.BaseAddress = new Uri(baseUrl);
             }
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {cfg["Llm:ApiKey"]}");
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {options.ApiKey}");
             client.Timeout = TimeSpan.FromSeconds(120);
         });
 

@@ -2,6 +2,8 @@ using VitaTrack.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.Configure<VitaTrackOptions>(
+    builder.Configuration.GetSection("VitaTrack"));
 builder.Services.AddControllersWithViews();
 builder.Services.AddInfra(builder.Configuration);
 

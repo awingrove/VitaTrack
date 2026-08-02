@@ -41,8 +41,8 @@ A family vitamin and supplement tracker. Track who takes what, how often, what i
 LLM enrichment is **optional** — the app works fully without it (you can always enter nutrients manually). To enable it, configure an OpenAI-compatible API endpoint:
 
 ```bash
-export Llm__BaseUrl="https://openrouter.ai/api/v1"
-export Llm__ApiKey="sk-or-..."
+export VitaTrack__BaseUrl="https://openrouter.ai/api/v1"
+export VitaTrack__ApiKey="sk-or-..."
 dotnet run --project VitaTrack.Web
 ```
 

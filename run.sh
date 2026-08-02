@@ -4,27 +4,27 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SETTINGS="$SCRIPT_DIR/VitaTrack.Web/appsettings.json"
 
-# Read a value from the Llm section of appsettings.json
+# Read a value from the VitaTrack section of appsettings.json
 read_setting() {
     local key="$1"
     grep -o "\"$key\": *\"[^\"]*\"" "$SETTINGS" 2>/dev/null | sed "s/\"$key\": *\"//" | sed 's/"$//' || true
 }
 
-# Set a value in the Llm section of appsettings.json
+# Set a value in the VitaTrack section of appsettings.json
 write_setting() {
     local key="$1"
     local value="$2"
     if grep -q "\"$key\":" "$SETTINGS" 2>/dev/null; then
         sed -i "s|\"$key\": *\"[^\"]*\"|\"$key\": \"$value\"|" "$SETTINGS"
     else
-        # Key doesn't exist yet — insert it before the closing brace of "Llm"
-        sed -i "/\"Llm\": {/a\\    \"$key\": \"$value\"," "$SETTINGS"
+        # Key doesn't exist yet — insert it before the closing brace of "VitaTrack"
+        sed -i "/\"VitaTrack\": {/a\\    \"$key\": \"$value\"," "$SETTINGS"
     fi
 }
 
-base_url="${Llm__BaseUrl:-$(read_setting BaseUrl)}"
-api_key="${Llm__ApiKey:-$(read_setting ApiKey)}"
-model="${Llm__Model:-$(read_setting Model)}"
+base_url="${VitaTrack__BaseUrl:-$(read_setting BaseUrl)}"
+api_key="${VitaTrack__ApiKey:-$(read_setting ApiKey)}"
+model="${VitaTrack__Model:-$(read_setting Model)}"
 
 if [[ -z "$base_url" || -z "$api_key" ]]; then
     echo ""

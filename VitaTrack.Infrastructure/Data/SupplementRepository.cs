@@ -50,6 +50,7 @@ WHERE Id = @Id";
 
     public async Task<int> DeleteAsync(int id)
     {
+        await _db.ExecuteAsync("DELETE FROM SupplementNutrients WHERE SupplementId = @Id", new { Id = id });
         const string sql = "DELETE FROM Supplements WHERE Id = @Id";
         return await _db.ExecuteAsync(sql, new { Id = id });
     }
@@ -58,6 +59,7 @@ WHERE Id = @Id";
     {
         var idList = ids.ToList();
         if (idList.Count == 0) return 0;
+        await _db.ExecuteAsync("DELETE FROM SupplementNutrients WHERE SupplementId IN @Ids", new { Ids = idList });
         const string sql = "DELETE FROM Supplements WHERE Id IN @Ids";
         return await _db.ExecuteAsync(sql, new { Ids = idList });
     }

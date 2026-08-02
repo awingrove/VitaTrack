@@ -67,6 +67,14 @@ activities:
             priority: high
             tests:
               - unit: SupplementControllerTests.Delete_CallsRepoAndRedirectsToIndex
+              - e2e: supplement-crud delete
+          - title: Delete multiple supplements via checkboxes and Delete Selected button
+            status: done
+            priority: high
+            tests:
+              - unit: SupplementControllerTests.DeleteSelected_DeletesCheckedSupplementsAndRedirects
+              - unit: SupplementRepositoryTests.DeleteMultiple_RemovesSupplementsWithNutrients
+              - e2e: supplement-crud bulk delete
       - name: Manage supplement nutrients
         stories:
           - title: View nutrients for a supplement

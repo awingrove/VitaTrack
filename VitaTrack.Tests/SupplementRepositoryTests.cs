@@ -107,4 +107,66 @@ public class SupplementRepositoryTests : SqliteTestBase
         var all = await _repo.GetAllAsync();
         Assert.AreEqual(1, all.Count);
     }
+
+    [TestMethod]
+    public async Task DeleteMultiple_RemovesSupplementsWithNutrients()
+    {
+        // Arrange – create supplements with nutrients
+        var nutrientRepo = new SupplementNutrientRepository(Connection);
+
+        var supp1Id = await _repo.AddAsync(new Supplement
+        {
+            Name = "WithNutrients1",
+            Brand = "Brand",
+            DailyDose = "1 pill"
+        });
+        var supp2Id = await _repo.AddAsync(new Supplement
+        {
+            Name = "WithNutrients2",
+            Brand = "Brand",
+            DailyDose = "1 pill"
+        });
+        var supp3Id = await _repo.AddAsync(new Supplement
+        {
+            Name = "NoNutrients",
+            Brand = "Brand",
+            DailyDose = "1 pill"
+        });
+
+        await nutrientRepo.AddAsync(new SupplementNutrient
+        {
+            SupplementId = supp1Id,
+            GenericName = "Vitamin C",
+            SpecificForm = "Ascorbic Acid",
+            Dosage = "500mg"
+        });
+        await nutrientRepo.AddAsync(new SupplementNutrient
+        {
+            SupplementId = supp1Id,
+            GenericName = "Zinc",
+            SpecificForm = "Zinc Picolinate",
+            Dosage = "15mg"
+        });
+        await nutrientRepo.AddAsync(new SupplementNutrient
+        {
+            SupplementId = supp2Id,
+            GenericName = "Vitamin D",
+            SpecificForm = "Cholecalciferol",
+            Dosage = "1000IU"
+        });
+
+        // Act – delete all three (including the two with nutrients)
+        await _repo.DeleteAsync([supp1Id, supp2Id, supp3Id]);
+
+        // Assert – all supplements gone
+        var allSupps = await _repo.GetAllAsync();
+        Assert.AreEqual(0, allSupps.Count);
+
+        // Assert – all nutrients gone
+        var nutrients1 = await nutrientRepo.GetBySupplementIdAsync(supp1Id);
+        Assert.AreEqual(0, nutrients1.Count);
+
+        var nutrients2 = await nutrientRepo.GetBySupplementIdAsync(supp2Id);
+        Assert.AreEqual(0, nutrients2.Count);
+    }
 }

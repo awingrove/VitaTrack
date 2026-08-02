@@ -119,4 +119,58 @@ test.describe('Supplement CRUD', () => {
     await expect(page.locator('table tbody tr:has-text("ToDelete")')).toHaveCount(0);
     await screenshot(page, testInfo, 'supplement-after-delete');
   });
+
+  test('should delete multiple supplements via checkboxes', async ({ page }, testInfo) => {
+    const unique = Date.now();
+    const names = [`BulkA${unique}`, `BulkB${unique}`, `BulkC${unique}`];
+
+    // Create 3 supplements
+    for (const name of names) {
+      await page.goto('/Supplement/Create');
+      await page.fill('input#Name', name);
+      await page.fill('input#Brand', 'BulkBrand');
+      await page.fill('input#DailyDose', '1 pill');
+      await page.click('input[type="submit"][value="Create"]');
+      await expect(page.locator('h2')).toHaveText('Review Supplement');
+      await page.click('input[type="submit"][value="Confirm & Save"]');
+      await expect(page.locator('h2')).toHaveText('Supplements');
+    }
+
+    // Add a nutrient to the first supplement
+    await page.click(`tr:has-text("${names[0]}") >> text=Nutrients`);
+    await expect(page.locator('h2')).toHaveText(/Nutrients for/);
+    await page.click('text=Add Nutrient');
+    await page.fill('input[name="GenericName"]', 'Vitamin C');
+    await page.fill('input[name="SpecificForm"]', 'Ascorbic Acid');
+    await page.fill('input[name="Dosage"]', '500mg');
+    await page.click('input[type="submit"][value="Add Nutrient"]');
+    await expect(page.locator('h2')).toHaveText(/Nutrients for/);
+    await expect(page.locator('table tbody tr:has-text("Vitamin C")')).toBeVisible();
+
+    // Go back to supplement list
+    await page.goto('/Supplement');
+    await expect(page.locator('h2')).toHaveText('Supplements');
+
+    // Verify all 3 are present
+    for (const name of names) {
+      await expect(page.locator(`table tbody tr:has-text("${name}")`)).toBeVisible();
+    }
+
+    // Select only the 3 new supplements by their individual checkboxes
+    for (const name of names) {
+      await page.locator(`tr:has-text("${name}") .row-checkbox`).check();
+    }
+    await screenshot(page, testInfo, 'bulk-delete-selected');
+
+    // Click Delete Selected and confirm dialog
+    page.on('dialog', dialog => dialog.accept());
+    await page.locator('#delete-selected-btn').click();
+
+    // Should be on supplements list without the deleted supplements
+    await expect(page.locator('h2')).toHaveText('Supplements');
+    for (const name of names) {
+      await expect(page.locator(`table tbody tr:has-text("${name}")`)).toHaveCount(0);
+    }
+    await screenshot(page, testInfo, 'bulk-delete-done');
+  });
 });

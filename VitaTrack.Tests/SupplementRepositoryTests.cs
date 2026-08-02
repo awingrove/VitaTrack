@@ -111,8 +111,9 @@ public class SupplementRepositoryTests : SqliteTestBase
     [TestMethod]
     public async Task DeleteMultiple_RemovesSupplementsWithNutrients()
     {
-        // Arrange – create supplements with nutrients
+        // Arrange – create supplements with nutrients and prescribed doses
         var nutrientRepo = new SupplementNutrientRepository(Connection);
+        var doseRepo = new PrescribedDoseRepository(Connection);
 
         var supp1Id = await _repo.AddAsync(new Supplement
         {
@@ -155,7 +156,19 @@ public class SupplementRepositoryTests : SqliteTestBase
             Dosage = "1000IU"
         });
 
-        // Act – delete all three (including the two with nutrients)
+        // Add a family member and prescribed dose for supp1
+        var familyRepo = new FamilyRepository(Connection);
+        var familyId = await familyRepo.AddAsync(new FamilyMember { Name = "Test", DisplayName = "Test" });
+        await doseRepo.AddAsync(new PrescribedDose
+        {
+            FamilyMemberId = familyId,
+            SupplementId = supp1Id,
+            Dosage = "500mg",
+            Instructions = "Take daily",
+            FrequencyPerDay = 1
+        });
+
+        // Act – delete all three (including the two with nutrients and one with prescribed dose)
         await _repo.DeleteAsync([supp1Id, supp2Id, supp3Id]);
 
         // Assert – all supplements gone
@@ -168,5 +181,9 @@ public class SupplementRepositoryTests : SqliteTestBase
 
         var nutrients2 = await nutrientRepo.GetBySupplementIdAsync(supp2Id);
         Assert.AreEqual(0, nutrients2.Count);
+
+        // Assert – prescribed dose gone
+        var doses = await doseRepo.GetAllAsync();
+        Assert.AreEqual(0, doses.Count);
     }
 }

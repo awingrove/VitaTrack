@@ -18,6 +18,26 @@
 - Use `await _db.ExecuteAsync(sql, param)` for writes.
 - For inserts returning identity, execute `INSERT` then `SELECT last_insert_rowid()` as two separate calls (SQLite limitation).
 
+## Foreign Key Delete Order
+SQLite enforces foreign keys. When implementing `DeleteAsync` for a parent table, **always delete child rows first**. The current dependency chain is:
+
+    SupplementNutrients → Supplements
+    PrescribedDoses    → Supplements
+    PrescribedDoses    → FamilyMembers
+
+When deleting a `Supplement`, delete in this order:
+1. `DELETE FROM SupplementNutrients WHERE SupplementId = @Id`
+2. `DELETE FROM PrescribedDoses WHERE SupplementId = @Id`
+3. `DELETE FROM Supplements WHERE Id = @Id`
+
+When deleting a `FamilyMember`, delete in this order:
+1. `DELETE FROM PrescribedDoses WHERE FamilyMemberId = @Id`
+2. `DELETE FROM FamilyMembers WHERE Id = @Id`
+
+Bulk deletes (`DeleteAsync(IEnumerable<int> ids)`) must follow the same order using `WHERE Id IN @Ids`.
+
+When adding new tables with foreign keys, update the relevant `DeleteAsync` methods accordingly.
+
 ## Transaction Handling
 - Currently each repository method opens/closes the connection via Dapper (connection is scoped from Web).
 - If multiple operations need a transaction, open a connection and use `IDbTransaction` (future work).

@@ -26,6 +26,16 @@
 3. Assert on returned values and counts.
 4. Use `Assert.IsTrue`, `Assert.AreEqual`, `Assert.IsNull`, etc.
 
+## Testing Delete with Foreign Keys
+When a table has foreign key dependencies, you **must** test that deleting a parent row also deletes the child rows:
+1. Create parent and child rows (e.g., a Supplement with SupplementNutrients and PrescribedDoses).
+2. Delete the parent row via the repository.
+3. Assert the parent row is gone.
+4. Assert **all** child rows that referenced the parent are also gone.
+5. Example: `DeleteMultiple_RemovesSupplementsWithNutrients` creates supplements with nutrients and a prescribed dose, deletes them, then verifies all three tables are clean.
+
+This is critical — missing cascade delete tests leads to foreign key constraint failures at runtime.
+
 ## Writing Service Tests (LLM)
 - Mock `HttpClient` using `Moq.Protected().Setup<...>("SendAsync", ...)`.
 - Provide `IOptions<VitaTrackOptions>` via `Options.Create(new VitaTrackOptions { ... })`.

@@ -21,7 +21,13 @@ This document defines the coding standards, architectural guidelines, testing ph
 *   **Database:** SQLite (`VitaTrack.db` relative to the executable). Tables are created on startup via `DbInit.EnsureCreated`.
 *   **ORM:** Dapper only (via `IFamilyRepository`, `ISupplementRepository`, etc.). **Do NOT use Entity Framework Core.**
 *   **Pattern:** Use the Repository Pattern to abstract Dapper SQL queries away from the business logic (Services).
-*   **Seed Data:** `DbInit.EnsureCreated` seeds test data (family members, supplements, nutrients, prescribed doses) when tables are empty. When adding new entity types, always add corresponding seed data here so reports and E2E tests have realistic data to work with.
+*   **Foreign Key Constraints:** SQLite enforces foreign keys. When deleting a parent row that has child rows referencing it, you **must** delete the child rows first. The current foreign key relationships are:
+    - `SupplementNutrients.SupplementId` → `Supplements(Id)`
+    - `PrescribedDoses.SupplementId` → `Supplements(Id)`
+    - `PrescribedDoses.FamilyMemberId` → `FamilyMembers(Id)`
+    - Always delete in dependency order: `SupplementNutrients` → `PrescribedDoses` → `Supplements` → `FamilyMembers`.
+    - When adding new tables with foreign keys, update the relevant repository `DeleteAsync` methods to handle cascade deletes.
+*   **Seed Data:** `DbInit.EnsureCreated` seeds test data (family members, supplements, nutrients, prescribed doses) **only when ALL tables are empty** (fresh database). This prevents foreign key errors when partial data is cleared. When adding new entity types, always add corresponding seed data here so reports and E2E tests have realistic data to work with.
 *   **Configuration Layering:** `appsettings.json` holds defaults. Environment-specific overrides go in `appsettings.{Environment}.json`. For test environments, create `appsettings.Test.json` with test-specific connection strings. **Do not** rely on `ConnectionStrings__Default` env var via Playwright's `webServer.env` — it does not propagate to `dotnet run` child processes. Use `--environment Test` flag instead.
 *   **Error Views:** If `Program.cs` uses `app.UseExceptionHandler("/Home/Error")`, you **must** provide a `Views/Home/Error.cshtml` and a `HomeController.Error()` action. Without them, any controller exception cascades into a bare 500 with no diagnostics.
 *   **LLM Integration:** The app uses `LlmService` (reading `VitaTrack:BaseUrl`, `VitaTrack:ApiKey`, `VitaTrack:Model`, `VitaTrack:ReasoningEffort`, and `VitaTrack:Temperature` via `IOptions<VitaTrackOptions>`) to enrich supplements. Any OpenAI-compatible API endpoint works (e.g., OpenRouter, OpenAI, local servers).

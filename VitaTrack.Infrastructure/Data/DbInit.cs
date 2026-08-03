@@ -64,11 +64,15 @@ public static class DbInit
                 ");
         }
 
-        // Insert sample data if tables are empty and seeding is enabled
+        // Insert sample data only if ALL tables are empty (fresh database)
         if (seedData)
         {
             var familyCount = db.QuerySingle<int>("SELECT COUNT(*) FROM FamilyMembers;");
-            if (familyCount == 0)
+            var supplementCount = db.QuerySingle<int>("SELECT COUNT(*) FROM Supplements;");
+            var nutrientCount = db.QuerySingle<int>("SELECT COUNT(*) FROM SupplementNutrients;");
+            var doseCount = db.QuerySingle<int>("SELECT COUNT(*) FROM PrescribedDoses;");
+
+            if (familyCount == 0 && supplementCount == 0 && nutrientCount == 0 && doseCount == 0)
             {
                 db.Execute(@"
                         INSERT INTO FamilyMembers (Name, DisplayName, AvatarUrl) VALUES 
@@ -76,11 +80,7 @@ public static class DbInit
                         ('Bob Johnson', 'Bob', 'https://example.com/bob.jpg'),
                         ('Carol Williams', 'Carol', 'https://example.com/carol.jpg')
                     ");
-            }
 
-            var supplementCount = db.QuerySingle<int>("SELECT COUNT(*) FROM Supplements;");
-            if (supplementCount == 0)
-            {
                 db.Execute(@"
                         INSERT INTO Supplements (Name, Brand, DailyDose, NutritionJson, Cost) VALUES 
                         ('Vitamin C', 'NatureMade', '2 tablets', @nutrition1, 15.99),
@@ -91,11 +91,7 @@ public static class DbInit
                     nutrition2 = "{\"omega_3\": 1000, \"vitamin_d\": 200}",
                     nutrition3 = "{\"vitamin_a\": 900, \"vitamin_c\": 90, \"vitamin_d\": 20, \"iron\": 18, \"calcium\": 200}"
                 });
-            }
 
-            var nutrientCount = db.QuerySingle<int>("SELECT COUNT(*) FROM SupplementNutrients;");
-            if (nutrientCount == 0 && supplementCount > 0)
-            {
                 db.Execute(@"
                         INSERT INTO SupplementNutrients (SupplementId, GenericName, SpecificForm, Dosage) VALUES 
                         (1, 'Vitamin C', 'Ascorbic Acid', '500mg'),
@@ -108,11 +104,7 @@ public static class DbInit
                         (3, 'Iron', 'Ferrous Fumarate', '18mg'),
                         (3, 'Calcium', 'Calcium Carbonate', '200mg')
                     ");
-            }
 
-            var doseCount = db.QuerySingle<int>("SELECT COUNT(*) FROM PrescribedDoses;");
-            if (doseCount == 0 && familyCount > 0 && supplementCount > 0)
-            {
                 db.Execute(@"
                         INSERT INTO PrescribedDoses (FamilyMemberId, SupplementId, Dosage, Instructions, FrequencyPerDay) VALUES 
                         (1, 1, '500mg', 'Take with breakfast', 1.0),

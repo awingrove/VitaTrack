@@ -94,7 +94,7 @@ public static class DbInit
             }
 
             var nutrientCount = db.QuerySingle<int>("SELECT COUNT(*) FROM SupplementNutrients;");
-            if (nutrientCount == 0)
+            if (nutrientCount == 0 && supplementCount > 0)
             {
                 db.Execute(@"
                         INSERT INTO SupplementNutrients (SupplementId, GenericName, SpecificForm, Dosage) VALUES 
@@ -111,7 +111,7 @@ public static class DbInit
             }
 
             var doseCount = db.QuerySingle<int>("SELECT COUNT(*) FROM PrescribedDoses;");
-            if (doseCount == 0)
+            if (doseCount == 0 && familyCount > 0 && supplementCount > 0)
             {
                 db.Execute(@"
                         INSERT INTO PrescribedDoses (FamilyMemberId, SupplementId, Dosage, Instructions, FrequencyPerDay) VALUES 

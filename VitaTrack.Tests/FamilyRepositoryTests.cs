@@ -77,4 +77,45 @@ public class FamilyRepositoryTests : SqliteTestBase
         var all = await _repo.GetAllAsync();
         Assert.AreEqual(0, all.Count);
     }
+
+    [TestMethod]
+    public async Task Delete_RemovesFamilyMemberWithPrescribedDoses()
+    {
+        // Arrange – create a family member with a prescribed dose
+        var suppRepo = new SupplementRepository(Connection);
+        var doseRepo = new PrescribedDoseRepository(Connection);
+
+        var memberId = await _repo.AddAsync(new FamilyMember
+        {
+            Name = "WithDoses",
+            DisplayName = "WD"
+        });
+
+        var suppId = await suppRepo.AddAsync(new Supplement
+        {
+            Name = "TestSupp",
+            Brand = "Brand",
+            DailyDose = "1 pill"
+        });
+
+        await doseRepo.AddAsync(new PrescribedDose
+        {
+            FamilyMemberId = memberId,
+            SupplementId = suppId,
+            Dosage = "500mg",
+            Instructions = "Take daily",
+            FrequencyPerDay = 1
+        });
+
+        // Act – Delete the family member
+        await _repo.DeleteAsync(memberId);
+
+        // Assert – family member gone
+        var deleted = await _repo.GetByIdAsync(memberId);
+        Assert.IsNull(deleted);
+
+        // Assert – prescribed dose gone
+        var doses = await doseRepo.GetAllAsync();
+        Assert.AreEqual(0, doses.Count);
+    }
 }

@@ -44,6 +44,7 @@ WHERE Id = @Id";
 
     public async Task<int> DeleteAsync(int id)
     {
+        await _db.ExecuteAsync("DELETE FROM PrescribedDoses WHERE FamilyMemberId = @Id", new { Id = id });
         const string sql = "DELETE FROM FamilyMembers WHERE Id = @Id";
         return await _db.ExecuteAsync(sql, new { Id = id });
     }

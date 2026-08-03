@@ -32,6 +32,14 @@ activities:
           - title: Remove a family member with confirmation
             status: done
             priority: medium
+            tests:
+              - e2e: family-member delete
+          - title: Remove a family member that has prescribed doses
+            status: done
+            priority: high
+            tests:
+              - unit: FamilyRepositoryTests.Delete_RemovesFamilyMemberWithPrescribedDoses
+              - e2e: family-member delete with prescribed doses
 
   - name: Manage Supplements
     tasks:

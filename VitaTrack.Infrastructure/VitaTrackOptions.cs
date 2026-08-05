@@ -7,5 +7,5 @@ public class VitaTrackOptions
     public string? Model { get; set; }
     public int MaxTokens { get; set; } = 16384;
     public string? ReasoningEffort { get; set; }
-    public double Temperature { get; set; } = 0.1;
+    public double Temperature { get; set; } = 1.0;
 }

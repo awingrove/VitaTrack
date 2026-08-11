@@ -3,7 +3,7 @@ const { screenshot } = require('../helpers/screenshot');
 
 test.describe('Supplement LLM Enrichment Flow', () => {
 
-  test('should show review page when creating a supplement without a URL', async ({ page }, testInfo) => {
+  test('should show nutrient editor inline when creating a supplement without a URL', async ({ page }, testInfo) => {
     await page.goto('/Supplement');
     await expect(page.locator('table tbody tr').first()).toBeVisible();
 
@@ -17,23 +17,18 @@ test.describe('Supplement LLM Enrichment Flow', () => {
     // No ManufacturerUrl — ensures no API call
     await screenshot(page, testInfo, 'create-form-no-url');
 
-    await page.click('input[type="submit"][value="Create"]');
+    await page.click('button[type="submit"]:has-text("Save")');
 
-    // Should be on the Review page
-    await expect(page.locator('h2')).toHaveText('Review Supplement');
+    // Nutrient editor should appear inline via HTMX (no page navigation)
+    await expect(page.locator('h4')).toContainText('Nutrients for');
 
-    // Should show the supplement details as read-only
-    await expect(page.locator('input[name="Name"]')).toHaveValue('Test Supplement E2E');
-    await expect(page.locator('input[name="Brand"]')).toHaveValue('Test Brand');
-    await expect(page.locator('input[name="DailyDose"]')).toHaveValue('1 capsule');
-    await expect(page.locator('input[name="Cost"]')).toHaveValue('19.99');
-
-    // Should show the editable nutrient section
-    await expect(page.locator('h4')).toContainText('Nutrients');
-    await screenshot(page, testInfo, 'review-page-no-url');
+    // Should show the nutrient table with empty state
+    await expect(page.locator('#nutrients-table')).toBeVisible();
+    await expect(page.locator('.empty-row')).toContainText('No nutrients');
+    await screenshot(page, testInfo, 'nutrient-editor-no-url');
   });
 
-  test('should allow adding nutrients on the review page and saving', async ({ page }, testInfo) => {
+  test('should allow adding nutrients in the inline editor and saving', async ({ page }, testInfo) => {
     await page.goto('/Supplement');
     await expect(page.locator('table tbody tr').first()).toBeVisible();
     await page.click('text=Add New Supplement');
@@ -44,18 +39,25 @@ test.describe('Supplement LLM Enrichment Flow', () => {
     await page.fill('input[name="Cost"]', '15.00');
     // No URL — ensures no API call
 
-    await page.click('input[type="submit"][value="Create"]');
-    await expect(page.locator('h2')).toHaveText('Review Supplement');
+    await page.click('button[type="submit"]:has-text("Save")');
+    await expect(page.locator('h4')).toContainText('Nutrients for');
 
     // Add a nutrient manually
     await page.click('button#add-nutrient-row');
     await page.locator('input[name="nutrients[0].GenericName"]').fill('Magnesium');
     await page.locator('input[name="nutrients[0].SpecificForm"]').fill('Magnesium Glycinate');
     await page.locator('input[name="nutrients[0].Dosage"]').fill('200mg');
-    await screenshot(page, testInfo, 'review-page-with-nutrient');
+    await screenshot(page, testInfo, 'inline-editor-with-nutrient');
 
-    // Save
-    await page.click('input[type="submit"][value="Confirm & Save"]');
+    // Save nutrients via HTMX
+    await page.click('button:has-text("Save Changes")');
+
+    // Should show success message
+    await expect(page.locator('.alert-success')).toContainText('Nutrients saved successfully');
+    await screenshot(page, testInfo, 'nutrients-save-success');
+
+    // Navigate to supplements list
+    await page.click('a:has-text("Done")');
     await page.waitForURL(/\/Supplement/, { timeout: 15000 });
 
     // Verify the supplement was saved (use last to handle duplicate entries from parallel runs)
@@ -75,7 +77,7 @@ test.describe('Supplement LLM Enrichment Flow', () => {
     await screenshot(page, testInfo, 'nutrients-saved');
   });
 
-  test('should allow removing nutrients on the review page using the remove button', async ({ page }, testInfo) => {
+  test('should allow removing nutrients in the inline editor and saving', async ({ page }, testInfo) => {
     await page.goto('/Supplement');
     await expect(page.locator('table tbody tr').first()).toBeVisible();
     await page.click('text=Add New Supplement');
@@ -86,8 +88,8 @@ test.describe('Supplement LLM Enrichment Flow', () => {
     await page.fill('input[name="Cost"]', '10.00');
     // No URL — ensures no API call
 
-    await page.click('input[type="submit"][value="Create"]');
-    await expect(page.locator('h2')).toHaveText('Review Supplement');
+    await page.click('button[type="submit"]:has-text("Save")');
+    await expect(page.locator('h4')).toContainText('Nutrients for');
 
     // Add two nutrients
     await page.click('button#add-nutrient-row');
@@ -99,16 +101,22 @@ test.describe('Supplement LLM Enrichment Flow', () => {
     await page.locator('input[name="nutrients[1].GenericName"]').fill('Vitamin D');
     await page.locator('input[name="nutrients[1].SpecificForm"]').fill('Cholecalciferol');
     await page.locator('input[name="nutrients[1].Dosage"]').fill('1000IU');
-    await screenshot(page, testInfo, 'review-two-nutrients');
+    await screenshot(page, testInfo, 'inline-two-nutrients');
 
     // Remove the second nutrient
     await page.locator('button.remove-row').nth(1).click();
-    await screenshot(page, testInfo, 'review-one-nutrient-removed');
+    await screenshot(page, testInfo, 'inline-one-nutrient-removed');
 
-    // Save
-    await page.click('input[type="submit"][value="Confirm & Save"]');
+    // Save nutrients via HTMX
+    await page.click('button:has-text("Save Changes")');
 
-    // Should redirect to supplements list
+    // Should show success message
+    await expect(page.locator('.alert-success')).toContainText('Nutrients saved successfully');
+
+    // Navigate to supplements list
+    await page.click('a:has-text("Done")');
+
+    // Should be on supplements list
     await expect(page.locator('h2')).toHaveText('Supplements', { timeout: 15000 });
 
     // Verify the supplement was saved (use last to handle parallel runs)

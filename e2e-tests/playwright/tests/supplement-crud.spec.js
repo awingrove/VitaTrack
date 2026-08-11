@@ -24,7 +24,7 @@ test.describe('Supplement CRUD', () => {
     const suppBrand = `NewBrand${unique}`;
 
     await page.goto('/Supplement/Create');
-    await expect(page.locator('h2')).toHaveText('Create');
+    await expect(page.locator('h2')).toHaveText('Create Supplement');
     await screenshot(page, testInfo, 'supplement-create-form');
 
     await page.fill('input#Name', suppName);
@@ -33,18 +33,18 @@ test.describe('Supplement CRUD', () => {
     await page.fill('input#Cost', '12.99');
     await screenshot(page, testInfo, 'supplement-create-filled');
 
-    // Submit — no URL so LLM enrichment is skipped
-    await page.click('input[type="submit"][value="Create"]');
+    // Submit — no URL so LLM enrichment is skipped; HTMX swaps nutrient editor inline
+    await page.click('button[type="submit"]:has-text("Save")');
 
-    // Should land on Review page
-    await expect(page.locator('h2')).toHaveText('Review Supplement');
-    await expect(page.locator('input#Name')).toHaveValue(suppName);
-    await screenshot(page, testInfo, 'supplement-create-review');
+    // Nutrient editor should appear inline (HTMX response)
+    await expect(page.locator('h4')).toContainText('Nutrients for');
+    await expect(page.locator('#nutrients-table')).toBeVisible();
+    await screenshot(page, testInfo, 'supplement-create-nutrient-editor');
 
-    // Confirm & Save
-    await page.click('input[type="submit"][value="Confirm & Save"]');
+    // Navigate back to supplements list
+    await page.click('a:has-text("Done")');
 
-    // Should redirect to supplements list
+    // Should be on supplements list
     await expect(page.locator('h2')).toHaveText('Supplements');
 
     // Verify the new supplement appears in the table
@@ -96,13 +96,13 @@ test.describe('Supplement CRUD', () => {
     await page.fill('input#Name', 'ToDelete');
     await page.fill('input#Brand', 'TestBrand');
     await page.fill('input#DailyDose', '1 pill');
-    await page.click('input[type="submit"][value="Create"]');
+    await page.click('button[type="submit"]:has-text("Save")');
 
-    // Should be on review page
-    await expect(page.locator('h2')).toHaveText('Review Supplement');
+    // Nutrient editor appears inline via HTMX
+    await expect(page.locator('h4')).toContainText('Nutrients for');
     await screenshot(page, testInfo, 'supplement-review-before-delete');
 
-    await page.click('input[type="submit"][value="Confirm & Save"]');
+    await page.click('a:has-text("Done")');
 
     // Should be on supplements list
     await expect(page.locator('h2')).toHaveText('Supplements');
@@ -130,9 +130,9 @@ test.describe('Supplement CRUD', () => {
       await page.fill('input#Name', name);
       await page.fill('input#Brand', 'BulkBrand');
       await page.fill('input#DailyDose', '1 pill');
-      await page.click('input[type="submit"][value="Create"]');
-      await expect(page.locator('h2')).toHaveText('Review Supplement');
-      await page.click('input[type="submit"][value="Confirm & Save"]');
+      await page.click('button[type="submit"]:has-text("Save")');
+      await expect(page.locator('h4')).toContainText('Nutrients for');
+      await page.click('a:has-text("Done")');
       await expect(page.locator('h2')).toHaveText('Supplements');
     }
 

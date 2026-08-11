@@ -20,21 +20,19 @@ test.describe('Supplement LLM Integration (Real API)', () => {
     await page.fill('input[name="Cost"]', '29.99');
     await screenshot(page, testInfo, 'llm-create-form-filled');
 
-    // Submit — this will trigger LLM enrichment (may take 5-30s)
-    await page.click('input[type="submit"][value="Create"]');
+    // Submit — this will trigger LLM enrichment (may take 5-30s), HTMX swaps nutrient editor inline
+    await page.click('button[type="submit"]:has-text("Save")');
 
-    // Wait for the Review page — the LLM call may take time
-    await expect(page.locator('h2')).toHaveText('Review Supplement', { timeout: 90000 });
+    // Wait for the nutrient editor to appear — the LLM call may take time
+    await expect(page.locator('h4')).toContainText('Nutrients for', { timeout: 90000 });
 
     // The LLM must succeed — no error alerts allowed
-    const errorAlert = page.locator('.alert-warning');
+    const errorAlert = page.locator('.alert-info, .alert-warning');
     await expect(errorAlert).toHaveCount(0, { timeout: 5000 });
 
-    // Verify the supplement details are shown
-    await expect(page.locator('input[name="Name"]')).toHaveValue('Children\'s Mindlinxr');
-    await expect(page.locator('input[name="Brand"]')).toHaveValue('BioCare');
-    await expect(page.locator('input[name="ManufacturerUrl"]')).toHaveValue('https://www.biocare.co.uk/children-s-mindlinxr-multinutrient-150g');
-    await screenshot(page, testInfo, 'llm-review-page');
+    // Verify the nutrient editor appeared
+    await expect(page.locator('#nutrients-table')).toBeVisible();
+    await screenshot(page, testInfo, 'llm-nutrient-editor');
 
     // Verify nutrients were extracted by the LLM
     const nutrientCount = await page.locator('input[name^="nutrients["][name$="].GenericName"]').count();
@@ -59,8 +57,8 @@ test.describe('Supplement LLM Integration (Real API)', () => {
     expect(foundMeaningful).toBeTruthy();
     await screenshot(page, testInfo, 'llm-extracted-nutrients');
 
-    // Save and verify
-    await page.click('input[type="submit"][value="Confirm & Save"]');
+    // Navigate back to supplements list
+    await page.click('a:has-text("Done")');
     await expect(page.locator('h2')).toHaveText('Supplements', { timeout: 15000 });
 
     // Verify the supplement was saved
@@ -98,11 +96,11 @@ test.describe('Supplement LLM Integration (Real API)', () => {
     // No ManufacturerUrl — LLM enrichment is skipped, no API call made
     await screenshot(page, testInfo, 'manual-create-form');
 
-    await page.click('input[type="submit"][value="Create"]');
+    await page.click('button[type="submit"]:has-text("Save")');
 
-    // Should be on Review page with no error
-    await expect(page.locator('h2')).toHaveText('Review Supplement');
-    await expect(page.locator('input[name="Name"]')).toHaveValue(suppName);
+    // Nutrient editor should appear inline via HTMX
+    await expect(page.locator('h4')).toContainText('Nutrients for');
+    await expect(page.locator('#nutrients-table')).toBeVisible();
 
     // No LLM nutrients — should show empty nutrient section with add button
     const hasLlmNutrients = await page.locator('input[name="nutrients[0].GenericName"]').count() > 0;
@@ -115,8 +113,15 @@ test.describe('Supplement LLM Integration (Real API)', () => {
     await page.locator('input[name="nutrients[0].Dosage"]').fill('100mg');
     await screenshot(page, testInfo, 'manual-nutrient-added');
 
-    // Save
-    await page.click('input[type="submit"][value="Confirm & Save"]');
+    // Save nutrients via HTMX
+    await page.click('button:has-text("Save Changes")');
+
+    // Should show success message
+    await expect(page.locator('.alert-success')).toContainText('Nutrients saved successfully');
+    await screenshot(page, testInfo, 'manual-nutrient-saved');
+
+    // Navigate back to supplements list
+    await page.click('a:has-text("Done")');
     await expect(page.locator('h2')).toHaveText('Supplements', { timeout: 15000 });
 
     // Verify supplement saved
@@ -129,6 +134,6 @@ test.describe('Supplement LLM Integration (Real API)', () => {
     await expect(page.locator('table tbody tr:has-text("Magnesium")')).toBeVisible();
     await expect(page.locator('table tbody tr:has-text("Magnesium Citrate")')).toBeVisible();
     await expect(page.locator('table tbody tr:has-text("100mg")')).toBeVisible();
-    await screenshot(page, testInfo, 'manual-nutrient-saved');
+    await screenshot(page, testInfo, 'manual-nutrient-verified');
   });
 });

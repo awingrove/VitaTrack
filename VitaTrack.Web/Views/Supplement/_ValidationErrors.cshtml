@@ -1,0 +1,16 @@
+@model Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary
+
+<div id="validation-errors" hx-swap-oob="true">
+    <div class="alert alert-danger">
+        <strong>Please fix the following errors:</strong>
+        <ul class="mb-0">
+            @foreach (var entry in Model)
+            {
+                foreach (var error in entry.Value.Errors)
+                {
+                    <li>@error.ErrorMessage</li>
+                }
+            }
+        </ul>
+    </div>
+</div>

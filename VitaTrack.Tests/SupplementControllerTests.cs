@@ -6,6 +6,7 @@ using VitaTrack.Infrastructure.Data;
 using VitaTrack.Infrastructure.Models;
 using VitaTrack.Infrastructure.Services;
 using VitaTrack.Web.Controllers;
+using VitaTrack.Web.Models;
 
 namespace VitaTrack.Tests;
 
@@ -156,5 +157,125 @@ public class SupplementControllerTests
         Assert.IsNotNull(redirectResult);
         Assert.AreEqual("Index", redirectResult.ActionName);
         _suppRepo.Verify(r => r.DeleteAsync(It.IsAny<IEnumerable<int>>()), Times.Never);
+    }
+
+    [TestMethod]
+    public async Task Enrich_WithUrl_SavesAndReturnsNutrientEditor()
+    {
+        var supplement = new Supplement { Name = "TestSupp", Brand = "Brand", DailyDose = "1 pill", ManufacturerUrl = "https://example.com" };
+        var llmResult = new LlmResult
+        {
+            NutritionJson = "{}",
+            SwapSuggestion = "Try X",
+            Nutrients =
+            [
+                new() { GenericName = "Vitamin C", SpecificForm = "Ascorbic Acid", Dosage = "500mg" }
+            ]
+        };
+        _llmService.Setup(s => s.EnrichSupplementAsync(It.IsAny<Supplement>())).ReturnsAsync(llmResult);
+        _suppRepo.Setup(r => r.AddAsync(It.IsAny<Supplement>())).ReturnsAsync(42);
+        _nutrientRepo.Setup(r => r.AddAsync(It.IsAny<SupplementNutrient>())).ReturnsAsync(1);
+
+        var result = await _controller.Enrich(supplement);
+
+        var partialResult = result as PartialViewResult;
+        Assert.IsNotNull(partialResult);
+        Assert.AreEqual("_NutrientEditor", partialResult.ViewName);
+        var model = partialResult.Model as SupplementEditorViewModel;
+        Assert.IsNotNull(model);
+        Assert.AreEqual(42, model.SupplementId);
+        Assert.AreEqual("TestSupp", model.SupplementName);
+        Assert.AreEqual(1, model.Nutrients.Count);
+        Assert.AreEqual("Vitamin C", model.Nutrients[0].GenericName);
+        _suppRepo.Verify(r => r.AddAsync(It.IsAny<Supplement>()), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task Enrich_WithoutUrl_SavesAndReturnsEmptyEditor()
+    {
+        var supplement = new Supplement { Name = "TestSupp", Brand = "Brand", DailyDose = "1 pill" };
+        _llmService.Setup(s => s.EnrichSupplementAsync(It.IsAny<Supplement>())).ReturnsAsync(new LlmResult());
+        _suppRepo.Setup(r => r.AddAsync(It.IsAny<Supplement>())).ReturnsAsync(43);
+
+        var result = await _controller.Enrich(supplement);
+
+        var partialResult = result as PartialViewResult;
+        Assert.IsNotNull(partialResult);
+        Assert.AreEqual("_NutrientEditor", partialResult.ViewName);
+        var model = partialResult.Model as SupplementEditorViewModel;
+        Assert.IsNotNull(model);
+        Assert.AreEqual(43, model.SupplementId);
+        Assert.AreEqual(0, model.Nutrients.Count);
+    }
+
+    [TestMethod]
+    public async Task Enrich_LlmException_SavesAndReturnsEditorWithError()
+    {
+        var supplement = new Supplement { Name = "TestSupp", Brand = "Brand", DailyDose = "1 pill", ManufacturerUrl = "https://example.com" };
+        _llmService.Setup(s => s.EnrichSupplementAsync(It.IsAny<Supplement>())).ThrowsAsync(new Exception("LLM down"));
+        _suppRepo.Setup(r => r.AddAsync(It.IsAny<Supplement>())).ReturnsAsync(44);
+
+        var result = await _controller.Enrich(supplement);
+
+        var partialResult = result as PartialViewResult;
+        Assert.IsNotNull(partialResult);
+        var model = partialResult.Model as SupplementEditorViewModel;
+        Assert.IsNotNull(model);
+        Assert.IsNotNull(model.ExtractionError);
+        Assert.IsTrue(model.ExtractionError.Contains("manually"));
+        _suppRepo.Verify(r => r.AddAsync(It.IsAny<Supplement>()), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task Enrich_InvalidModel_ReturnsValidationErrors()
+    {
+        _controller.ModelState.AddModelError("Name", "Name is required");
+        var supplement = new Supplement { Brand = "Brand", DailyDose = "1 pill" };
+
+        var result = await _controller.Enrich(supplement);
+
+        var partialResult = result as PartialViewResult;
+        Assert.IsNotNull(partialResult);
+        Assert.AreEqual("_ValidationErrors", partialResult.ViewName);
+    }
+
+    [TestMethod]
+    public async Task UpdateNutrients_DeletesOldAndInsertsNew()
+    {
+        var supplement = new Supplement { Id = 42, Name = "TestSupp", Brand = "Brand", DailyDose = "1 pill" };
+        var existingNutrients = new List<SupplementNutrient>
+        {
+            new() { Id = 10, SupplementId = 42, GenericName = "Old", SpecificForm = "Form", Dosage = "10mg" }
+        };
+        _suppRepo.Setup(r => r.GetByIdAsync(42)).ReturnsAsync(supplement);
+        _nutrientRepo.Setup(r => r.GetBySupplementIdAsync(42)).ReturnsAsync(existingNutrients);
+        _nutrientRepo.Setup(r => r.DeleteAsync(10)).ReturnsAsync(1);
+        _nutrientRepo.Setup(r => r.AddAsync(It.IsAny<SupplementNutrient>())).ReturnsAsync(1);
+
+        var nutrients = new List<SupplementNutrientDto>
+        {
+            new() { GenericName = "Zinc", SpecificForm = "Citrate", Dosage = "15mg" }
+        };
+
+        var result = await _controller.UpdateNutrients(42, nutrients);
+
+        var partialResult = result as PartialViewResult;
+        Assert.IsNotNull(partialResult);
+        Assert.AreEqual("_NutrientEditor", partialResult.ViewName);
+        var model = partialResult.Model as SupplementEditorViewModel;
+        Assert.IsNotNull(model);
+        Assert.IsTrue(model.SaveSuccess);
+        _nutrientRepo.Verify(r => r.DeleteAsync(10), Times.Once);
+        _nutrientRepo.Verify(r => r.AddAsync(It.IsAny<SupplementNutrient>()), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task UpdateNutrients_SupplementNotFound_ReturnsNotFound()
+    {
+        _suppRepo.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((Supplement?)null);
+
+        var result = await _controller.UpdateNutrients(99, new List<SupplementNutrientDto>());
+
+        Assert.IsInstanceOfType(result, typeof(NotFoundResult));
     }
 }

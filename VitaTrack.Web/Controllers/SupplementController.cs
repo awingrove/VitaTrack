@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using VitaTrack.Infrastructure.Data;
 using VitaTrack.Infrastructure.Models;
 using VitaTrack.Infrastructure.Services;
+using VitaTrack.Web.Models;
 
 namespace VitaTrack.Web.Controllers;
 
@@ -25,6 +26,115 @@ public class SupplementController(
     public IActionResult Create()
     {
         return View();
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Enrich(Supplement supplement)
+    {
+        if (!ModelState.IsValid)
+        {
+            return PartialView("_ValidationErrors", ModelState);
+        }
+
+        var llmResult = new LlmResult();
+        try
+        {
+            llmResult = await _llmService.EnrichSupplementAsync(supplement);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "LLM enrichment failed for supplement {Name}", supplement.Name);
+            llmResult.ExtractionError = "Could not reach enrichment service. You can add nutrients manually.";
+        }
+
+        supplement.NutritionJson = llmResult.NutritionJson;
+        supplement.SwapSuggestion = llmResult.SwapSuggestion;
+
+        var newId = await _suppRepo.AddAsync(supplement);
+
+        if (llmResult.Nutrients != null)
+        {
+            foreach (var n in llmResult.Nutrients.Where(n => !string.IsNullOrWhiteSpace(n.GenericName)))
+            {
+                try
+                {
+                    await _nutrientRepo.AddAsync(new SupplementNutrient
+                    {
+                        SupplementId = newId,
+                        GenericName = n.GenericName,
+                        SpecificForm = n.SpecificForm,
+                        Dosage = n.Dosage
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to add nutrient {GenericName} for supplement {SupplementId}", n.GenericName, newId);
+                }
+            }
+        }
+
+        var viewModel = new SupplementEditorViewModel
+        {
+            SupplementId = newId,
+            SupplementName = supplement.Name,
+            Nutrients = llmResult.Nutrients ?? new List<SupplementNutrientDto>(),
+            SwapSuggestion = llmResult.SwapSuggestion,
+            ExtractionError = llmResult.ExtractionError
+        };
+
+        return PartialView("_NutrientEditor", viewModel);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateNutrients(int supplementId, List<SupplementNutrientDto> nutrients)
+    {
+        var supplement = await _suppRepo.GetByIdAsync(supplementId);
+        if (supplement == null) return NotFound();
+
+        var existingNutrients = await _nutrientRepo.GetBySupplementIdAsync(supplementId);
+        foreach (var existing in existingNutrients)
+        {
+            await _nutrientRepo.DeleteAsync(existing.Id);
+        }
+
+        if (nutrients != null)
+        {
+            foreach (var n in nutrients.Where(n => !string.IsNullOrWhiteSpace(n.GenericName)))
+            {
+                try
+                {
+                    await _nutrientRepo.AddAsync(new SupplementNutrient
+                    {
+                        SupplementId = supplementId,
+                        GenericName = n.GenericName,
+                        SpecificForm = n.SpecificForm,
+                        Dosage = n.Dosage
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to add nutrient {GenericName} for supplement {SupplementId}", n.GenericName, supplementId);
+                }
+            }
+        }
+
+        var savedNutrients = await _nutrientRepo.GetBySupplementIdAsync(supplementId);
+        var viewModel = new SupplementEditorViewModel
+        {
+            SupplementId = supplementId,
+            SupplementName = supplement.Name,
+            Nutrients = savedNutrients.Select(sn => new SupplementNutrientDto
+            {
+                GenericName = sn.GenericName,
+                SpecificForm = sn.SpecificForm,
+                Dosage = sn.Dosage
+            }).ToList(),
+            SaveSuccess = true
+        };
+
+        return PartialView("_NutrientEditor", viewModel);
     }
 
     [HttpPost]

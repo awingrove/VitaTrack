@@ -137,60 +137,6 @@ public class SupplementController(
         return PartialView("_NutrientEditor", viewModel);
     }
 
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(Supplement supplement)
-    {
-        if (ModelState.IsValid)
-        {
-            var llmResult = await _llmService.EnrichSupplementAsync(supplement);
-            supplement.NutritionJson = llmResult.NutritionJson;
-            supplement.SwapSuggestion = llmResult.SwapSuggestion;
-
-            ViewData["ExtractedNutrients"] = llmResult.Nutrients;
-            ViewData["ExtractionError"] = llmResult.ExtractionError;
-
-            return View("Review", supplement);
-        }
-        return View(supplement);
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ConfirmCreate(Supplement supplement, List<SupplementNutrientDto> nutrients)
-    {
-        if (!ModelState.IsValid)
-        {
-            ViewData["ExtractedNutrients"] = nutrients;
-            return View("Review", supplement);
-        }
-
-        var newId = await _suppRepo.AddAsync(supplement);
-
-        if (nutrients != null)
-        {
-            foreach (var n in nutrients.Where(n => !string.IsNullOrWhiteSpace(n.GenericName)))
-            {
-                try
-                {
-                    await _nutrientRepo.AddAsync(new SupplementNutrient
-                    {
-                        SupplementId = newId,
-                        GenericName = n.GenericName,
-                        SpecificForm = n.SpecificForm,
-                        Dosage = n.Dosage
-                    });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to add nutrient {GenericName} for supplement {SupplementId}", n.GenericName, newId);
-                }
-            }
-        }
-
-        return RedirectToAction(nameof(Index));
-    }
-
     public async Task<IActionResult> Edit(int id)
     {
         var supplement = await _suppRepo.GetByIdAsync(id);
@@ -249,50 +195,6 @@ public class SupplementController(
         }
 
         return View(supplement);
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ConfirmEdit(int id, Supplement supplement, List<SupplementNutrientDto> nutrients)
-    {
-        if (id != supplement.Id) return NotFound();
-
-        if (!ModelState.IsValid)
-        {
-            ViewData["ExtractedNutrients"] = nutrients;
-            return View("Review", supplement);
-        }
-
-        await _suppRepo.UpdateAsync(supplement);
-
-        var existingNutrients = await _nutrientRepo.GetBySupplementIdAsync(id);
-        foreach (var existing in existingNutrients)
-        {
-            await _nutrientRepo.DeleteAsync(existing.Id);
-        }
-
-        if (nutrients != null)
-        {
-            foreach (var n in nutrients.Where(n => !string.IsNullOrWhiteSpace(n.GenericName)))
-            {
-                try
-                {
-                    await _nutrientRepo.AddAsync(new SupplementNutrient
-                    {
-                        SupplementId = id,
-                        GenericName = n.GenericName,
-                        SpecificForm = n.SpecificForm,
-                        Dosage = n.Dosage
-                    });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to add nutrient {GenericName} for supplement {SupplementId}", n.GenericName, id);
-                }
-            }
-        }
-
-        return RedirectToAction(nameof(Index));
     }
 
     [HttpPost]

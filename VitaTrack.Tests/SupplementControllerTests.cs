@@ -60,47 +60,6 @@ public class SupplementControllerTests
     }
 
     [TestMethod]
-    public async Task Create_Post_EnrichesAndRedirectsToReview()
-    {
-        var supplement = new Supplement { Name = "TestSupp", Brand = "Brand", DailyDose = "1 pill" };
-        var llmResult = new LlmResult
-        {
-            NutritionJson = "{}",
-            SwapSuggestion = "Try X",
-            Nutrients =
-            [
-                new() { GenericName = "Vitamin C", SpecificForm = "Ascorbic Acid", Dosage = "500mg" }
-            ]
-        };
-        _llmService.Setup(s => s.EnrichSupplementAsync(It.IsAny<Supplement>())).ReturnsAsync(llmResult);
-
-        var result = await _controller.Create(supplement);
-
-        var viewResult = result as ViewResult;
-        Assert.IsNotNull(viewResult);
-        Assert.AreEqual("Review", viewResult.ViewName);
-        var model = viewResult.Model as Supplement;
-        Assert.IsNotNull(model);
-        Assert.AreEqual("{}", model.NutritionJson);
-        Assert.AreEqual("Try X", model.SwapSuggestion);
-    }
-
-    [TestMethod]
-    public async Task ConfirmCreate_AddsSupplementAndNutrients()
-    {
-        var supplement = new Supplement { Name = "NewSupp", Brand = "Brand", DailyDose = "1 pill" };
-        _suppRepo.Setup(r => r.AddAsync(It.IsAny<Supplement>())).ReturnsAsync(42);
-        _nutrientRepo.Setup(r => r.AddAsync(It.IsAny<SupplementNutrient>())).ReturnsAsync(1);
-
-        var result = await _controller.ConfirmCreate(supplement, new List<SupplementNutrientDto>());
-
-        var redirectResult = result as RedirectToActionResult;
-        Assert.IsNotNull(redirectResult);
-        Assert.AreEqual("Index", redirectResult.ActionName);
-        _suppRepo.Verify(r => r.AddAsync(It.IsAny<Supplement>()), Times.Once);
-    }
-
-    [TestMethod]
     public async Task Edit_Get_ReturnsViewWhenFound()
     {
         var supplement = new Supplement { Id = 5, Name = "EditMe", Brand = "Brand", DailyDose = "2 pills" };
@@ -157,37 +116,6 @@ public class SupplementControllerTests
         var supplement = new Supplement { Id = 99, Name = "X", Brand = "X", DailyDose = "X" };
 
         var result = await _controller.Edit(1, supplement);
-
-        Assert.IsInstanceOfType(result, typeof(NotFoundResult));
-    }
-
-    [TestMethod]
-    public async Task ConfirmEdit_UpdatesSupplementAndReplacesNutrients()
-    {
-        var supplement = new Supplement { Id = 7, Name = "Updated", Brand = "Brand", DailyDose = "1 pill" };
-        var existingNutrients = new List<SupplementNutrient>
-        {
-            new() { Id = 20, SupplementId = 7, GenericName = "Old", SpecificForm = "Form", Dosage = "10mg" }
-        };
-        _nutrientRepo.Setup(r => r.GetBySupplementIdAsync(7)).ReturnsAsync(existingNutrients);
-        _nutrientRepo.Setup(r => r.DeleteAsync(20)).ReturnsAsync(1);
-        _nutrientRepo.Setup(r => r.AddAsync(It.IsAny<SupplementNutrient>())).ReturnsAsync(1);
-
-        var result = await _controller.ConfirmEdit(7, supplement, new List<SupplementNutrientDto>());
-
-        var redirectResult = result as RedirectToActionResult;
-        Assert.IsNotNull(redirectResult);
-        Assert.AreEqual("Index", redirectResult.ActionName);
-        _suppRepo.Verify(r => r.UpdateAsync(supplement), Times.Once);
-        _nutrientRepo.Verify(r => r.DeleteAsync(20), Times.Once);
-    }
-
-    [TestMethod]
-    public async Task ConfirmEdit_ReturnsNotFoundWhenIdMismatch()
-    {
-        var supplement = new Supplement { Id = 99, Name = "X", Brand = "X", DailyDose = "X" };
-
-        var result = await _controller.ConfirmEdit(1, supplement, new List<SupplementNutrientDto>());
 
         Assert.IsInstanceOfType(result, typeof(NotFoundResult));
     }

@@ -1,0 +1,127 @@
+@using VitaTrack.Web.Models
+@model SupplementEditorViewModel
+
+@if (Model.SaveSuccess)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        Nutrients saved successfully.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (!string.IsNullOrWhiteSpace(Model.ExtractionError))
+{
+    <div class="alert alert-info">
+        <strong>Note:</strong> @Model.ExtractionError
+        <br /><small>You can manually add nutrients below.</small>
+    </div>
+}
+
+<h4>Nutrients for @Model.SupplementName</h4>
+<p class="text-muted">Edit the nutrient breakdown below. You can add or remove rows.</p>
+
+<form id="nutrient-editor-form">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="supplementId" value="@Model.SupplementId" />
+    <table class="table" id="nutrients-table" data-nutrient-count="@(Model.Nutrients.Count)">
+        <thead>
+            <tr>
+                <th>Generic Name</th>
+                <th>Specific Form</th>
+                <th>Dosage</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Nutrients.Count > 0)
+            {
+                for (int i = 0; i < Model.Nutrients.Count; i++)
+                {
+                    <tr>
+                        <td><input name="nutrients[@i].GenericName" value="@Model.Nutrients[i].GenericName" class="form-control" /></td>
+                        <td><input name="nutrients[@i].SpecificForm" value="@Model.Nutrients[i].SpecificForm" class="form-control" /></td>
+                        <td><input name="nutrients[@i].Dosage" value="@Model.Nutrients[i].Dosage" class="form-control" /></td>
+                        <td><button type="button" class="btn btn-sm btn-danger remove-row">Remove</button></td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr class="empty-row">
+                    <td colspan="4" class="text-muted text-center">No nutrients. Click "Add Nutrient" to start.</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <button type="button" class="btn btn-sm btn-success" id="add-nutrient-row">Add Nutrient</button>
+
+    <div class="form-group mt-3">
+        <button type="button" class="btn btn-primary"
+                hx-post="/Supplement/UpdateNutrients"
+                hx-include="#nutrient-editor-form"
+                hx-target="#nutrient-editor-container"
+                hx-swap="innerHTML">
+            Save Changes
+        </button>
+        <a href="/Supplement/Index" class="btn btn-secondary">Done</a>
+    </div>
+</form>
+
+<script>
+    (function () {
+        const table = document.getElementById('nutrients-table');
+        if (!table) return;
+
+        let nutrientIndex = parseInt(table.dataset.nutrientCount || '0', 10);
+
+        document.getElementById('add-nutrient-row').addEventListener('click', function () {
+            const tbody = table.querySelector('tbody');
+            const emptyRow = tbody.querySelector('.empty-row');
+            if (emptyRow) emptyRow.remove();
+
+            const tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td><input name="nutrients[' + nutrientIndex + '].GenericName" class="form-control" /></td>' +
+                '<td><input name="nutrients[' + nutrientIndex + '].SpecificForm" class="form-control" /></td>' +
+                '<td><input name="nutrients[' + nutrientIndex + '].Dosage" class="form-control" /></td>' +
+                '<td><button type="button" class="btn btn-sm btn-danger remove-row">Remove</button></td>';
+            tbody.appendChild(tr);
+            nutrientIndex++;
+
+            tr.querySelector('.remove-row').addEventListener('click', function () {
+                tr.remove();
+                reindexNutrients();
+            });
+        });
+
+        document.querySelectorAll('.remove-row').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                btn.closest('tr').remove();
+                reindexNutrients();
+            });
+        });
+
+        function reindexNutrients() {
+            var rows = table.querySelectorAll('tbody tr:not(.empty-row)');
+            rows.forEach(function (row, index) {
+                row.querySelectorAll('input').forEach(function (input) {
+                    var name = input.getAttribute('name');
+                    if (name && name.startsWith('nutrients[')) {
+                        var field = name.split('.')[1];
+                        input.setAttribute('name', 'nutrients[' + index + '].' + field);
+                    }
+                });
+            });
+
+            table.dataset.nutrientCount = rows.length;
+
+            if (rows.length === 0) {
+                var tbody = table.querySelector('tbody');
+                var emptyRow = document.createElement('tr');
+                emptyRow.className = 'empty-row';
+                emptyRow.innerHTML = '<td colspan="4" class="text-muted text-center">No nutrients. Click "Add Nutrient" to start.</td>';
+                tbody.appendChild(emptyRow);
+            }
+        }
+    })();
+</script>

@@ -2,19 +2,20 @@
 
 This document defines the coding standards, architectural guidelines, testing philosophy, and tech stack for the VitaTrack (Vitamin and Supplement Tracking) ASP.NET application. 
 
-**AI Agents:** Read and adhere to these rules strictly before generating, refactoring, or modifying code in this repository.
+**AI Agents:** Read and adhere to these rules strictly before generating, refactoring, or modifying code in this repository. Per-project `AGENTS.md` files (under `VitaTrack.Web/`, `VitaTrack.Infrastructure/`, `VitaTrack.Tests/`) **supplement** this root; any contradiction is a defect to report, not a license to pick one.
 
 ## 🏗️ Architecture & Project Structure
-*   **Paradigm:** Pragmatic Pure ASP.NET MVC. Avoid over-engineering and strict Clean Architecture dogmas.
-*   **Structure:** Use traditional layered folders (`/Controllers`, `/Models`, `/Services`, `/Repositories`). Keep it simple and navigable. Keep business logic in Services/Repositories; Web layer only handles HTTP, views, and thin mapping.
+*   **Paradigm:** Pragmatic ASP.NET MVC. Avoid over-engineering and strict Clean Architecture dogmas.
+*   **Structure:** 3-project solution (`VitaTrack.Web → VitaTrack.Infrastructure`; `VitaTrack.Tests` refs both). Inter-project direction is enforced by csproj. Web layer handles HTTP, views, and thin mapping; business logic lives in `Infrastructure/Services` and `Infrastructure/Data` (Dapper repositories).
 *   **File Size & Organization:** 
     *   Proactively extract classes/interfaces into separate files if a file exceeds 20-30 lines. Keep methods small (< 30 lines) and focused.
     *   **Hard Limit:** No single file should exceed **300 lines**. Refactor immediately if a file approaches this limit.
 
 ## 🖥️ UI & Frontend Stack
-*   **Views:** Razor Pages (`.cshtml`) using the `_Layout.cshtml` template.
-*   **Interactivity:** Vanilla JavaScript for client-side behavior (checkbox selection, dynamic nutrient rows).
-*   **Styling:** Bootstrap 5. Avoid custom CSS unless absolutely necessary.
+*   **Views:** Razor views (`.cshtml`) rendered by MVC controllers (not Razor Pages — `Program.cs` uses `MapControllerRoute`). Shared layout: `Views/Shared/_Layout.cshtml`.
+*   **Interactivity:** HTMX is load-bearing (`hx-post`/`hx-target`/`hx-swap`/`hx-swap-oob` in Create/UpdateNutrients/Review flows). Vanilla JS (external `.js` under `wwwroot/js`) alongside HTMX for row add/remove and checkbox selection.
+*   **CSP:** `Program.cs` sets `script-src 'self' https://cdn.jsdelivr.net` in non-Dev envs (no `'unsafe-inline'`). Self-host JS under `wwwroot/lib` or `wwwroot/js`; htmx re-executes external `<script src>` tags on swap, so partials can include their own `<script src="/js/...">`.
+*   **Styling:** Bootstrap 5 (CDN via `cdn.jsdelivr.net`). Avoid custom CSS unless absolutely necessary.
 *   **Razor Gotcha — ValueTuples and `dynamic`:** Do **not** pass `ValueTuple` types through `ViewData` and cast to `dynamic` in Razor views. Razor's DLR cannot resolve named tuple fields (`Item1`, `Item2`) as properties. Always project tuples into **anonymous objects** before assigning to `ViewData` (e.g., `ViewData["Items"] = list.Select(x => new { x.Name, x.Value }).ToList()`).
 
 ## 💾 Data Access & External Services
@@ -53,6 +54,7 @@ This document defines the coding standards, architectural guidelines, testing ph
     *   Playwright tests must run against the *real* running application and hit *real* endpoints. Do not mock HTTP responses for these tests.
     *   **Playwright E2E Infrastructure:** Tests live in `e2e-tests/playwright/`. The `global-setup.js` deletes the test DB before each run. The web server starts via `webServer.command` in `playwright.config.js`. **Always use `--environment Test`** in the command (not `webServer.env`) to load `appsettings.Test.json` with the test connection string — Playwright's `env` property does not propagate to `dotnet run` child processes reliably.
     *   **Parallel Execution:** Tests run with `fullyParallel: true`. When tests mutate shared DB state (adding/deleting rows), use dynamic assertions (`.first()`, `.last()`, relative counts) instead of exact values, since workers share the same DB. Prefer creating test-specific data over relying on seed data state.
+    *   **Debugging failures:** Playwright drops `test-results/<spec>-chromium/error-context.md` (page snapshot + source) and a screenshot per failure. To save tokens, `grep "Error details" -A5 test-results/*/error-context.md` rather than reading the full ~200-line file; or read the screenshot attachment directly for visual page state.
     *   **Seeding:** Reports (Cost Report, Nutrient Report) depend on `PrescribedDoses` seed data. Always seed PrescribedDoses in `DbInit.EnsureCreated` alongside Supplements and FamilyMembers so report tests have data.
 
 ## 🔧 CLI & Git Workflow

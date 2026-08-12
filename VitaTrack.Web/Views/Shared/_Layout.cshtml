@@ -39,8 +39,8 @@
             integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
             crossorigin="anonymous"></script>
 
-    <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <!-- HTMX (self-hosted to satisfy CSP script-src 'self'; avoids CDN runtime dep) -->
+    <script src="/lib/htmx/htmx.min.js"></script>
 
     @RenderSection("Scripts", required: false)
 </body>

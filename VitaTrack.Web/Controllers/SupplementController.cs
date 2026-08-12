@@ -199,6 +199,63 @@ public class SupplementController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ConfirmEdit(int id, Supplement supplement, List<SupplementNutrientDto>? nutrients)
+    {
+        if (id != supplement.Id) return NotFound();
+        if (!ModelState.IsValid) return View("Review", supplement);
+
+        await _suppRepo.UpdateAsync(supplement);
+
+        var existingNutrients = await _nutrientRepo.GetBySupplementIdAsync(id);
+        foreach (var existing in existingNutrients)
+        {
+            await _nutrientRepo.DeleteAsync(existing.Id);
+        }
+
+        if (nutrients != null)
+        {
+            foreach (var n in nutrients.Where(n => !string.IsNullOrWhiteSpace(n.GenericName)))
+            {
+                await _nutrientRepo.AddAsync(new SupplementNutrient
+                {
+                    SupplementId = id,
+                    GenericName = n.GenericName,
+                    SpecificForm = n.SpecificForm,
+                    Dosage = n.Dosage
+                });
+            }
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ConfirmCreate(Supplement supplement, List<SupplementNutrientDto>? nutrients)
+    {
+        if (!ModelState.IsValid) return View("Review", supplement);
+
+        var newId = await _suppRepo.AddAsync(supplement);
+
+        if (nutrients != null)
+        {
+            foreach (var n in nutrients.Where(n => !string.IsNullOrWhiteSpace(n.GenericName)))
+            {
+                await _nutrientRepo.AddAsync(new SupplementNutrient
+                {
+                    SupplementId = newId,
+                    GenericName = n.GenericName,
+                    SpecificForm = n.SpecificForm,
+                    Dosage = n.Dosage
+                });
+            }
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id)
     {
         await _suppRepo.DeleteAsync(id);

@@ -45,6 +45,7 @@ This document defines the coding standards, architectural guidelines, testing ph
 
 ## 🧪 Testing Philosophy
 *   **Framework:** MSTest. Run `dotnet test` and keep the suite green. Tests must verify *actual functionality*.
+*   **Architecture Tests:** `VitaTrack.ArchitectureTests` project uses NetArchTest + reflection to enforce rules csproj can't express: Web controllers must not depend on `System.Data`/`Dapper`/`Microsoft.Data.Sqlite`; no assembly transitively references EF Core; `Infrastructure.Data` concrete classes must end in `Repository` (known exception: `DbInit`); no `.cs` file exceeds the 300-line hard limit; controllers must not `catch (Exception)` (currently `[Ignore]` until §2.5 fix). Uses `Types.InAssembly(typeof(Marker).Assembly)` — **not** `InCurrentAssembly()` (would only see the test assembly).
 *   **Unit Tests:**
     *   Test business logic in Services and Repositories.
     *   `Moq` is permitted only to mock out dependencies (e.g., Repositories when testing Services, or `HttpClient` for LLM service tests) to isolate the unit under test.

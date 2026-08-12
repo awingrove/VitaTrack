@@ -116,8 +116,8 @@ public class LlmService(
             }
 
             // Try to find main content areas
-            var mainContent = document.QuerySelector("main") 
-                             ?? document.QuerySelector("[role='main']") 
+            var mainContent = document.QuerySelector("main")
+                             ?? document.QuerySelector("[role='main']")
                              ?? document.QuerySelector(".product-detail")
                              ?? document.QuerySelector(".product-info")
                              ?? document.QuerySelector("#product-details")
@@ -125,7 +125,7 @@ public class LlmService(
 
             // Get text content, limiting length to avoid token limits
             var text = mainContent?.TextContent?.Trim() ?? string.Empty;
-            
+
             // Truncate if too long (keep first ~8000 chars for token limits)
             if (text.Length > 8000)
             {
@@ -220,7 +220,7 @@ Respond with ONLY this JSON structure (no markdown, no code fences):
             cleanedContent = cleanedContent.Trim();
 
             var parsed = JsonSerializer.Deserialize<JsonElement>(cleanedContent);
-            
+
             var nutrients = new List<SupplementNutrientDto>();
             if (parsed.TryGetProperty("nutrients", out var nutrientsElement))
             {
@@ -266,7 +266,7 @@ Respond with ONLY this JSON structure (no markdown, no code fences):
         }
     }
 
-private string BuildExtractionPrompt(string supplementName, string brand)
+    private string BuildExtractionPrompt(string supplementName, string brand)
     {
         return $@"Extract all nutrients from this supplement product page for '{supplementName}' by {brand}.
 

@@ -37,7 +37,8 @@ This document defines the coding standards, architectural guidelines, testing ph
 *   **Modern C#:** Utilize modern C# 10+ features (e.g., file-scoped namespaces, implicit usings, pattern matching).
 *   **Formatting & Naming:** Follow `dotnet format` defaults. Use `PascalCase` for public members and `_camelCase` for private fields.
 *   **Async/Await:** All asynchronous I/O must be `await`ed. Never use `.Result` or `.Wait()`.
-*   **Nullability:** Nullable reference types are enabled (`<Nullable>enable</Nullable>`). Respect nullability strictly; avoid using the null-forgiving operator (`!`) unless necessary.
+*   **Nullability:** Nullable reference types are enabled (`<Nullable>enable</Nullable>`). Respect nullability strictly; avoid using the null-forgiving operator (`!`) unless necessary. There is **no Roslyn analyzer** that enforces this — it is a convention only, review-determined (ArchitectureReview §2.4). Reviewers should reject gratuitous `!` in PRs; prefer explicit `null` checks, `??`, or refactoring the contract. Document each `!` with a brief inline comment explaining why the compiler's null warning is wrong.
+*   **Formatting & Conventions:** `.editorconfig` at the repo root encodes naming (PascalCase public, `_camelCase` private fields, camelCase parameters/constants), brace placement, and analyzer overrides per ArchitectureReview §2.4. Run `./format-check.sh` (which executes `dotnet format VitaTrack.sln --verify-no-changes`) before committing; CI will gate on it. `dotnet format VitaTrack.sln` auto-applies fixes.
 *   **Error Handling (Result Pattern):** 
     *   Use a `Result<T>` or `Result` object pattern for logic flow and validation. 
     *   **Do not** use exceptions for control flow. Reserve exceptions strictly for exceptional, unexpected system failures.

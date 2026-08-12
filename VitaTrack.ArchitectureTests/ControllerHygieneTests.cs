@@ -9,7 +9,6 @@ namespace VitaTrack.ArchitectureTests;
 public class ControllerHygieneTests
 {
     [TestMethod]
-    [Ignore("Re-enabled once §2.5 lands: SupplementController still swallows Exception in Enrich/UpdateNutrients/Edit; remove before un-ignoring.")]
     public void Controllers_DoNotCatchException()
     {
         var solutionRoot = FindSolutionRoot();

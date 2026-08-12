@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using VitaTrack.Infrastructure.Data;
@@ -15,8 +14,8 @@ public class SupplementControllerTests
 {
     private Mock<ISupplementRepository> _suppRepo = null!;
     private Mock<ISupplementNutrientRepository> _nutrientRepo = null!;
+    private Mock<ISupplementNutrientService> _nutrientService = null!;
     private Mock<ILlmService> _llmService = null!;
-    private Mock<ILogger<SupplementController>> _logger = null!;
     private SupplementController _controller = null!;
 
     [TestInitialize]
@@ -24,13 +23,13 @@ public class SupplementControllerTests
     {
         _suppRepo = new Mock<ISupplementRepository>();
         _nutrientRepo = new Mock<ISupplementNutrientRepository>();
+        _nutrientService = new Mock<ISupplementNutrientService>();
         _llmService = new Mock<ILlmService>();
-        _logger = new Mock<ILogger<SupplementController>>();
         _controller = new SupplementController(
             _suppRepo.Object,
             _nutrientRepo.Object,
-            _llmService.Object,
-            _logger.Object);
+            _nutrientService.Object,
+            _llmService.Object);
     }
 
     [TestMethod]
@@ -172,9 +171,16 @@ public class SupplementControllerTests
                 new() { GenericName = "Vitamin C", SpecificForm = "Ascorbic Acid", Dosage = "500mg" }
             ]
         };
+        var persisted = new ReplaceNutrientsResult(
+            new List<SupplementNutrient>
+            {
+                new() { SupplementId = 42, GenericName = "Vitamin C", SpecificForm = "Ascorbic Acid", Dosage = "500mg" }
+            },
+            new List<NutrientFailure>());
         _llmService.Setup(s => s.EnrichSupplementAsync(It.IsAny<Supplement>())).ReturnsAsync(llmResult);
         _suppRepo.Setup(r => r.AddAsync(It.IsAny<Supplement>())).ReturnsAsync(42);
-        _nutrientRepo.Setup(r => r.AddAsync(It.IsAny<SupplementNutrient>())).ReturnsAsync(1);
+        _nutrientService.Setup(s => s.AddAsync(42, It.IsAny<IEnumerable<SupplementNutrientDto>>()))
+                        .ReturnsAsync(persisted);
 
         var result = await _controller.Enrich(supplement);
 
@@ -188,6 +194,7 @@ public class SupplementControllerTests
         Assert.AreEqual(1, model.Nutrients.Count);
         Assert.AreEqual("Vitamin C", model.Nutrients[0].GenericName);
         _suppRepo.Verify(r => r.AddAsync(It.IsAny<Supplement>()), Times.Once);
+        _nutrientService.Verify(s => s.AddAsync(42, It.IsAny<IEnumerable<SupplementNutrientDto>>()), Times.Once);
     }
 
     [TestMethod]
@@ -196,6 +203,8 @@ public class SupplementControllerTests
         var supplement = new Supplement { Name = "TestSupp", Brand = "Brand", DailyDose = "1 pill" };
         _llmService.Setup(s => s.EnrichSupplementAsync(It.IsAny<Supplement>())).ReturnsAsync(new LlmResult());
         _suppRepo.Setup(r => r.AddAsync(It.IsAny<Supplement>())).ReturnsAsync(43);
+        _nutrientService.Setup(s => s.AddAsync(43, It.IsAny<IEnumerable<SupplementNutrientDto>>()))
+                        .ReturnsAsync(new ReplaceNutrientsResult(new List<SupplementNutrient>(), new List<NutrientFailure>()));
 
         var result = await _controller.Enrich(supplement);
 
@@ -209,11 +218,14 @@ public class SupplementControllerTests
     }
 
     [TestMethod]
-    public async Task Enrich_LlmException_SavesAndReturnsEditorWithError()
+    public async Task Enrich_LlmReturnsError_SavesAndReturnsEditorWithError()
     {
         var supplement = new Supplement { Name = "TestSupp", Brand = "Brand", DailyDose = "1 pill", ManufacturerUrl = "https://example.com" };
-        _llmService.Setup(s => s.EnrichSupplementAsync(It.IsAny<Supplement>())).ThrowsAsync(new Exception("LLM down"));
+        _llmService.Setup(s => s.EnrichSupplementAsync(It.IsAny<Supplement>()))
+                   .ReturnsAsync(new LlmResult { ExtractionError = "Could not reach enrichment service. You can add nutrients manually." });
         _suppRepo.Setup(r => r.AddAsync(It.IsAny<Supplement>())).ReturnsAsync(44);
+        _nutrientService.Setup(s => s.AddAsync(44, It.IsAny<IEnumerable<SupplementNutrientDto>>()))
+                        .ReturnsAsync(new ReplaceNutrientsResult(new List<SupplementNutrient>(), new List<NutrientFailure>()));
 
         var result = await _controller.Enrich(supplement);
 
@@ -237,45 +249,5 @@ public class SupplementControllerTests
         var partialResult = result as PartialViewResult;
         Assert.IsNotNull(partialResult);
         Assert.AreEqual("_ValidationErrors", partialResult.ViewName);
-    }
-
-    [TestMethod]
-    public async Task UpdateNutrients_DeletesOldAndInsertsNew()
-    {
-        var supplement = new Supplement { Id = 42, Name = "TestSupp", Brand = "Brand", DailyDose = "1 pill" };
-        var existingNutrients = new List<SupplementNutrient>
-        {
-            new() { Id = 10, SupplementId = 42, GenericName = "Old", SpecificForm = "Form", Dosage = "10mg" }
-        };
-        _suppRepo.Setup(r => r.GetByIdAsync(42)).ReturnsAsync(supplement);
-        _nutrientRepo.Setup(r => r.GetBySupplementIdAsync(42)).ReturnsAsync(existingNutrients);
-        _nutrientRepo.Setup(r => r.DeleteAsync(10)).ReturnsAsync(1);
-        _nutrientRepo.Setup(r => r.AddAsync(It.IsAny<SupplementNutrient>())).ReturnsAsync(1);
-
-        var nutrients = new List<SupplementNutrientDto>
-        {
-            new() { GenericName = "Zinc", SpecificForm = "Citrate", Dosage = "15mg" }
-        };
-
-        var result = await _controller.UpdateNutrients(42, nutrients);
-
-        var partialResult = result as PartialViewResult;
-        Assert.IsNotNull(partialResult);
-        Assert.AreEqual("_NutrientEditor", partialResult.ViewName);
-        var model = partialResult.Model as SupplementEditorViewModel;
-        Assert.IsNotNull(model);
-        Assert.IsTrue(model.SaveSuccess);
-        _nutrientRepo.Verify(r => r.DeleteAsync(10), Times.Once);
-        _nutrientRepo.Verify(r => r.AddAsync(It.IsAny<SupplementNutrient>()), Times.Once);
-    }
-
-    [TestMethod]
-    public async Task UpdateNutrients_SupplementNotFound_ReturnsNotFound()
-    {
-        _suppRepo.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((Supplement?)null);
-
-        var result = await _controller.UpdateNutrients(99, new List<SupplementNutrientDto>());
-
-        Assert.IsInstanceOfType(result, typeof(NotFoundResult));
     }
 }

@@ -46,6 +46,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISupplementNutrientRepository, SupplementNutrientRepository>();
         services.AddScoped<IPrescribedDoseRepository, PrescribedDoseRepository>();
 
+        services.AddScoped<ISupplementNutrientService, SupplementNutrientService>();
+        services.AddScoped<IReportingService, ReportingService>();
+
         services.AddHttpClient("llm", (sp, client) =>
         {
             var options = sp.GetRequiredService<IOptions<VitaTrackOptions>>().Value;

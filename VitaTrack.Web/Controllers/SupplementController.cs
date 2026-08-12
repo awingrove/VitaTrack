@@ -9,13 +9,13 @@ namespace VitaTrack.Web.Controllers;
 public class SupplementController(
     ISupplementRepository suppRepo,
     ISupplementNutrientRepository nutrientRepo,
-    ILlmService llmService,
-    ILogger<SupplementController> logger) : Controller
+    ISupplementNutrientService nutrientService,
+    ILlmService llmService) : Controller
 {
     private readonly ISupplementRepository _suppRepo = suppRepo;
     private readonly ISupplementNutrientRepository _nutrientRepo = nutrientRepo;
+    private readonly ISupplementNutrientService _nutrientService = nutrientService;
     private readonly ILlmService _llmService = llmService;
-    private readonly ILogger<SupplementController> _logger = logger;
 
     public async Task<IActionResult> Index()
     {
@@ -37,50 +37,20 @@ public class SupplementController(
             return PartialView("_ValidationErrors", ModelState);
         }
 
-        var llmResult = new LlmResult();
-        try
-        {
-            llmResult = await _llmService.EnrichSupplementAsync(supplement);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "LLM enrichment failed for supplement {Name}", supplement.Name);
-            llmResult.ExtractionError = "Could not reach enrichment service. You can add nutrients manually.";
-        }
-
+        var llmResult = await _llmService.EnrichSupplementAsync(supplement);
         supplement.NutritionJson = llmResult.NutritionJson;
         supplement.SwapSuggestion = llmResult.SwapSuggestion;
 
         var newId = await _suppRepo.AddAsync(supplement);
-
-        if (llmResult.Nutrients != null)
-        {
-            foreach (var n in llmResult.Nutrients.Where(n => !string.IsNullOrWhiteSpace(n.GenericName)))
-            {
-                try
-                {
-                    await _nutrientRepo.AddAsync(new SupplementNutrient
-                    {
-                        SupplementId = newId,
-                        GenericName = n.GenericName,
-                        SpecificForm = n.SpecificForm,
-                        Dosage = n.Dosage
-                    });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to add nutrient {GenericName} for supplement {SupplementId}", n.GenericName, newId);
-                }
-            }
-        }
+        var persistResult = await _nutrientService.AddAsync(newId, SafeNutrients(llmResult.Nutrients));
 
         var viewModel = new SupplementEditorViewModel
         {
             SupplementId = newId,
             SupplementName = supplement.Name,
-            Nutrients = llmResult.Nutrients ?? new List<SupplementNutrientDto>(),
+            Nutrients = ToDtos(persistResult.Saved),
             SwapSuggestion = llmResult.SwapSuggestion,
-            ExtractionError = llmResult.ExtractionError
+            ExtractionError = BuildExtractionError(llmResult.ExtractionError, persistResult.Failures)
         };
 
         return PartialView("_NutrientEditor", viewModel);
@@ -93,45 +63,18 @@ public class SupplementController(
         var supplement = await _suppRepo.GetByIdAsync(supplementId);
         if (supplement == null) return NotFound();
 
-        var existingNutrients = await _nutrientRepo.GetBySupplementIdAsync(supplementId);
-        foreach (var existing in existingNutrients)
-        {
-            await _nutrientRepo.DeleteAsync(existing.Id);
-        }
+        var replaceResult = await _nutrientService.ReplaceAsync(supplementId, SafeNutrients(nutrients));
 
-        if (nutrients != null)
-        {
-            foreach (var n in nutrients.Where(n => !string.IsNullOrWhiteSpace(n.GenericName)))
-            {
-                try
-                {
-                    await _nutrientRepo.AddAsync(new SupplementNutrient
-                    {
-                        SupplementId = supplementId,
-                        GenericName = n.GenericName,
-                        SpecificForm = n.SpecificForm,
-                        Dosage = n.Dosage
-                    });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to add nutrient {GenericName} for supplement {SupplementId}", n.GenericName, supplementId);
-                }
-            }
-        }
-
-        var savedNutrients = await _nutrientRepo.GetBySupplementIdAsync(supplementId);
         var viewModel = new SupplementEditorViewModel
         {
             SupplementId = supplementId,
             SupplementName = supplement.Name,
-            Nutrients = savedNutrients.Select(sn => new SupplementNutrientDto
-            {
-                GenericName = sn.GenericName,
-                SpecificForm = sn.SpecificForm,
-                Dosage = sn.Dosage
-            }).ToList(),
-            SaveSuccess = true
+            Nutrients = ToDtos(replaceResult.Saved),
+            SaveSuccess = true,
+            ExtractionError = replaceResult.Failures.Count > 0
+                ? $"{replaceResult.Failures.Count} nutrient(s) failed to save: " +
+                  string.Join(", ", replaceResult.Failures.Select(f => f.GenericName))
+                : null
         };
 
         return PartialView("_NutrientEditor", viewModel);
@@ -149,52 +92,35 @@ public class SupplementController(
     public async Task<IActionResult> Edit(int id, Supplement supplement)
     {
         if (id != supplement.Id) return NotFound();
+        if (!ModelState.IsValid) return View(supplement);
 
-        if (ModelState.IsValid)
+        var existingNutrients = await _nutrientRepo.GetBySupplementIdAsync(id);
+        var llmResult = await _llmService.EnrichSupplementAsync(supplement);
+        supplement.NutritionJson = llmResult.NutritionJson;
+        supplement.SwapSuggestion = llmResult.SwapSuggestion;
+
+        var mergedNutrients = ToDtos(existingNutrients);
+        if (llmResult.Nutrients != null)
         {
-            var existingNutrients = await _nutrientRepo.GetBySupplementIdAsync(id);
-
-            var llmResult = await _llmService.EnrichSupplementAsync(supplement);
-            supplement.NutritionJson = llmResult.NutritionJson;
-            supplement.SwapSuggestion = llmResult.SwapSuggestion;
-
-            var mergedNutrients = new List<SupplementNutrientDto>();
-
-            foreach (var existing in existingNutrients)
+            foreach (var llmNutrient in llmResult.Nutrients)
             {
-                mergedNutrients.Add(new SupplementNutrientDto
+                var existing = mergedNutrients.FirstOrDefault(n =>
+                    n.GenericName.Equals(llmNutrient.GenericName, StringComparison.OrdinalIgnoreCase));
+                if (existing != null)
                 {
-                    GenericName = existing.GenericName,
-                    SpecificForm = existing.SpecificForm,
-                    Dosage = existing.Dosage
-                });
-            }
-
-            if (llmResult.Nutrients != null)
-            {
-                foreach (var llmNutrient in llmResult.Nutrients)
+                    existing.SpecificForm = llmNutrient.SpecificForm;
+                    existing.Dosage = llmNutrient.Dosage;
+                }
+                else
                 {
-                    var existing = mergedNutrients.FirstOrDefault(n =>
-                        n.GenericName.Equals(llmNutrient.GenericName, StringComparison.OrdinalIgnoreCase));
-                    if (existing != null)
-                    {
-                        existing.SpecificForm = llmNutrient.SpecificForm;
-                        existing.Dosage = llmNutrient.Dosage;
-                    }
-                    else
-                    {
-                        mergedNutrients.Add(llmNutrient);
-                    }
+                    mergedNutrients.Add(llmNutrient);
                 }
             }
-
-            ViewData["ExtractedNutrients"] = mergedNutrients;
-            ViewData["ExtractionError"] = llmResult.ExtractionError;
-
-            return View("Review", supplement);
         }
 
-        return View(supplement);
+        ViewData["ExtractedNutrients"] = mergedNutrients;
+        ViewData["ExtractionError"] = BuildExtractionError(llmResult.ExtractionError, []);
+        return View("Review", supplement);
     }
 
     [HttpPost]
@@ -205,26 +131,7 @@ public class SupplementController(
         if (!ModelState.IsValid) return View("Review", supplement);
 
         await _suppRepo.UpdateAsync(supplement);
-
-        var existingNutrients = await _nutrientRepo.GetBySupplementIdAsync(id);
-        foreach (var existing in existingNutrients)
-        {
-            await _nutrientRepo.DeleteAsync(existing.Id);
-        }
-
-        if (nutrients != null)
-        {
-            foreach (var n in nutrients.Where(n => !string.IsNullOrWhiteSpace(n.GenericName)))
-            {
-                await _nutrientRepo.AddAsync(new SupplementNutrient
-                {
-                    SupplementId = id,
-                    GenericName = n.GenericName,
-                    SpecificForm = n.SpecificForm,
-                    Dosage = n.Dosage
-                });
-            }
-        }
+        await _nutrientService.ReplaceAsync(id, SafeNutrients(nutrients));
 
         return RedirectToAction(nameof(Index));
     }
@@ -236,20 +143,7 @@ public class SupplementController(
         if (!ModelState.IsValid) return View("Review", supplement);
 
         var newId = await _suppRepo.AddAsync(supplement);
-
-        if (nutrients != null)
-        {
-            foreach (var n in nutrients.Where(n => !string.IsNullOrWhiteSpace(n.GenericName)))
-            {
-                await _nutrientRepo.AddAsync(new SupplementNutrient
-                {
-                    SupplementId = newId,
-                    GenericName = n.GenericName,
-                    SpecificForm = n.SpecificForm,
-                    Dosage = n.Dosage
-                });
-            }
-        }
+        await _nutrientService.AddAsync(newId, SafeNutrients(nutrients));
 
         return RedirectToAction(nameof(Index));
     }
@@ -271,5 +165,26 @@ public class SupplementController(
             await _suppRepo.DeleteAsync(ids);
         }
         return RedirectToAction(nameof(Index));
+    }
+
+    private static IEnumerable<SupplementNutrientDto> SafeNutrients(IEnumerable<SupplementNutrientDto>? nutrients)
+        => (nutrients ?? []).Where(n => !string.IsNullOrWhiteSpace(n.GenericName));
+
+    private static List<SupplementNutrientDto> ToDtos(IEnumerable<SupplementNutrient> nutrients)
+        => nutrients.Select(sn => new SupplementNutrientDto
+        {
+            GenericName = sn.GenericName,
+            SpecificForm = sn.SpecificForm,
+            Dosage = sn.Dosage
+        }).ToList();
+
+    private static string? BuildExtractionError(string? llmError, IReadOnlyList<NutrientFailure> failures)
+    {
+        if (string.IsNullOrWhiteSpace(llmError) && failures.Count == 0) return null;
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(llmError)) parts.Add(llmError);
+        if (failures.Count > 0)
+            parts.Add($"{failures.Count} nutrient(s) failed to save: " + string.Join(", ", failures.Select(f => f.GenericName)));
+        return string.Join(" | ", parts);
     }
 }

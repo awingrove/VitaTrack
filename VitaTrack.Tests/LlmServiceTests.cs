@@ -72,13 +72,22 @@ public class LlmServiceTests
         });
     }
 
+    private static LlmService CreateService(
+        IHttpClientFactory factory,
+        IOptions<VitaTrackOptions> options)
+    {
+        var scraper = new HtmlScraperService(factory, NullLogger<HtmlScraperService>.Instance);
+        var llmClient = new LlmClient(factory, options, NullLogger<LlmClient>.Instance);
+        var parser = new SupplementLabelParser(llmClient, NullLogger<SupplementLabelParser>.Instance);
+        return new LlmService(options, scraper, parser, NullLogger<LlmService>.Instance);
+    }
+
     [TestMethod]
     public async Task EnrichSupplementAsync_ReturnsEmpty_WhenNoUrl()
     {
         var factory = CreateHttpClientFactory();
         var options = CreateOptions();
-        var logger = new NullLogger<LlmService>();
-        var service = new LlmService(factory, options, logger);
+        var service = CreateService(factory, options);
 
         var supplement = new Supplement
         {
@@ -100,8 +109,7 @@ public class LlmServiceTests
     {
         var factory = CreateHttpClientFactory();
         var options = CreateOptions(apiKey: null);
-        var logger = new NullLogger<LlmService>();
-        var service = new LlmService(factory, options, logger);
+        var service = CreateService(factory, options);
 
         var supplement = new Supplement
         {
@@ -125,8 +133,7 @@ public class LlmServiceTests
         var scraperHandlerMock = CreateHandlerMock(HttpStatusCode.NotFound, "");
         var factory = CreateHttpClientFactory(scraperHandlerMock.Object);
         var options = CreateOptions();
-        var logger = new NullLogger<LlmService>();
-        var service = new LlmService(factory, options, logger);
+        var service = CreateService(factory, options);
 
         var supplement = new Supplement
         {
@@ -168,8 +175,7 @@ public class LlmServiceTests
         var apiMock = CreateHandlerMock(HttpStatusCode.OK, apiResponse);
         var factory = CreateHttpClientFactory(scraperMock.Object, apiMock.Object);
         var options = CreateOptions();
-        var logger = new NullLogger<LlmService>();
-        var service = new LlmService(factory, options, logger);
+        var service = CreateService(factory, options);
 
         var supplement = new Supplement
         {
@@ -227,8 +233,7 @@ public class LlmServiceTests
         var apiMock = CreateHandlerMock(HttpStatusCode.OK, apiResponse);
         var factory = CreateHttpClientFactory(scraperMock.Object, apiMock.Object);
         var options = CreateOptions();
-        var logger = new NullLogger<LlmService>();
-        var service = new LlmService(factory, options, logger);
+        var service = CreateService(factory, options);
 
         var supplement = new Supplement
         {
@@ -256,8 +261,7 @@ public class LlmServiceTests
         var scraperMock = CreateHandlerMock(HttpStatusCode.OK, htmlContent);
         var factory = CreateHttpClientFactory(scraperMock.Object);
         var options = CreateOptions();
-        var logger = new NullLogger<LlmService>();
-        var service = new LlmService(factory, options, logger);
+        var service = CreateService(factory, options);
 
         var supplement = new Supplement
         {

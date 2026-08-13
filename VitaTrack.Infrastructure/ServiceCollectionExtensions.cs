@@ -48,6 +48,9 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<ISupplementNutrientService, SupplementNutrientService>();
         services.AddScoped<IReportingService, ReportingService>();
+        services.AddScoped<IHtmlScraperService, HtmlScraperService>();
+        services.AddScoped<ILlmClient, LlmClient>();
+        services.AddScoped<ISupplementLabelParser, SupplementLabelParser>();
 
         services.AddHttpClient("llm", (sp, client) =>
         {

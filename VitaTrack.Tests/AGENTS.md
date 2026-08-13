@@ -52,7 +52,8 @@ This is critical — missing cascade delete tests leads to foreign key constrain
 - Fail fast: treat any test failure as a blocker for committing.
 
 ## Coverage Goal
-- Aim for **≥80%** line coverage on repository and service layers.
+- Aim for **≥80%** line coverage on repository and service layers (aspirational target, root AGENTS.md).
+- CI currently gates at **≥50%** line on `VitaTrack.Infrastructure` via `./coverage-check.sh` (current actual ~53%; see ArchitectureReview §2.11 and commit history). Raise the threshold via `COVERAGE_THRESHOLD=NN` as targeted test PRs ratchet coverage toward 80%.
 - UI layer tested via Playwright E2E tests (in `e2e-tests/playwright/`).
 
 ## Playwright E2E Tests

@@ -43,6 +43,9 @@ jobs:
       - name: Unit + Architecture tests
         run: dotnet test VitaTrack.sln --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
 
+      - name: Coverage gate (Infrastructure ≥ 50% line; ratchet toward 80%)
+        run: COVERAGE_THRESHOLD=50 ./coverage-check.sh
+
       - name: Install Playwright browsers
         run: |
           npm ci
@@ -69,4 +72,5 @@ jobs:
             e2e-tests/playwright/test-results/
             VitaTrack.Tests/TestResults/
             VitaTrack.ArchitectureTests/TestResults/
+            TestResults/coverage/
           retention-days: 7

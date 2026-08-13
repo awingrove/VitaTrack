@@ -46,12 +46,16 @@ public class SupplementControllerUpdateNutrientsTests
         _nutrientService.Setup(s => s.ReplaceAsync(42, It.IsAny<IEnumerable<SupplementNutrientDto>>()))
                         .ReturnsAsync(replaced);
 
-        var nutrients = new List<SupplementNutrientDto>
+        var request = new ReplaceNutrientsRequest
         {
-            new() { GenericName = "Zinc", SpecificForm = "Citrate", Dosage = "15mg" }
+            SupplementId = 42,
+            Nutrients = new List<SupplementNutrientDto>
+            {
+                new() { GenericName = "Zinc", SpecificForm = "Citrate", Dosage = "15mg" }
+            }
         };
 
-        var result = await _controller.UpdateNutrients(42, nutrients);
+        var result = await _controller.UpdateNutrients(request);
 
         var partialResult = result as PartialViewResult;
         Assert.IsNotNull(partialResult);
@@ -75,7 +79,13 @@ public class SupplementControllerUpdateNutrientsTests
         _nutrientService.Setup(s => s.ReplaceAsync(50, It.IsAny<IEnumerable<SupplementNutrientDto>>()))
                         .ReturnsAsync(replaced);
 
-        var result = await _controller.UpdateNutrients(50, new List<SupplementNutrientDto> { new() { GenericName = "Iron" } });
+        var request = new ReplaceNutrientsRequest
+        {
+            SupplementId = 50,
+            Nutrients = new List<SupplementNutrientDto> { new() { GenericName = "Iron" } }
+        };
+
+        var result = await _controller.UpdateNutrients(request);
 
         var partialResult = result as PartialViewResult;
         Assert.IsNotNull(partialResult);
@@ -89,7 +99,7 @@ public class SupplementControllerUpdateNutrientsTests
     {
         _suppRepo.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((Supplement?)null);
 
-        var result = await _controller.UpdateNutrients(99, new List<SupplementNutrientDto>());
+        var result = await _controller.UpdateNutrients(new ReplaceNutrientsRequest { SupplementId = 99 });
 
         Assert.IsInstanceOfType(result, typeof(NotFoundResult));
     }

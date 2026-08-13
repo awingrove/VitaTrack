@@ -30,13 +30,14 @@ public class SupplementController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Enrich(Supplement supplement)
+    public async Task<IActionResult> Enrich(CreateSupplementRequest request)
     {
         if (!ModelState.IsValid)
         {
             return PartialView("_ValidationErrors", ModelState);
         }
 
+        var supplement = request.ToSupplement();
         var llmResult = await _llmService.EnrichSupplementAsync(supplement);
         supplement.NutritionJson = llmResult.NutritionJson;
         supplement.SwapSuggestion = llmResult.SwapSuggestion;
@@ -58,16 +59,16 @@ public class SupplementController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateNutrients(int supplementId, List<SupplementNutrientDto> nutrients)
+    public async Task<IActionResult> UpdateNutrients(ReplaceNutrientsRequest request)
     {
-        var supplement = await _suppRepo.GetByIdAsync(supplementId);
+        var supplement = await _suppRepo.GetByIdAsync(request.SupplementId);
         if (supplement == null) return NotFound();
 
-        var replaceResult = await _nutrientService.ReplaceAsync(supplementId, SafeNutrients(nutrients));
+        var replaceResult = await _nutrientService.ReplaceAsync(request.SupplementId, SafeNutrients(request.Nutrients));
 
         var viewModel = new SupplementEditorViewModel
         {
-            SupplementId = supplementId,
+            SupplementId = request.SupplementId,
             SupplementName = supplement.Name,
             Nutrients = ToDtos(replaceResult.Saved),
             SaveSuccess = true,
@@ -89,11 +90,17 @@ public class SupplementController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, Supplement supplement)
+    public async Task<IActionResult> Edit(int id, EditSupplementRequest request)
     {
-        if (id != supplement.Id) return NotFound();
-        if (!ModelState.IsValid) return View(supplement);
+        if (id != request.Id) return NotFound();
+        if (!ModelState.IsValid)
+        {
+            var original = await _suppRepo.GetByIdAsync(id);
+            if (original == null) return NotFound();
+            return View(original);
+        }
 
+        var supplement = request.ToSupplement();
         var existingNutrients = await _nutrientRepo.GetBySupplementIdAsync(id);
         var llmResult = await _llmService.EnrichSupplementAsync(supplement);
         supplement.NutritionJson = llmResult.NutritionJson;
@@ -125,25 +132,27 @@ public class SupplementController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ConfirmEdit(int id, Supplement supplement, List<SupplementNutrientDto>? nutrients)
+    public async Task<IActionResult> ConfirmEdit(int id, ConfirmSupplementRequest request)
     {
-        if (id != supplement.Id) return NotFound();
-        if (!ModelState.IsValid) return View("Review", supplement);
+        if (id != request.Id) return NotFound();
+        if (!ModelState.IsValid) return View("Review", request.ToSupplement());
 
+        var supplement = request.ToSupplement();
         await _suppRepo.UpdateAsync(supplement);
-        await _nutrientService.ReplaceAsync(id, SafeNutrients(nutrients));
+        await _nutrientService.ReplaceAsync(id, SafeNutrients(request.Nutrients));
 
         return RedirectToAction(nameof(Index));
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ConfirmCreate(Supplement supplement, List<SupplementNutrientDto>? nutrients)
+    public async Task<IActionResult> ConfirmCreate(ConfirmSupplementRequest request)
     {
-        if (!ModelState.IsValid) return View("Review", supplement);
+        if (!ModelState.IsValid) return View("Review", request.ToSupplement());
 
+        var supplement = request.ToSupplement();
         var newId = await _suppRepo.AddAsync(supplement);
-        await _nutrientService.AddAsync(newId, SafeNutrients(nutrients));
+        await _nutrientService.AddAsync(newId, SafeNutrients(request.Nutrients));
 
         return RedirectToAction(nameof(Index));
     }

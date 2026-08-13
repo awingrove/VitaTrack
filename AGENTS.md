@@ -61,10 +61,12 @@ This document defines the coding standards, architectural guidelines, testing ph
 
 ## 🔧 CLI & Git Workflow
 *   **Git Commits:** Commit often with descriptive messages prefixed by `feat:`, `fix:`, `refactor:`, `test:`, or `docs:`. Do not commit `bin/`, `obj/`, `*.user`, or populated `appsettings.*.json` (keep only templates).
+*   **CI:** `.github/workflows/ci.yml` runs on push (main + `feature/**`) and PR-to-main. Sets `CI: 'true'` (so `playwright.config.js` workers:1 / retries:2 logic fires). Pipeline: `dotnet format --verify-no-changes` → `dotnet build -c Release` → `dotnet test` (unit + arch) → `./test-e2e.sh`. The Playwright job installs browsers via `npx playwright install --with-deps chromium`. The LLM integration test self-skips when no `VitaTrack__ApiKey` secret is present; add a repo secret to run it in CI. Failed runs upload `playwright-report/` and `TestResults/` artifacts (7-day retention).
 *   **Commands:**
     *   Build: `dotnet build VitaTrack.sln`
     *   Run Web: `dotnet run --project VitaTrack.Web`
     *   Test: `dotnet test`
+    *   Format: `dotnet format VitaTrack.sln` (auto-fix) or `./format-check.sh` (verify-only)
 
 ## 📋 Story Map
 *   **Location:** [`storymap.yaml`](storymap.yaml)

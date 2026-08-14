@@ -86,7 +86,8 @@ public static class DbInit
                         ('Vitamin C', 'NatureMade', '2 tablets', @nutrition1, 15.99),
                         ('Fish Oil', 'Kirkland', '1 softgel', @nutrition2, 25.50),
                         ('Multivitamin', 'Centrum', '1 tablet', @nutrition3, 19.99)
-                    ", new {
+                    ", new
+                {
                     nutrition1 = "{\"vitamin_c\": 500, \"iron\": 0}",
                     nutrition2 = "{\"omega_3\": 1000, \"vitamin_d\": 200}",
                     nutrition3 = "{\"vitamin_a\": 900, \"vitamin_c\": 90, \"vitamin_d\": 20, \"iron\": 18, \"calcium\": 200}"

@@ -24,8 +24,12 @@
 
 ## Static Files
 - Place custom CSS/JS/images in `wwwroot/css`, `wwwroot/js`, `wwwroot/img`.
-- Reference via relative paths (`/css/site.css`).
-- Bootstrap and HTMX loaded from CDN in `_Layout.cshtml` (fallback to local if needed).
+- Reference via site-relative paths (`/css/site.css`, `/js/review.js`).
+- **CSP `script-src 'self' cdn.jsdelivr.net`** (`Program.cs`, no `'unsafe-inline'` in non-Dev). Consequences:
+  - **No inline `<script>` blocks** in `.cshtml` — they are silently dropped in Release. Put JS in external `.js` under `wwwroot/js` (or `wwwroot/lib`) and reference via `<script src="/js/...">`.
+  - htmx re-executes external `<script src>` tags in swapped partials, so a partial can include its own `<script src="/js/...">` to (re)wire up after swap. Use this pattern for partials that need JS (e.g., `_NutrientEditor.cshtml` includes `nutrient-editor.js`).
+- HTMX is self-hosted at `/lib/htmx/htmx.min.js` (no CDN; satisfies `'self'`).
+- Bootstrap 5 loaded from `cdn.jsdelivr.net` in `_Layout.cshtml`.
 
 ## Dependencies
 - References: `VitaTrack.Infrastructure` (projects), Dapper, SQLite, Microsoft.AspNetCore.Mvc, etc.

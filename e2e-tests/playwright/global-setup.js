@@ -1,21 +1,10 @@
 // global-setup.js
-const fs = require('fs');
-const path = require('path');
-
+// Web server runs in-memory SQLite (Data Source=:memory:, kept alive for the
+// process lifetime by ServiceCollectionExtensions.AddInfra). No file cleanup
+// needed — the DB is destroyed when the dotnet process exits. This hook stays
+// as a no-op placeholder so playwright.config.js `globalSetup` has something
+// to point at; cheap to re-add file cleanup if a future env switches back to
+// file-backed SQLite.
 module.exports = async () => {
-  // Delete the test database and its WAL/SHM files before each test run
-  const webDir = path.resolve(__dirname, '../../VitaTrack.Web');
-  const dbNames = ['VitaTrack.Test.db', 'VitaTrack.db'];
-
-  for (const name of dbNames) {
-    for (const suffix of ['', '-shm', '-wal']) {
-      const file = path.join(webDir, name + suffix);
-      if (fs.existsSync(file)) {
-        fs.unlinkSync(file);
-        console.log(`Cleaned: ${file}`);
-      }
-    }
-  }
-  
-  console.log('Test database cleaned successfully');
+    console.log('In-memory SQLite — no file cleanup needed');
 };

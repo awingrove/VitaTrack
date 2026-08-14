@@ -44,7 +44,7 @@ jobs:
         run: dotnet test VitaTrack.sln --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
 
       - name: Coverage gate (Infrastructure ≥ 50% line; ratchet toward 80%)
-        run: COVERAGE_THRESHOLD=50 ./coverage-check.sh
+        run: COVERAGE_THRESHOLD=50 CONFIGURATION=Release ./coverage-check.sh
 
       - name: Install Playwright browsers
         run: |

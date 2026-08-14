@@ -8,10 +8,11 @@ set -euo pipefail
 
 THRESHOLD="${COVERAGE_THRESHOLD:-50}"
 THRESHOLD_TYPE="${COVERAGE_THRESHOLD_TYPE:-line}"
+CONFIGURATION="${CONFIGURATION:-Debug}"
 
 mkdir -p TestResults/coverage
 
-dotnet test VitaTrack.Tests/VitaTrack.Tests.csproj --no-build \
+dotnet test VitaTrack.Tests/VitaTrack.Tests.csproj --configuration "$CONFIGURATION" --no-build \
     -p:CollectCoverage=true \
     -p:Threshold="$THRESHOLD" \
     -p:ThresholdType="$THRESHOLD_TYPE" \

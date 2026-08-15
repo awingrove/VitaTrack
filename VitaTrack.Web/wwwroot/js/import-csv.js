@@ -17,6 +17,12 @@
         if (evt.detail.target && evt.detail.target.id === 'import-report-container') {
             var spinner = document.getElementById('import-spinner');
             if (spinner) spinner.style.display = 'block';
+
+            var form = evt.detail.elt;
+            if (form) {
+                var btn = form.querySelector('button[type=submit]');
+                if (btn) btn.disabled = true;
+            }
         }
     });
 })();

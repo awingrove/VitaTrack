@@ -13,8 +13,7 @@
                 <form hx-post="/Supplement/ImportCsv"
                       hx-encoding="multipart/form-data"
                       hx-target="#import-report-container"
-                      hx-swap="innerHTML"
-                      onsubmit="this.querySelector('button[type=submit]').disabled=true; document.getElementById('import-spinner').classList.add('htmx-request');">
+                      hx-swap="innerHTML">
                     @Html.AntiForgeryToken()
                     <div class="mb-3">
                         <input type="file" name="file" accept=".csv" class="form-control" required />

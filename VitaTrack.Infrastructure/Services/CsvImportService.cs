@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using VitaTrack.Infrastructure.Models;
 
@@ -72,6 +73,11 @@ public class CsvImportService : ICsvImportService
         return null;
     }
 
+    private const int MaxNameLength = 200;
+    private const int MaxBrandLength = 200;
+    private const int MaxDailyDoseLength = 200;
+    private const int MaxManufacturerUrlLength = 500;
+
     private static (CsvSupplementRow? Row, CsvParseError? Error) ParseRow(int lineNumber, string[] fields)
     {
         var name = fields.Length > 0 ? fields[0].Trim() : string.Empty;
@@ -87,11 +93,24 @@ public class CsvImportService : ICsvImportService
         if (string.IsNullOrWhiteSpace(dailyDose))
             return (null, new CsvParseError(lineNumber, "Missing required field: DailyDose"));
 
+        if (name.Length > MaxNameLength)
+            return (null, new CsvParseError(lineNumber, $"Name exceeds {MaxNameLength} characters"));
+        if (brand.Length > MaxBrandLength)
+            return (null, new CsvParseError(lineNumber, $"Brand exceeds {MaxBrandLength} characters"));
+        if (dailyDose.Length > MaxDailyDoseLength)
+            return (null, new CsvParseError(lineNumber, $"DailyDose exceeds {MaxDailyDoseLength} characters"));
+        if (!string.IsNullOrWhiteSpace(manufacturerUrl) && manufacturerUrl.Length > MaxManufacturerUrlLength)
+            return (null, new CsvParseError(lineNumber, $"ManufacturerUrl exceeds {MaxManufacturerUrlLength} characters"));
+
         decimal? cost = null;
         if (!string.IsNullOrWhiteSpace(costStr))
         {
-            if (decimal.TryParse(costStr, out var parsed))
+            if (decimal.TryParse(costStr, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+            {
+                if (parsed <= 0)
+                    return (null, new CsvParseError(lineNumber, "Cost must be positive"));
                 cost = parsed;
+            }
             else
                 return (null, new CsvParseError(lineNumber, $"Invalid Cost value: '{costStr}'"));
         }

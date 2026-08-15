@@ -164,11 +164,11 @@ public class SupplementController(
     public async Task<IActionResult> ImportCsv(IFormFile file)
     {
         if (file == null || file.Length == 0)
-            return PartialView("_ImportReport", new CsvImportReport(0, [],
+            return PartialView("_ImportReport", new CsvImportReport(1, [],
                 [new CsvImportFailure(0, "No file", "No file uploaded")]));
 
         if (!file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
-            return PartialView("_ImportReport", new CsvImportReport(0, [],
+            return PartialView("_ImportReport", new CsvImportReport(1, [],
                 [new CsvImportFailure(0, "Invalid file", "File must be a .csv")]));
 
         CsvParseResult parseResult;
@@ -179,7 +179,7 @@ public class SupplementController(
         {
             var failures = parseResult.Errors
                 .Select(e => new CsvImportFailure(e.RowNumber, "N/A", e.Message)).ToList();
-            return PartialView("_ImportReport", new CsvImportReport(0, [], failures));
+            return PartialView("_ImportReport", new CsvImportReport(parseResult.Errors.Count, [], failures));
         }
 
         var successes = new List<CsvImportSuccess>();

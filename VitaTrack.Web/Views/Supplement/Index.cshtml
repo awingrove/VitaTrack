@@ -7,7 +7,10 @@
 
 <h2>@ViewData["Title"]</h2>
 
-<p><a class="btn btn-success" asp-action="Create">Add New Supplement</a></p>
+<p>
+    <a class="btn btn-success" asp-action="Create">Add New Supplement</a>
+    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#importCsvModal">Import CSV</button>
+</p>
 
 <form asp-action="DeleteSelected" method="post" id="delete-selected-form" data-entity-name="supplement">
     @Html.AntiForgeryToken()
@@ -50,3 +53,5 @@
 </table>
 
 <script src="~/js/delete-selected.js"></script>
+<script src="~/js/import-csv.js"></script>
+<partial name="_ImportModal" />

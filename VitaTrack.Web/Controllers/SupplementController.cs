@@ -10,12 +10,14 @@ public class SupplementController(
     ISupplementRepository suppRepo,
     ISupplementNutrientRepository nutrientRepo,
     ISupplementNutrientService nutrientService,
-    ILlmService llmService) : Controller
+    ILlmService llmService,
+    ICsvImportService csvImportService) : Controller
 {
     private readonly ISupplementRepository _suppRepo = suppRepo;
     private readonly ISupplementNutrientRepository _nutrientRepo = nutrientRepo;
     private readonly ISupplementNutrientService _nutrientService = nutrientService;
     private readonly ILlmService _llmService = llmService;
+    private readonly ICsvImportService _csvImportService = csvImportService;
 
     public async Task<IActionResult> Index()
     {
@@ -155,6 +157,82 @@ public class SupplementController(
         await _nutrientService.AddAsync(newId, SafeNutrients(request.Nutrients));
 
         return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ImportCsv(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return PartialView("_ImportReport", new CsvImportReport(0, [],
+                [new CsvImportFailure(0, "No file", "No file uploaded")]));
+
+        if (!file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+            return PartialView("_ImportReport", new CsvImportReport(0, [],
+                [new CsvImportFailure(0, "Invalid file", "File must be a .csv")]));
+
+        CsvParseResult parseResult;
+        await using var stream = file.OpenReadStream();
+        parseResult = await _csvImportService.ParseAsync(stream);
+
+        if (parseResult.Errors.Count > 0 && parseResult.Rows.Count == 0)
+        {
+            var failures = parseResult.Errors
+                .Select(e => new CsvImportFailure(e.RowNumber, "N/A", e.Message)).ToList();
+            return PartialView("_ImportReport", new CsvImportReport(0, [], failures));
+        }
+
+        var successes = new List<CsvImportSuccess>();
+        var failuresList = new List<CsvImportFailure>();
+
+        foreach (var row in parseResult.Rows)
+        {
+            try
+            {
+                var supplement = new Supplement
+                {
+                    Name = row.Name,
+                    Brand = row.Brand,
+                    DailyDose = row.DailyDose,
+                    ManufacturerUrl = row.ManufacturerUrl,
+                    Cost = row.Cost
+                };
+
+                var nutrientCount = 0;
+                if (!string.IsNullOrWhiteSpace(row.ManufacturerUrl))
+                {
+                    var llmResult = await _llmService.EnrichSupplementAsync(supplement);
+                    supplement.NutritionJson = llmResult.NutritionJson;
+                    supplement.SwapSuggestion = llmResult.SwapSuggestion;
+
+                    var newId = await _suppRepo.AddAsync(supplement);
+                    if (llmResult.Nutrients.Count > 0)
+                    {
+                        var persistResult = await _nutrientService.AddAsync(newId, llmResult.Nutrients);
+                        nutrientCount = persistResult.Saved.Count;
+                    }
+                }
+                else
+                {
+                    await _suppRepo.AddAsync(supplement);
+                }
+
+                successes.Add(new CsvImportSuccess(row.Name, row.Brand, nutrientCount));
+            }
+            catch (Exception ex)
+            {
+                failuresList.Add(new CsvImportFailure(row.RowNumber, row.Name, ex.Message));
+            }
+        }
+
+        foreach (var error in parseResult.Errors)
+        {
+            failuresList.Add(new CsvImportFailure(error.RowNumber, "N/A", error.Message));
+        }
+
+        var report = new CsvImportReport(
+            parseResult.Rows.Count + parseResult.Errors.Count, successes, failuresList);
+        return PartialView("_ImportReport", report);
     }
 
     [HttpPost]

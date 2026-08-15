@@ -11,6 +11,13 @@
                 if (spinner) spinner.style.display = 'block';
             });
         }
+
+        var modal = document.getElementById('importCsvModal');
+        if (modal) {
+            modal.addEventListener('hidden.bs.modal', function () {
+                window.location.reload();
+            });
+        }
     });
 
     document.body.addEventListener('htmx:afterSwap', function (evt) {

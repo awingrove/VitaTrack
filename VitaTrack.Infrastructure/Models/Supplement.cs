@@ -27,4 +27,6 @@ public class Supplement
 
     [Range(0.01, 99999)]
     public decimal? Cost { get; set; }
+
+    public int NutrientCount { get; set; }
 }

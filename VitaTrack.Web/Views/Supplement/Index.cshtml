@@ -26,6 +26,7 @@
             <th>Serving</th>
             <th>Manufacturer URL</th>
             <th>Cost</th>
+            <th>Nutrient Count</th>
             <th>Actions</th>
         </tr>
     </thead>
@@ -39,6 +40,7 @@
             <td>@s.DailyDose</td>
             <td>@(s.ManufacturerUrl ?? "none")</td>
                 <td>@(s.Cost.HasValue ? $"£{s.Cost.Value:F2}" : "N/A")</td>
+                <td>@s.NutrientCount</td>
             <td>
                 <a class="btn btn-sm btn-outline-info" asp-controller="SupplementNutrient" asp-action="Index" asp-route-supplementId="@s.Id">Nutrients</a>
                 <a class="btn btn-sm btn-primary" asp-action="Edit" asp-route-id="@s.Id">Edit</a>

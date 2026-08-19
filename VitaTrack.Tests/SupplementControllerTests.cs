@@ -44,6 +44,8 @@ public class SupplementControllerTests
             new() { Id = 2, Name = "Fish Oil", Brand = "OtherBrand", DailyDose = "1000mg" }
         };
         _suppRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(supplements);
+        _nutrientRepo.Setup(r => r.GetCountsBySupplementIdsAsync(It.IsAny<IEnumerable<int>>()))
+            .ReturnsAsync(new Dictionary<int, int>());
 
         var result = await _controller.Index();
 
@@ -67,6 +69,8 @@ public class SupplementControllerTests
     {
         var supplement = new Supplement { Id = 5, Name = "EditMe", Brand = "Brand", DailyDose = "2 pills" };
         _suppRepo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(supplement);
+        _nutrientRepo.Setup(r => r.GetBySupplementIdAsync(It.IsAny<int>()))
+            .ReturnsAsync(new List<SupplementNutrient>());
 
         var result = await _controller.Edit(5);
 

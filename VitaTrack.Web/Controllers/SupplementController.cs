@@ -21,7 +21,13 @@ public class SupplementController(
 
     public async Task<IActionResult> Index()
     {
-        var supplements = await _suppRepo.GetAllAsync();
+        var supplements = (await _suppRepo.GetAllAsync()).ToList();
+        var counts = await _nutrientRepo.GetCountsBySupplementIdsAsync(supplements.Select(s => s.Id));
+        foreach (var supplement in supplements)
+        {
+            counts.TryGetValue(supplement.Id, out var count);
+            supplement.NutrientCount = count;
+        }
         return View(supplements);
     }
 
@@ -87,6 +93,8 @@ public class SupplementController(
     {
         var supplement = await _suppRepo.GetByIdAsync(id);
         if (supplement == null) return NotFound();
+        var nutrients = await _nutrientRepo.GetBySupplementIdAsync(id);
+        supplement.NutrientCount = nutrients.Count;
         return View(supplement);
     }
 

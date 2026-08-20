@@ -1,0 +1,35 @@
+<div class="modal fade" id="importCsvModal" tabindex="-1" aria-labelledby="importCsvModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importCsvModalLabel">Import Supplements from CSV</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Upload a CSV file with columns: <code>Name, Brand, DailyDose, ManufacturerUrl, Cost</code></p>
+                <p><a href="/templates/supplements-sample.csv" download>Download sample CSV</a></p>
+                <p class="text-muted small">Maximum 20 rows per upload.</p>
+
+                <form hx-post="/Supplement/ImportCsv"
+                      hx-encoding="multipart/form-data"
+                      hx-target="#import-report-container"
+                      hx-swap="innerHTML">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <input type="file" name="file" accept=".csv" class="form-control" required />
+                    </div>
+                    <button type="submit" class="btn btn-primary">Upload &amp; Import</button>
+                </form>
+
+                <div id="import-spinner" class="text-center mt-3" style="display:none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Processing...</span>
+                    </div>
+                    <p class="mt-2">Importing supplements and enriching via LLM...</p>
+                </div>
+
+                <div id="import-report-container" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>

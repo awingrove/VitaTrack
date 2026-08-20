@@ -19,6 +19,8 @@
 - Layout: `Views/Shared/_Layout.cshtml`.
 - Use `@model` with infrastructure model types (e.g., `IEnumerable<FamilyMember>`).
 - HTMX attributes: `hx-get`, `hx-post`, `hx-target`, `hx-swap`.
+- **HTMX forms:** disable submit buttons on form submit, re-enable on response. Use external JS event listeners, not inline handlers.
+- **No inline event handlers:** `onclick`, `onsubmit`, etc. are blocked by CSP in non-Dev. All JS goes in `wwwroot/js/`.
 - Avoid inline JavaScript; keep in separate `.js` files under `wwwroot/js` if needed.
 - **ViewData/ViewBag:** Pass data via `ViewData["Key"]`. Use **anonymous objects** (not ValueTuples) when passing structured data — Razor's `dynamic` context cannot resolve ValueTuple named fields. Example: `ViewData["Items"] = list.Select(x => new { x.Name, x.Value }).ToList()`.
 
@@ -27,6 +29,7 @@
 - Reference via site-relative paths (`/css/site.css`, `/js/review.js`).
 - **CSP `script-src 'self' cdn.jsdelivr.net`** (`Program.cs`, no `'unsafe-inline'` in non-Dev). Consequences:
   - **No inline `<script>` blocks** in `.cshtml` — they are silently dropped in Release. Put JS in external `.js` under `wwwroot/js` (or `wwwroot/lib`) and reference via `<script src="/js/...">`.
+  - **No inline event handlers** (`onclick`, `onsubmit`, etc.) in `.cshtml` — CSP blocks these in non-Dev.
   - htmx re-executes external `<script src>` tags in swapped partials, so a partial can include its own `<script src="/js/...">` to (re)wire up after swap. Use this pattern for partials that need JS (e.g., `_NutrientEditor.cshtml` includes `nutrient-editor.js`).
 - HTMX is self-hosted at `/lib/htmx/htmx.min.js` (no CDN; satisfies `'self'`).
 - Bootstrap 5 loaded from `cdn.jsdelivr.net` in `_Layout.cshtml`.

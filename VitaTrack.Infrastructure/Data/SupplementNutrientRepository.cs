@@ -21,6 +21,20 @@ public class SupplementNutrientRepository(IDbConnection db) : ISupplementNutrien
         return rows.ToList();
     }
 
+    public async Task<IDictionary<int, int>> GetCountsBySupplementIdsAsync(IEnumerable<int> supplementIds)
+    {
+        var ids = supplementIds.ToList();
+        if (ids.Count == 0) return new Dictionary<int, int>();
+
+        const string sql = @"
+                SELECT SupplementId, COUNT(*) AS Count
+                FROM SupplementNutrients
+                WHERE SupplementId IN @Ids
+                GROUP BY SupplementId";
+        var rows = await _db.QueryAsync<(int SupplementId, int Count)>(sql, new { Ids = ids });
+        return rows.ToDictionary(r => r.SupplementId, r => r.Count);
+    }
+
     public async Task<SupplementNutrient?> GetByIdAsync(int id)
     {
         const string sql = @"

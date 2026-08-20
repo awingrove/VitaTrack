@@ -16,6 +16,7 @@ public class SupplementControllerTests
     private Mock<ISupplementNutrientRepository> _nutrientRepo = null!;
     private Mock<ISupplementNutrientService> _nutrientService = null!;
     private Mock<ILlmService> _llmService = null!;
+    private Mock<ICsvImportService> _csvImportService = null!;
     private SupplementController _controller = null!;
 
     [TestInitialize]
@@ -25,11 +26,13 @@ public class SupplementControllerTests
         _nutrientRepo = new Mock<ISupplementNutrientRepository>();
         _nutrientService = new Mock<ISupplementNutrientService>();
         _llmService = new Mock<ILlmService>();
+        _csvImportService = new Mock<ICsvImportService>();
         _controller = new SupplementController(
             _suppRepo.Object,
             _nutrientRepo.Object,
             _nutrientService.Object,
-            _llmService.Object);
+            _llmService.Object,
+            _csvImportService.Object);
     }
 
     [TestMethod]
@@ -41,6 +44,8 @@ public class SupplementControllerTests
             new() { Id = 2, Name = "Fish Oil", Brand = "OtherBrand", DailyDose = "1000mg" }
         };
         _suppRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(supplements);
+        _nutrientRepo.Setup(r => r.GetCountsBySupplementIdsAsync(It.IsAny<IEnumerable<int>>()))
+            .ReturnsAsync(new Dictionary<int, int>());
 
         var result = await _controller.Index();
 
@@ -64,6 +69,8 @@ public class SupplementControllerTests
     {
         var supplement = new Supplement { Id = 5, Name = "EditMe", Brand = "Brand", DailyDose = "2 pills" };
         _suppRepo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(supplement);
+        _nutrientRepo.Setup(r => r.GetBySupplementIdAsync(It.IsAny<int>()))
+            .ReturnsAsync(new List<SupplementNutrient>());
 
         var result = await _controller.Edit(5);
 

@@ -51,6 +51,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IHtmlScraperService, HtmlScraperService>();
         services.AddScoped<ILlmClient, LlmClient>();
         services.AddScoped<ISupplementLabelParser, SupplementLabelParser>();
+        services.AddScoped<ICsvImportService, CsvImportService>();
 
         services.AddHttpClient("llm", (sp, client) =>
         {

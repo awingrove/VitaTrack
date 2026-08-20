@@ -59,6 +59,7 @@ This document defines the coding standards, architectural guidelines, testing ph
     *   **Parallel Execution:** Tests run with `fullyParallel: true`. When tests mutate shared DB state (adding/deleting rows), use dynamic assertions (`.first()`, `.last()`, relative counts) instead of exact values, since workers share the same DB. Prefer creating test-specific data over relying on seed data state.
     *   **Debugging failures:** Playwright drops `test-results/<spec>-chromium/error-context.md` (page snapshot + source) and a screenshot per failure. To save tokens, `grep "Error details" -A5 test-results/*/error-context.md` rather than reading the full ~200-line file; or read the screenshot attachment directly for visual page state.
     *   **Seeding:** Reports (Cost Report, Nutrient Report) depend on `PrescribedDoses` seed data. Always seed PrescribedDoses in `DbInit.EnsureCreated` alongside Supplements and FamilyMembers so report tests have data.
+    *   **HTMX feature manual checks:** rapid-click protection, spinner visibility, test in non-Dev to verify CSP.
 
 ## 🔧 CLI & Git Workflow
 *   **Git Commits:** Commit often with descriptive messages prefixed by `feat:`, `fix:`, `refactor:`, `test:`, or `docs:`. Do not commit `bin/`, `obj/`, `*.user`, or populated `appsettings.*.json` (keep only templates).

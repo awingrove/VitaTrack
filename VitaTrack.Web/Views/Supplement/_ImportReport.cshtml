@@ -1,0 +1,47 @@
+@using VitaTrack.Infrastructure.Models
+@model CsvImportReport
+
+<div class="card">
+    <div class="card-header">
+        <strong>CSV Import Report</strong>
+    </div>
+    <div class="card-body">
+        <p>
+            <strong>Total rows:</strong> @Model.TotalRows |
+            <span class="text-success"><strong>Imported:</strong> @Model.Successes.Count</span> |
+            <span class="text-danger"><strong>Failed:</strong> @Model.Failures.Count</span>
+        </p>
+
+        @if (Model.Successes.Count > 0)
+        {
+            <h6 class="text-success mt-3">Imported</h6>
+            <ul class="list-group mb-3">
+                @foreach (var s in Model.Successes)
+                {
+                    <li class="list-group-item list-group-item-success">
+                        &#10003; <strong>@s.Name</strong> by @s.Brand
+                        @if (s.NutrientCount > 0)
+                        {
+                            <span>(enriched with @s.NutrientCount nutrient(s))</span>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+
+        @if (Model.Failures.Count > 0)
+        {
+            <h6 class="text-danger mt-3">Failed</h6>
+            <ul class="list-group mb-3">
+                @foreach (var f in Model.Failures)
+                {
+                    <li class="list-group-item list-group-item-danger">
+                        &#10007; Row @f.RowNumber: <strong>@f.Name</strong> — @f.ErrorMessage
+                    </li>
+                }
+            </ul>
+        }
+
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+    </div>
+</div>

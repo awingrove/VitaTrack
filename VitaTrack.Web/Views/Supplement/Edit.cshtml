@@ -29,7 +29,13 @@
     </div>
     <div class="form-group">
         <label asp-for="ManufacturerUrl" class="control-label">Manufacturer URL</label>
-        <input asp-for="ManufacturerUrl" class="form-control" />
+        <div class="input-group">
+            <input asp-for="ManufacturerUrl" class="form-control" />
+            @if (!string.IsNullOrWhiteSpace(Model.ManufacturerUrl))
+            {
+                <a class="input-group-text" href="@Model.ManufacturerUrl" target="_blank" rel="noopener noreferrer">Open &#8599;</a>
+            }
+        </div>
         <span asp-validation-for="ManufacturerUrl" class="text-danger"></span>
     </div>
     <div class="form-group">
@@ -44,6 +50,7 @@
 
 <hr />
 <h4>Nutrient Breakdown</h4>
+<p class="text-muted">This supplement has @Model.NutrientCount nutrient(s) recorded.</p>
 <p>
     <a class="btn btn-sm btn-success" asp-controller="SupplementNutrient" asp-action="Create" asp-route-supplementId="@Model.Id">Add Nutrient</a>
     <a class="btn btn-sm btn-outline-info" asp-controller="SupplementNutrient" asp-action="Index" asp-route-supplementId="@Model.Id">Manage All Nutrients</a>

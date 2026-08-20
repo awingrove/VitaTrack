@@ -1,3 +1,4 @@
+using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using VitaTrack.Infrastructure.Data;
 using VitaTrack.Infrastructure.Models;
@@ -29,6 +30,10 @@ public class SupplementNutrientController(
         if (supplement == null) return NotFound();
 
         ViewData["Supplement"] = supplement;
+        ViewData["ParentOptions"] = (await _nutrientRepo.GetBySupplementIdAsync(supplementId))
+            .Where(n => n.ParentNutrientId == null)
+            .Select(n => new { Id = n.Id, Name = $"{n.GenericName} – {n.SpecificForm}" })
+            .ToList();
         return View(new SupplementNutrient { SupplementId = supplementId });
     }
 
@@ -45,6 +50,10 @@ public class SupplementNutrientController(
 
         var supplement = await _supplementRepo.GetByIdAsync(nutrient.SupplementId);
         ViewData["Supplement"] = supplement;
+        ViewData["ParentOptions"] = (await _nutrientRepo.GetBySupplementIdAsync(nutrient.SupplementId))
+            .Where(n => n.ParentNutrientId == null)
+            .Select(n => new { Id = n.Id, Name = $"{n.GenericName} – {n.SpecificForm}" })
+            .ToList();
         return View(nutrient);
     }
 
@@ -56,6 +65,10 @@ public class SupplementNutrientController(
 
         var supplement = await _supplementRepo.GetByIdAsync(nutrient.SupplementId);
         ViewData["Supplement"] = supplement;
+        ViewData["ParentOptions"] = (await _nutrientRepo.GetBySupplementIdAsync(nutrient.SupplementId))
+            .Where(n => n.ParentNutrientId == null && n.Id != nutrient.Id)
+            .Select(n => new { Id = n.Id, Name = $"{n.GenericName} – {n.SpecificForm}" })
+            .ToList();
         return View(nutrient);
     }
 
@@ -74,6 +87,10 @@ public class SupplementNutrientController(
 
         var supplement = await _supplementRepo.GetByIdAsync(nutrient.SupplementId);
         ViewData["Supplement"] = supplement;
+        ViewData["ParentOptions"] = (await _nutrientRepo.GetBySupplementIdAsync(nutrient.SupplementId))
+            .Where(n => n.ParentNutrientId == null && n.Id != nutrient.Id)
+            .Select(n => new { Id = n.Id, Name = $"{n.GenericName} – {n.SpecificForm}" })
+            .ToList();
         return View(nutrient);
     }
 

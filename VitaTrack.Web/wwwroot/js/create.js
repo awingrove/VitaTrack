@@ -6,6 +6,21 @@ document.addEventListener('htmx:beforeRequest', function (e) {
     var count = table ? parseInt(table.getAttribute('data-nutrient-count'), 10) : 0;
     if (count > 0) {
         var ok = window.confirm('This supplement already has nutrients. Enriching may overwrite them. Continue?');
-        if (!ok) e.preventDefault();
+        if (!ok) {
+            e.preventDefault();
+            return;
+        }
     }
+
+    el.disabled = true;
+});
+
+document.addEventListener('htmx:afterRequest', function (e) {
+    var el = e.detail.elt;
+    if (el && el.id === 'enrich-btn') el.disabled = false;
+});
+
+document.addEventListener('htmx:responseError', function (e) {
+    var el = e.detail.elt;
+    if (el && el.id === 'enrich-btn') el.disabled = false;
 });

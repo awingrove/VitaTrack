@@ -29,7 +29,13 @@
     </div>
     <div class="form-group">
         <label asp-for="ManufacturerUrl" class="control-label">Manufacturer URL</label>
-        <input asp-for="ManufacturerUrl" class="form-control" />
+        <div class="input-group">
+            <input asp-for="ManufacturerUrl" class="form-control" />
+            @if (!string.IsNullOrWhiteSpace(Model.ManufacturerUrl))
+            {
+                <a class="input-group-text" href="@Model.ManufacturerUrl" target="_blank" rel="noopener noreferrer">Open &#8599;</a>
+            }
+        </div>
         <span asp-validation-for="ManufacturerUrl" class="text-danger"></span>
     </div>
     <div class="form-group">

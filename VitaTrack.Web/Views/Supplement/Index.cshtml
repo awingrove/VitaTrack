@@ -24,7 +24,6 @@
             <th>Name</th>
             <th>Brand</th>
             <th>Serving</th>
-            <th>Manufacturer URL</th>
             <th>Cost</th>
             <th>Nutrient Count</th>
             <th>Actions</th>
@@ -36,9 +35,17 @@
         <tr>
             <td><input type="checkbox" name="ids" value="@s.Id" class="row-checkbox" form="delete-selected-form" /></td>
             <td>@s.Name</td>
-            <td>@s.Brand</td>
+            <td>
+                @if (!string.IsNullOrWhiteSpace(s.ManufacturerUrl))
+                {
+                    <a href="@s.ManufacturerUrl" target="_blank" rel="noopener noreferrer">@s.Brand</a>
+                }
+                else
+                {
+                    @s.Brand
+                }
+            </td>
             <td>@s.DailyDose</td>
-            <td>@(s.ManufacturerUrl ?? "none")</td>
                 <td>@(s.Cost.HasValue ? $"£{s.Cost.Value:F2}" : "N/A")</td>
                 <td>@s.NutrientCount</td>
             <td>

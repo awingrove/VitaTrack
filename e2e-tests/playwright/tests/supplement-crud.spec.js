@@ -90,6 +90,34 @@ test.describe('Supplement CRUD', () => {
     await screenshot(page, testInfo, 'supplement-after-edit');
   });
 
+  test('should render Brand as external link when URL present', async ({ page }, testInfo) => {
+    const unique = Date.now();
+    const suppName = `LinkSupp${unique}`;
+    const suppBrand = `LinkBrand${unique}`;
+
+    await page.goto('/Supplement/Create');
+    await page.fill('input#Name', suppName);
+    await page.fill('input#Brand', suppBrand);
+    await page.fill('input#DailyDose', '1 tablet');
+    await page.fill('input#ManufacturerUrl', 'https://example.com/product');
+    await page.fill('input#Cost', '9.99');
+    await page.click('button[type="submit"]:has-text("Save")');
+
+    // Nutrient editor appears inline via HTMX (LLM enrichment self-skips without API key)
+    await expect(page.locator('h4')).toContainText('Nutrients for');
+    await page.click('a:has-text("Done")');
+
+    await expect(page.locator('h2')).toHaveText('Supplements');
+
+    const row = page.locator(`table tbody tr:has-text("${suppName}")`);
+    const brandLink = row.locator('td a').filter({ hasText: suppBrand });
+    await expect(brandLink).toBeVisible();
+    await expect(brandLink).toHaveAttribute('target', '_blank');
+    await expect(brandLink).toHaveAttribute('rel', /noopener/);
+    await expect(brandLink).toHaveAttribute('href', 'https://example.com/product');
+    await screenshot(page, testInfo, 'supplement-brand-link');
+  });
+
   test('should delete a supplement', async ({ page }, testInfo) => {
     // Create a supplement first to avoid deleting seed data
     await page.goto('/Supplement/Create');

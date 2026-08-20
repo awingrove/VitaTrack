@@ -34,7 +34,7 @@ test.describe('Supplement CRUD', () => {
     await screenshot(page, testInfo, 'supplement-create-filled');
 
     // Save does a plain persist (no enrichment) and HX-Redirects to the list
-    await page.click('button:has-text("Save")');
+    await page.click('button[hx-post="/Supplement/CreateSave"]');
 
     // Should be on supplements list
     await expect(page.locator('h2')).toHaveText('Supplements');
@@ -56,7 +56,7 @@ test.describe('Supplement CRUD', () => {
     await page.fill('input#DailyDose', '1 tablet');
     await page.fill('input#ManufacturerUrl', 'https://example.com/product');
     await page.fill('input#Cost', '9.99');
-    await page.click('button:has-text("Save")');
+    await page.click('button[hx-post="/Supplement/CreateSave"]');
 
     await expect(page.locator('h2')).toHaveText('Supplements');
 
@@ -115,7 +115,7 @@ test.describe('Supplement CRUD', () => {
     await page.fill('input#Name', 'ToDelete');
     await page.fill('input#Brand', 'TestBrand');
     await page.fill('input#DailyDose', '1 pill');
-    await page.click('button:has-text("Save")');
+    await page.click('button[hx-post="/Supplement/CreateSave"]');
 
     // Save redirects straight to the list (no inline nutrient editor)
     await expect(page.locator('h2')).toHaveText('Supplements');
@@ -143,7 +143,7 @@ test.describe('Supplement CRUD', () => {
       await page.fill('input#Name', name);
       await page.fill('input#Brand', 'BulkBrand');
       await page.fill('input#DailyDose', '1 pill');
-      await page.click('button:has-text("Save")');
+      await page.click('button[hx-post="/Supplement/CreateSave"]');
       await expect(page.locator('h2')).toHaveText('Supplements');
     }
 
@@ -190,7 +190,8 @@ test.describe('Supplement CRUD', () => {
     await expect(page.locator('h2')).toHaveText('Create Supplement');
 
     await expect(page.locator('#enrich-btn')).toBeVisible();
-    await expect(page.locator('button:has-text("Save")')).toBeVisible();
+    await expect(page.locator('button[hx-post="/Supplement/CreateSave"]')).toBeVisible();
+    await expect(page.locator('button[hx-post="/Supplement/CreateSave"]')).toHaveAttribute('hx-post', '/Supplement/CreateSave');
     await screenshot(page, testInfo, 'create-save-enrich-buttons');
   });
 
@@ -203,7 +204,7 @@ test.describe('Supplement CRUD', () => {
     await page.fill('input#Brand', 'PlainBrand');
     await page.fill('input#DailyDose', '1 tablet');
     await page.fill('input#Cost', '5.49');
-    await page.click('button:has-text("Save")');
+    await page.click('button[hx-post="/Supplement/CreateSave"]');
 
     await expect(page.locator('h2')).toHaveText('Supplements');
     await expect(page.locator(`table tbody tr:has-text("${suppName}")`)).toBeVisible();

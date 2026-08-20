@@ -23,27 +23,17 @@ public class SupplementController(
     {
         var supplements = (await _suppRepo.GetAllAsync()).ToList();
         var counts = await _nutrientRepo.GetCountsBySupplementIdsAsync(supplements.Select(s => s.Id));
-        foreach (var supplement in supplements)
-        {
-            counts.TryGetValue(supplement.Id, out var count);
-            supplement.NutrientCount = count;
-        }
+        foreach (var s in supplements) { counts.TryGetValue(s.Id, out var c); s.NutrientCount = c; }
         return View(supplements);
     }
 
-    public IActionResult Create()
-    {
-        return View();
-    }
+    public IActionResult Create() => View();
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateSave(CreateSupplementRequest request)
     {
-        if (!ModelState.IsValid)
-        {
-            return PartialView("_ValidationErrors", ModelState);
-        }
+        if (!ModelState.IsValid) return PartialView("_ValidationErrors", ModelState);
 
         var supplement = request.ToSupplement();
         await _suppRepo.AddAsync(supplement);
@@ -55,10 +45,7 @@ public class SupplementController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Enrich(CreateSupplementRequest request)
     {
-        if (!ModelState.IsValid)
-        {
-            return PartialView("_ValidationErrors", ModelState);
-        }
+        if (!ModelState.IsValid) return PartialView("_ValidationErrors", ModelState);
 
         var supplement = request.ToSupplement();
         var llmResult = await _llmService.EnrichSupplementAsync(supplement);
@@ -68,14 +55,8 @@ public class SupplementController(
         var newId = await _suppRepo.AddAsync(supplement);
         var persistResult = await _nutrientService.AddAsync(newId, SafeNutrients(llmResult.Nutrients));
 
-        var viewModel = new SupplementEditorViewModel
-        {
-            SupplementId = newId,
-            SupplementName = supplement.Name,
-            Nutrients = ToDtos(persistResult.Saved),
-            SwapSuggestion = llmResult.SwapSuggestion,
-            ExtractionError = BuildExtractionError(llmResult.ExtractionError, persistResult.Failures)
-        };
+        var viewModel = BuildEditorViewModel(newId, supplement.Name, persistResult.Saved,
+            BuildExtractionError(llmResult.ExtractionError, persistResult.Failures), llmResult.SwapSuggestion);
 
         return PartialView("_NutrientEditor", viewModel);
     }
@@ -89,17 +70,12 @@ public class SupplementController(
 
         var replaceResult = await _nutrientService.ReplaceAsync(request.SupplementId, SafeNutrients(request.Nutrients));
 
-        var viewModel = new SupplementEditorViewModel
-        {
-            SupplementId = request.SupplementId,
-            SupplementName = supplement.Name,
-            Nutrients = ToDtos(replaceResult.Saved),
-            SaveSuccess = true,
-            ExtractionError = replaceResult.Failures.Count > 0
+        var viewModel = BuildEditorViewModel(request.SupplementId, supplement.Name, replaceResult.Saved,
+            replaceResult.Failures.Count > 0
                 ? $"{replaceResult.Failures.Count} nutrient(s) failed to save: " +
                   string.Join(", ", replaceResult.Failures.Select(f => f.GenericName))
-                : null
-        };
+                : null);
+        viewModel.SaveSuccess = true;
 
         return PartialView("_NutrientEditor", viewModel);
     }
@@ -118,12 +94,7 @@ public class SupplementController(
     public async Task<IActionResult> Edit(int id, EditSupplementRequest request)
     {
         if (id != request.Id) return NotFound();
-        if (!ModelState.IsValid)
-        {
-            var original = await _suppRepo.GetByIdAsync(id);
-            if (original == null) return NotFound();
-            return View(original);
-        }
+        if (!ModelState.IsValid) return await ReturnEditViewOrNotFound(id);
 
         var supplement = request.ToSupplement();
         var existingNutrients = await _nutrientRepo.GetBySupplementIdAsync(id);
@@ -153,6 +124,25 @@ public class SupplementController(
         ViewData["ExtractedNutrients"] = mergedNutrients;
         ViewData["ExtractionError"] = BuildExtractionError(llmResult.ExtractionError, []);
         return View("Review", supplement);
+    }
+
+    private async Task<IActionResult> ReturnEditViewOrNotFound(int id)
+    {
+        var original = await _suppRepo.GetByIdAsync(id);
+        if (original == null) return NotFound();
+        return View("Edit", original);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditSave(int id, EditSupplementRequest request)
+    {
+        if (id != request.Id) return NotFound();
+        if (!ModelState.IsValid) return await ReturnEditViewOrNotFound(id);
+
+        var supplement = request.ToSupplement();
+        await _suppRepo.UpdateAsync(supplement);
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpPost]
@@ -258,6 +248,18 @@ public class SupplementController(
         return PartialView("_ImportReport", report);
     }
 
+    private static SupplementEditorViewModel BuildEditorViewModel(
+        int supplementId, string supplementName, IEnumerable<SupplementNutrient> savedNutrients,
+        string? extractionError, string? swapSuggestion = null)
+        => new()
+        {
+            SupplementId = supplementId,
+            SupplementName = supplementName,
+            Nutrients = ToDtos(savedNutrients),
+            SwapSuggestion = swapSuggestion,
+            ExtractionError = extractionError
+        };
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id)
@@ -270,10 +272,7 @@ public class SupplementController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteSelected(List<int> ids)
     {
-        if (ids != null && ids.Count > 0)
-        {
-            await _suppRepo.DeleteAsync(ids);
-        }
+        if (ids != null && ids.Count > 0) await _suppRepo.DeleteAsync(ids);
         return RedirectToAction(nameof(Index));
     }
 

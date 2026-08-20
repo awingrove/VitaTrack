@@ -44,7 +44,10 @@
         <span asp-validation-for="Cost" class="text-danger"></span>
     </div>
     <div class="form-group">
-        <input type="submit" value="Save" class="btn btn-primary" />
+        <button type="submit" class="btn btn-primary" formaction="/Supplement/EditSave">Save</button>
+        <button type="submit" id="enrich-btn" class="btn btn-info"
+                formaction="/Supplement/Edit"
+                data-nutrient-count="@Model.NutrientCount">Enrich</button>
     </div>
 </form>
 
@@ -63,3 +66,5 @@
 <div>
     <a asp-action="Index">Back to List</a>
 </div>
+
+<script src="/js/edit.js"></script>

@@ -18,12 +18,12 @@
 }
 
 <h4>Nutrients for @Model.SupplementName</h4>
-<p class="text-muted">Edit the nutrient breakdown below. You can add or remove rows.</p>
+<p class="text-muted">Edit the nutrient breakdown below. Use "Add Blend" to group a mix with its component sub-nutrients.</p>
 
 <form id="nutrient-editor-form">
     @Html.AntiForgeryToken()
     <input type="hidden" name="supplementId" value="@Model.SupplementId" />
-    <table class="table" id="nutrients-table" data-nutrient-count="@(Model.Nutrients.Count)">
+    <table class="table" id="nutrients-table" data-nutrient-count="@(Model.Nutrients.Sum(n => 1 + (n.Children?.Count ?? 0)))">
         <thead>
             <tr>
                 <th>Generic Name</th>
@@ -33,27 +33,52 @@
             </tr>
         </thead>
         <tbody>
+            @{ int seq = 0; }
             @if (Model.Nutrients.Count > 0)
             {
-                for (int i = 0; i < Model.Nutrients.Count; i++)
+                for (int r = 0; r < Model.Nutrients.Count; r++)
                 {
-                    <tr>
-                        <td><input name="nutrients[@i].GenericName" value="@Model.Nutrients[i].GenericName" class="form-control" /></td>
-                        <td><input name="nutrients[@i].SpecificForm" value="@Model.Nutrients[i].SpecificForm" class="form-control" /></td>
-                        <td><input name="nutrients[@i].Dosage" value="@Model.Nutrients[i].Dosage" class="form-control" /></td>
-                        <td><button type="button" class="btn btn-sm btn-danger remove-row">Remove</button></td>
+                    var root = Model.Nutrients[r];
+                    <tr data-row-key="root-@r">
+                        <td><input name="nutrients[@seq].GenericName" value="@root.GenericName" class="form-control" /></td>
+                        <td><input name="nutrients[@seq].SpecificForm" value="@root.SpecificForm" class="form-control" /></td>
+                        <td><input name="nutrients[@seq].Dosage" value="@root.Dosage" class="form-control" required /></td>
+                        <td>
+                            @if (root.Children != null && root.Children.Count > 0)
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-primary add-sub-nutrient" data-parent-key="root-@r">Add sub-nutrient</button>
+                            }
+                            <button type="button" class="btn btn-sm btn-danger remove-row">Remove</button>
+                        </td>
                     </tr>
+                    seq++;
+                    @if (root.Children != null)
+                    {
+                        for (int c = 0; c < root.Children.Count; c++)
+                        {
+                            var child = root.Children[c];
+                            <tr data-row-key="child-@r-@c" data-parent-key="root-@r" class="blend-child">
+                                <td style="padding-left:2rem"><input name="nutrients[@seq].GenericName" value="@child.GenericName" class="form-control" /></td>
+                                <td><input name="nutrients[@seq].SpecificForm" value="@child.SpecificForm" class="form-control" /></td>
+                                <td><input name="nutrients[@seq].Dosage" value="@child.Dosage" class="form-control" /></td>
+                                <td><button type="button" class="btn btn-sm btn-danger remove-row">Remove</button></td>
+                                <td><input type="hidden" name="nutrients[@seq].ParentNutrientId" value="@r" /></td>
+                            </tr>
+                            seq++;
+                        }
+                    }
                 }
             }
             else
             {
                 <tr class="empty-row">
-                    <td colspan="4" class="text-muted text-center">No nutrients. Click "Add Nutrient" to start.</td>
+                    <td colspan="4" class="text-muted text-center">No nutrients. Click "Add Nutrient" or "Add Blend" to start.</td>
                 </tr>
             }
         </tbody>
     </table>
     <button type="button" class="btn btn-sm btn-success" id="add-nutrient-row">Add Nutrient</button>
+    <button type="button" class="btn btn-sm btn-info" id="add-blend-row">Add Blend</button>
 
     <div class="form-group mt-3">
         <button type="button" class="btn btn-primary"

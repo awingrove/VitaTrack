@@ -114,6 +114,17 @@ public static class DbInit
                     ");
 
                 db.Execute(@"
+                        INSERT INTO SupplementNutrients (Id, SupplementId, GenericName, SpecificForm, Dosage, ParentNutrientId) VALUES 
+                        (9001, 3, 'Proprietary Blend', 'Blend', '500mg', NULL)
+                    ");
+
+                db.Execute(@"
+                        INSERT INTO SupplementNutrients (SupplementId, GenericName, SpecificForm, Dosage, ParentNutrientId) VALUES 
+                        (3, 'Pectin', 'Citrus', '200mg', 9001),
+                        (3, 'Botanical Extract', 'Proprietary', '', 9001)
+                    ");
+
+                db.Execute(@"
                         INSERT INTO PrescribedDoses (FamilyMemberId, SupplementId, Dosage, Instructions, FrequencyPerDay) VALUES 
                         (1, 1, '500mg', 'Take with breakfast', 1.0),
                         (1, 2, '1 softgel', 'Take with dinner', 1.0),

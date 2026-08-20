@@ -21,7 +21,38 @@ public class SupplementNutrientService(
             await _nutrientRepo.DeleteAsync(n.Id);
         }
 
-        return await PersistHierarchyAsync(supplementId, nutrients);
+        return await PersistHierarchyAsync(supplementId, NormalizeFlatToHierarchy(nutrients));
+    }
+
+    private static IEnumerable<SupplementNutrientDto> NormalizeFlatToHierarchy(
+        IEnumerable<SupplementNutrientDto> flat)
+    {
+        var ordered = flat.ToList();
+        var roots = new List<SupplementNutrientDto>();
+
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            var dto = ordered[i];
+            if (dto.ParentNutrientId.HasValue)
+            {
+                var parentIndex = dto.ParentNutrientId.Value;
+                if (parentIndex >= 0 && parentIndex < ordered.Count)
+                {
+                    var parent = ordered[parentIndex];
+                    parent.Children ??= new List<SupplementNutrientDto>();
+                    if (dto.Children is not null)
+                    {
+                        parent.Children.AddRange(dto.Children);
+                    }
+                    parent.Children.Add(dto);
+                    continue;
+                }
+            }
+
+            roots.Add(dto);
+        }
+
+        return roots;
     }
 
     public async Task<ReplaceNutrientsResult> AddAsync(

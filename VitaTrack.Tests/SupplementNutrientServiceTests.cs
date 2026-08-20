@@ -92,6 +92,30 @@ public class SupplementNutrientServiceTests
         Assert.IsTrue(result.Saved.Any(n => n.GenericName == "Magnesium"));
     }
 
+    [TestMethod]
+    public async Task ReplaceAsync_FlatListWithParentNutrientId_GroupsIntoHierarchy()
+    {
+        var repo = new MockRepo();
+        var svc = new SupplementNutrientService(repo, NullLogger);
+
+        List<SupplementNutrientDto> flat =
+        [
+            new SupplementNutrientDto { GenericName = "Proprietary Blend", SpecificForm = "Blend", Dosage = "500mg" },
+            new SupplementNutrientDto { GenericName = "Zinc", SpecificForm = "Picolinate", ParentNutrientId = 0 },
+            new SupplementNutrientDto { GenericName = "Magnesium", SpecificForm = "Glycinate", ParentNutrientId = 0 }
+        ];
+
+        var result = await svc.ReplaceAsync(1, flat);
+
+        Assert.AreEqual(3, result.Saved.Count);
+        var root = repo.Added.Single(n => n.GenericName == "Proprietary Blend");
+        var zinc = repo.Added.Single(n => n.GenericName == "Zinc");
+        var magnesium = repo.Added.Single(n => n.GenericName == "Magnesium");
+        Assert.IsTrue(root.ParentNutrientId == null);
+        Assert.AreEqual(root.Id, zinc.ParentNutrientId);
+        Assert.AreEqual(root.Id, magnesium.ParentNutrientId);
+    }
+
     private sealed class MockRepo : ISupplementNutrientRepository
     {
         private int _nextId = 1;

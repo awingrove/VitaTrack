@@ -67,6 +67,31 @@ public class SupplementNutrientServiceTests
         Assert.IsTrue(repo.Added.Single(n => n.GenericName == "Zinc").ParentNutrientId > 0);
     }
 
+    [TestMethod]
+    public async Task PersistHierarchy_ChildRepoThrow_RecordedAndBatchContinues()
+    {
+        var repo = new MockRepo { ThrowFor = { "Zinc" } };
+        var svc = new SupplementNutrientService(repo, NullLogger);
+        var blend = new SupplementNutrientDto
+        {
+            GenericName = "Proprietary Blend",
+            SpecificForm = "Blend",
+            Dosage = "500mg",
+            Children =
+            [
+                new SupplementNutrientDto { GenericName = "Zinc", SpecificForm = "Picolinate" },
+                new SupplementNutrientDto { GenericName = "Magnesium", SpecificForm = "Glycinate" }
+            ]
+        };
+
+        var result = await svc.PersistHierarchyAsync(1, [blend]);
+
+        Assert.IsTrue(result.Failures.Any(f => f.GenericName == "Zinc"));
+        Assert.AreEqual(2, result.Saved.Count);
+        Assert.IsTrue(result.Saved.Any(n => n.GenericName == "Proprietary Blend"));
+        Assert.IsTrue(result.Saved.Any(n => n.GenericName == "Magnesium"));
+    }
+
     private sealed class MockRepo : ISupplementNutrientRepository
     {
         private int _nextId = 1;
@@ -105,8 +130,15 @@ public class SupplementNutrientServiceTests
             return Task.FromResult(n);
         }
 
+        public HashSet<string> ThrowFor { get; } = new();
+
         public Task<int> AddAsync(SupplementNutrient nutrient)
         {
+            if (ThrowFor.Contains(nutrient.GenericName))
+            {
+                throw new InvalidOperationException($"simulated failure for {nutrient.GenericName}");
+            }
+
             nutrient.Id = _nextId++;
             _byId[nutrient.Id] = nutrient;
             Added.Add(nutrient);

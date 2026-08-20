@@ -46,14 +46,28 @@ public class SupplementNutrientService(
                 continue;
             }
 
-            var parentId = await _nutrientRepo.AddAsync(new SupplementNutrient
+            int parentId;
+            try
             {
-                SupplementId = supplementId,
-                GenericName = root.GenericName,
-                SpecificForm = root.SpecificForm,
-                Dosage = root.Dosage
-            });
-            saved.Add(await _nutrientRepo.GetByIdAsync(parentId));
+                parentId = await _nutrientRepo.AddAsync(new SupplementNutrient
+                {
+                    SupplementId = supplementId,
+                    GenericName = root.GenericName,
+                    SpecificForm = root.SpecificForm,
+                    Dosage = root.Dosage
+                });
+                var parent = await _nutrientRepo.GetByIdAsync(parentId);
+                if (parent is not null)
+                {
+                    saved.Add(parent);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to persist top-level nutrient {Name}", root.GenericName);
+                failures.Add(new NutrientFailure(root.GenericName, ex.Message));
+                continue;
+            }
 
             if (root.Children != null)
             {
@@ -64,11 +78,19 @@ public class SupplementNutrientService(
                         SupplementId = supplementId,
                         GenericName = c.GenericName,
                         SpecificForm = c.SpecificForm,
-                        Dosage = c.Dosage ?? string.Empty,
+                        Dosage = c.Dosage,
                         ParentNutrientId = parentId
                     };
-                    await _nutrientRepo.AddAsync(child);
-                    saved.Add(child);
+                    try
+                    {
+                        await _nutrientRepo.AddAsync(child);
+                        saved.Add(child);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to persist child nutrient {Name}", c.GenericName);
+                        failures.Add(new NutrientFailure(c.GenericName, ex.Message));
+                    }
                 }
             }
         }

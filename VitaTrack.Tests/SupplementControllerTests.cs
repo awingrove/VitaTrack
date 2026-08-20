@@ -60,8 +60,8 @@ public class SupplementControllerTests
     private void SetupAddAsync(int id)
         => _suppRepo.Setup(r => r.AddAsync(It.IsAny<Supplement>())).ReturnsAsync(id);
 
-    private void SetupAddNutrients(int id, ReplaceNutrientsResult result)
-        => _nutrientService.Setup(s => s.AddAsync(id, It.IsAny<IEnumerable<SupplementNutrientDto>>())).ReturnsAsync(result);
+    private void SetupPersistHierarchy(int id, ReplaceNutrientsResult result)
+        => _nutrientService.Setup(s => s.PersistHierarchyAsync(id, It.IsAny<IEnumerable<SupplementNutrientDto>>())).ReturnsAsync(result);
 
     [TestMethod]
     public async Task Index_ReturnsViewWithSupplements()
@@ -135,7 +135,7 @@ public class SupplementControllerTests
             []);
         SetupEnrich(llmResult);
         SetupAddAsync(42);
-        SetupAddNutrients(42, persisted);
+        SetupPersistHierarchy(42, persisted);
 
         var result = await _controller.Enrich(request);
 
@@ -146,7 +146,7 @@ public class SupplementControllerTests
         Assert.AreEqual(1, model.Nutrients.Count);
         Assert.AreEqual("Vitamin C", model.Nutrients[0].GenericName);
         _suppRepo.Verify(r => r.AddAsync(It.IsAny<Supplement>()), Times.Once);
-        _nutrientService.Verify(s => s.AddAsync(42, It.IsAny<IEnumerable<SupplementNutrientDto>>()), Times.Once);
+        _nutrientService.Verify(s => s.PersistHierarchyAsync(42, It.IsAny<IEnumerable<SupplementNutrientDto>>()), Times.Once);
     }
 
     [TestMethod]
@@ -155,7 +155,7 @@ public class SupplementControllerTests
         var request = new CreateSupplementRequest { Name = "TestSupp", Brand = "Brand", DailyDose = "1 pill" };
         SetupEnrich(new LlmResult());
         SetupAddAsync(43);
-        SetupAddNutrients(43, new ReplaceNutrientsResult([], []));
+        SetupPersistHierarchy(43, new ReplaceNutrientsResult([], []));
 
         var result = await _controller.Enrich(request);
 
@@ -171,7 +171,7 @@ public class SupplementControllerTests
         var request = new CreateSupplementRequest { Name = "TestSupp", Brand = "Brand", DailyDose = "1 pill", ManufacturerUrl = "https://example.com" };
         SetupEnrich(new LlmResult { ExtractionError = "Could not reach enrichment service. You can add nutrients manually." });
         SetupAddAsync(44);
-        SetupAddNutrients(44, new ReplaceNutrientsResult([], []));
+        SetupPersistHierarchy(44, new ReplaceNutrientsResult([], []));
 
         var result = await _controller.Enrich(request);
 
@@ -191,6 +191,36 @@ public class SupplementControllerTests
         var result = await _controller.Enrich(request);
 
         AssertPartialView(result, "_ValidationErrors");
+    }
+
+    [TestMethod]
+    public async Task Enrich_ReturnsEditorWithBlendChildren()
+    {
+        var request = new CreateSupplementRequest { Name = "TestSupp", Brand = "Brand", DailyDose = "1 pill", ManufacturerUrl = "https://example.com" };
+        var llmResult = new LlmResult
+        {
+            NutritionJson = "{}",
+            Nutrients =
+            [
+                new() { GenericName = "B-Complex", SpecificForm = "Capsule", Dosage = "1", Children = [ new() { GenericName = "B12", SpecificForm = "Methyl", Dosage = "500mcg" } ] }
+            ]
+        };
+        var parent = new SupplementNutrient { Id = 777, SupplementId = 42, GenericName = "B-Complex", SpecificForm = "Capsule", Dosage = "1" };
+        var child = new SupplementNutrient { SupplementId = 42, GenericName = "B12", SpecificForm = "Methyl", Dosage = "500mcg", ParentNutrientId = 777 };
+        var persisted = new ReplaceNutrientsResult(new List<SupplementNutrient> { parent, child }, []);
+        SetupEnrich(llmResult);
+        SetupAddAsync(42);
+        SetupPersistHierarchy(42, persisted);
+        _nutrientRepo.Setup(r => r.GetByParentIdAsync(777)).ReturnsAsync(new List<SupplementNutrient> { child });
+
+        var result = await _controller.Enrich(request);
+
+        var model = AssertPartialView(result, "_NutrientEditor").Model as SupplementEditorViewModel;
+        Assert.IsNotNull(model);
+        Assert.AreEqual(1, model.Nutrients.Count);
+        Assert.IsNotNull(model.Nutrients[0].Children);
+        Assert.AreEqual(1, model.Nutrients[0].Children!.Count);
+        Assert.AreEqual("B12", model.Nutrients[0].Children[0].GenericName);
     }
 
     [TestMethod]

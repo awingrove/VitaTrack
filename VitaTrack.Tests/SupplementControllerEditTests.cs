@@ -159,4 +159,26 @@ public class SupplementControllerEditTests
         Assert.IsNotNull(viewResult);
         Assert.AreEqual("Edit", viewResult.ViewName);
     }
+
+    [TestMethod]
+    public async Task Edit_Post_ToDtos_MapsChildrenOntoParent()
+    {
+        var request = new EditSupplementRequest { Id = 3, Name = "Edited", Brand = "Brand", DailyDose = "1 pill" };
+        var parent = new SupplementNutrient { Id = 10, SupplementId = 3, GenericName = "B-Complex", SpecificForm = "Capsule", Dosage = "1" };
+        var child = new SupplementNutrient { Id = 11, SupplementId = 3, GenericName = "B12", SpecificForm = "Methyl", Dosage = "500mcg", ParentNutrientId = 10 };
+        _nutrientRepo.Setup(r => r.GetBySupplementIdAsync(3)).ReturnsAsync(new List<SupplementNutrient> { parent });
+        _nutrientRepo.Setup(r => r.GetByParentIdAsync(10)).ReturnsAsync(new List<SupplementNutrient> { child });
+        SetupEnrich(new LlmResult { NutritionJson = "{}", Nutrients = [] });
+
+        var result = await _controller.Edit(3, request);
+
+        var viewResult = result as ViewResult;
+        Assert.IsNotNull(viewResult);
+        var merged = viewResult.ViewData["ExtractedNutrients"] as List<SupplementNutrientDto>;
+        Assert.IsNotNull(merged);
+        Assert.AreEqual(1, merged.Count);
+        Assert.IsNotNull(merged[0].Children);
+        Assert.AreEqual(1, merged[0].Children!.Count);
+        Assert.AreEqual("B12", merged[0].Children[0].GenericName);
+    }
 }

@@ -6,7 +6,7 @@ using VitaTrack.Web.Models;
 
 namespace VitaTrack.Web.Controllers;
 
-public class SupplementController(
+public partial class SupplementController(
     ISupplementRepository suppRepo,
     ISupplementNutrientRepository nutrientRepo,
     ISupplementNutrientService nutrientService,
@@ -69,7 +69,7 @@ public class SupplementController(
         var viewModel = await BuildEditorViewModelAsync(request.SupplementId, supplement.Name, replaceResult.Saved,
             replaceResult.Failures.Count > 0
                 ? $"{replaceResult.Failures.Count} nutrient(s) failed to save: " +
-                  string.Join(", ", replaceResult.Failures.Select(f => f.GenericName))
+                  string.Join("; ", replaceResult.Failures.Select(f => $"{f.GenericName} ({f.Error})"))
                 : null);
         viewModel.SaveSuccess = true;
 
@@ -83,6 +83,15 @@ public class SupplementController(
         var nutrients = await _nutrientRepo.GetBySupplementIdAsync(id);
         supplement.NutrientCount = nutrients.Count;
         return View(supplement);
+    }
+
+    public async Task<IActionResult> EditNutrients(int id)
+    {
+        var supplement = await _suppRepo.GetByIdAsync(id);
+        if (supplement == null) return NotFound();
+        var nutrients = await _nutrientRepo.GetBySupplementIdAsync(id);
+        var viewModel = await BuildEditorViewModelAsync(id, supplement.Name, nutrients, null);
+        return View(viewModel);
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -244,15 +253,6 @@ public class SupplementController(
         supplement.NutritionJson = llmResult.NutritionJson;
         supplement.SwapSuggestion = llmResult.SwapSuggestion;
     }
-    private async Task<SupplementEditorViewModel> BuildEditorViewModelAsync(int supplementId, string supplementName, IEnumerable<SupplementNutrient> savedNutrients, string? extractionError, string? swapSuggestion = null) =>
-        new()
-        {
-            SupplementId = supplementId,
-            SupplementName = supplementName,
-            Nutrients = await ToDtosAsync(savedNutrients.Where(s => !s.ParentNutrientId.HasValue)),
-            SwapSuggestion = swapSuggestion,
-            ExtractionError = extractionError
-        };
 
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id)
@@ -265,30 +265,5 @@ public class SupplementController(
     {
         if (ids != null && ids.Count > 0) await _suppRepo.DeleteAsync(ids);
         return RedirectToAction(nameof(Index));
-    }
-
-    private static IEnumerable<SupplementNutrientDto> SafeNutrients(IEnumerable<SupplementNutrientDto>? nutrients)
-        => (nutrients ?? []).Where(n => !string.IsNullOrWhiteSpace(n.GenericName));
-
-    private async Task<List<SupplementNutrientDto>> ToDtosAsync(IEnumerable<SupplementNutrient> nutrients)
-    {
-        var dtos = new List<SupplementNutrientDto>();
-        foreach (var sn in nutrients)
-        {
-            var dto = new SupplementNutrientDto { GenericName = sn.GenericName, SpecificForm = sn.SpecificForm, Dosage = sn.Dosage };
-            var children = await _nutrientRepo.GetByParentIdAsync(sn.Id) ?? [];
-            dto.Children = await ToDtosAsync(children);
-            dtos.Add(dto);
-        }
-        return dtos;
-    }
-    private static string? BuildExtractionError(string? llmError, IReadOnlyList<NutrientFailure> failures)
-    {
-        if (string.IsNullOrWhiteSpace(llmError) && failures.Count == 0) return null;
-        var parts = new List<string>();
-        if (!string.IsNullOrWhiteSpace(llmError)) parts.Add(llmError);
-        if (failures.Count > 0)
-            parts.Add($"{failures.Count} nutrient(s) failed to save: " + string.Join(", ", failures.Select(f => f.GenericName)));
-        return string.Join(" | ", parts);
     }
 }

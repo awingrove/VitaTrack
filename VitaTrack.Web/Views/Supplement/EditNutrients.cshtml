@@ -1,0 +1,10 @@
+@{
+    ViewData["Title"] = "Edit Nutrients";
+    Layout = "_Layout";
+}
+@using VitaTrack.Web.Models
+@model SupplementEditorViewModel
+
+<div id="nutrient-editor-container">
+    @await Html.PartialAsync("_NutrientEditor", Model)
+</div>

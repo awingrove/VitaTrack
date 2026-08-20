@@ -34,8 +34,8 @@ public static class DbInit
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 SupplementId INTEGER NOT NULL,
                 GenericName TEXT NOT NULL,
-                SpecificForm TEXT NOT NULL,
-                Dosage TEXT NOT NULL,
+                SpecificForm TEXT NULL,
+                Dosage TEXT NULL,
                 FOREIGN KEY (SupplementId) REFERENCES Supplements(Id)
             );");
 

@@ -49,8 +49,7 @@ public class SupplementController(
 
         var supplement = request.ToSupplement();
         var llmResult = await _llmService.EnrichSupplementAsync(supplement);
-        supplement.NutritionJson = llmResult.NutritionJson;
-        supplement.SwapSuggestion = llmResult.SwapSuggestion;
+        ApplyEnrichment(supplement, llmResult);
 
         var newId = await _suppRepo.AddAsync(supplement);
         var persistResult = await _nutrientService.AddAsync(newId, SafeNutrients(llmResult.Nutrients));
@@ -99,8 +98,7 @@ public class SupplementController(
         var supplement = request.ToSupplement();
         var existingNutrients = await _nutrientRepo.GetBySupplementIdAsync(id);
         var llmResult = await _llmService.EnrichSupplementAsync(supplement);
-        supplement.NutritionJson = llmResult.NutritionJson;
-        supplement.SwapSuggestion = llmResult.SwapSuggestion;
+        ApplyEnrichment(supplement, llmResult);
 
         var mergedNutrients = ToDtos(existingNutrients);
         if (llmResult.Nutrients != null)
@@ -132,7 +130,6 @@ public class SupplementController(
         if (original == null) return NotFound();
         return View("Edit", original);
     }
-
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditSave(int id, EditSupplementRequest request)
@@ -140,18 +137,21 @@ public class SupplementController(
         if (id != request.Id) return NotFound();
         if (!ModelState.IsValid) return await ReturnEditViewOrNotFound(id);
 
+        var existing = await _suppRepo.GetByIdAsync(id);
+        if (existing == null) return NotFound();
+
         var supplement = request.ToSupplement();
+        supplement.NutritionJson = existing.NutritionJson;
+        supplement.SwapSuggestion = existing.SwapSuggestion;
         await _suppRepo.UpdateAsync(supplement);
         return RedirectToAction(nameof(Index));
     }
-
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ConfirmEdit(int id, ConfirmSupplementRequest request)
     {
         if (id != request.Id) return NotFound();
         if (!ModelState.IsValid) return View("Review", request.ToSupplement());
-
         var supplement = request.ToSupplement();
         await _suppRepo.UpdateAsync(supplement);
         await _nutrientService.ReplaceAsync(id, SafeNutrients(request.Nutrients));
@@ -164,7 +164,6 @@ public class SupplementController(
     public async Task<IActionResult> ConfirmCreate(ConfirmSupplementRequest request)
     {
         if (!ModelState.IsValid) return View("Review", request.ToSupplement());
-
         var supplement = request.ToSupplement();
         var newId = await _suppRepo.AddAsync(supplement);
         await _nutrientService.AddAsync(newId, SafeNutrients(request.Nutrients));
@@ -215,8 +214,7 @@ public class SupplementController(
                 if (!string.IsNullOrWhiteSpace(row.ManufacturerUrl))
                 {
                     var llmResult = await _llmService.EnrichSupplementAsync(supplement);
-                    supplement.NutritionJson = llmResult.NutritionJson;
-                    supplement.SwapSuggestion = llmResult.SwapSuggestion;
+                    ApplyEnrichment(supplement, llmResult);
 
                     var newId = await _suppRepo.AddAsync(supplement);
                     if (llmResult.Nutrients.Count > 0)
@@ -248,6 +246,11 @@ public class SupplementController(
         return PartialView("_ImportReport", report);
     }
 
+    private static void ApplyEnrichment(Supplement supplement, LlmResult llmResult)
+    {
+        supplement.NutritionJson = llmResult.NutritionJson;
+        supplement.SwapSuggestion = llmResult.SwapSuggestion;
+    }
     private static SupplementEditorViewModel BuildEditorViewModel(
         int supplementId, string supplementName, IEnumerable<SupplementNutrient> savedNutrients,
         string? extractionError, string? swapSuggestion = null)
@@ -267,7 +270,6 @@ public class SupplementController(
         await _suppRepo.DeleteAsync(id);
         return RedirectToAction(nameof(Index));
     }
-
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteSelected(List<int> ids)
@@ -286,7 +288,6 @@ public class SupplementController(
             SpecificForm = sn.SpecificForm,
             Dosage = sn.Dosage
         }).ToList();
-
     private static string? BuildExtractionError(string? llmError, IReadOnlyList<NutrientFailure> failures)
     {
         if (string.IsNullOrWhiteSpace(llmError) && failures.Count == 0) return null;

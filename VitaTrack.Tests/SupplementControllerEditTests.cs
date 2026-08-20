@@ -127,6 +127,26 @@ public class SupplementControllerEditTests
     }
 
     [TestMethod]
+    public async Task EditSave_PreservesEnrichmentMetadata()
+    {
+        var request = new EditSupplementRequest { Id = 11, Name = "PlainEdit", Brand = "Brand", DailyDose = "2 pills" };
+        _suppRepo.Setup(r => r.GetByIdAsync(11))
+            .ReturnsAsync(new Supplement { Id = 11, Name = "Old", NutritionJson = "{}", SwapSuggestion = "X" });
+
+        Supplement? saved = null;
+        _suppRepo.Setup(r => r.UpdateAsync(It.IsAny<Supplement>()))
+            .Callback<Supplement>(s => saved = s)
+            .Returns(Task.CompletedTask);
+
+        var result = await _controller.EditSave(11, request);
+
+        AssertRedirectsToIndex(result);
+        Assert.IsNotNull(saved);
+        Assert.AreEqual("{}", saved!.NutritionJson);
+        Assert.AreEqual("X", saved.SwapSuggestion);
+    }
+
+    [TestMethod]
     public async Task EditSave_InvalidModel_ReturnsEditView()
     {
         var request = new EditSupplementRequest { Id = 8, Name = "", Brand = "Brand", DailyDose = "1 pill" };

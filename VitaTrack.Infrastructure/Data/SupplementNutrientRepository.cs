@@ -14,10 +14,19 @@ public class SupplementNutrientRepository(IDbConnection db) : ISupplementNutrien
     public async Task<IReadOnlyList<SupplementNutrient>> GetBySupplementIdAsync(int supplementId)
     {
         const string sql = @"
-                SELECT Id, SupplementId, GenericName, SpecificForm, Dosage
+                SELECT Id, SupplementId, GenericName, SpecificForm, Dosage, ParentNutrientId
                 FROM SupplementNutrients
                 WHERE SupplementId = @SupplementId";
         var rows = await _db.QueryAsync<SupplementNutrient>(sql, new { SupplementId = supplementId });
+        return rows.ToList();
+    }
+
+    public async Task<IReadOnlyList<SupplementNutrient>> GetByParentIdAsync(int parentId)
+    {
+        const string sql = @"
+                SELECT Id, SupplementId, GenericName, SpecificForm, Dosage, ParentNutrientId
+                FROM SupplementNutrients WHERE ParentNutrientId = @ParentId";
+        var rows = await _db.QueryAsync<SupplementNutrient>(sql, new { ParentId = parentId });
         return rows.ToList();
     }
 
@@ -38,7 +47,7 @@ public class SupplementNutrientRepository(IDbConnection db) : ISupplementNutrien
     public async Task<SupplementNutrient?> GetByIdAsync(int id)
     {
         const string sql = @"
-                SELECT Id, SupplementId, GenericName, SpecificForm, Dosage
+                SELECT Id, SupplementId, GenericName, SpecificForm, Dosage, ParentNutrientId
                 FROM SupplementNutrients WHERE Id = @Id";
         return await _db.QuerySingleOrDefaultAsync<SupplementNutrient>(sql, new { Id = id });
     }
@@ -46,8 +55,8 @@ public class SupplementNutrientRepository(IDbConnection db) : ISupplementNutrien
     public async Task<int> AddAsync(SupplementNutrient nutrient)
     {
         const string sql = @"
-                INSERT INTO SupplementNutrients (SupplementId, GenericName, SpecificForm, Dosage)
-                VALUES (@SupplementId, @GenericName, @SpecificForm, @Dosage);
+                INSERT INTO SupplementNutrients (SupplementId, GenericName, SpecificForm, Dosage, ParentNutrientId)
+                VALUES (@SupplementId, @GenericName, @SpecificForm, @Dosage, @ParentNutrientId);
                 SELECT last_insert_rowid();";
         return await _db.ExecuteScalarAsync<int>(sql, nutrient);
     }
@@ -58,7 +67,8 @@ public class SupplementNutrientRepository(IDbConnection db) : ISupplementNutrien
                 UPDATE SupplementNutrients
                 SET GenericName = @GenericName,
                     SpecificForm = @SpecificForm,
-                    Dosage = @Dosage
+                    Dosage = @Dosage,
+                    ParentNutrientId = @ParentNutrientId
                 WHERE Id = @Id";
         await _db.ExecuteAsync(sql, nutrient);
     }

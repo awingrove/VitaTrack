@@ -15,9 +15,11 @@ public class SupplementNutrient
     [StringLength(200)]
     public string SpecificForm { get; set; } = string.Empty;
 
-    [Required]
     [StringLength(200)]
     public string Dosage { get; set; } = string.Empty;
+
+    public int? ParentNutrientId { get; set; }
+    public SupplementNutrient? ParentNutrient { get; set; }
 
     public Supplement? Supplement { get; set; }
 }

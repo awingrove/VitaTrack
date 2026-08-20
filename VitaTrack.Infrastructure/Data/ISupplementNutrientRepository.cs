@@ -7,6 +7,7 @@ namespace VitaTrack.Infrastructure.Data;
 public interface ISupplementNutrientRepository
 {
     Task<IReadOnlyList<SupplementNutrient>> GetBySupplementIdAsync(int supplementId);
+    Task<IReadOnlyList<SupplementNutrient>> GetByParentIdAsync(int parentId);
     Task<IDictionary<int, int>> GetCountsBySupplementIdsAsync(IEnumerable<int> supplementIds);
     Task<SupplementNutrient?> GetByIdAsync(int id);
     Task<int> AddAsync(SupplementNutrient nutrient);

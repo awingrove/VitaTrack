@@ -64,6 +64,13 @@ public static class DbInit
                 ");
         }
 
+        // Add ParentNutrientId column if it doesn't exist (self-reference for nutrient blends)
+        var parentCol = db.QuerySingle<int>("SELECT COUNT(*) FROM pragma_table_info('SupplementNutrients') WHERE name = 'ParentNutrientId';");
+        if (parentCol == 0)
+        {
+            db.Execute("ALTER TABLE SupplementNutrients ADD COLUMN ParentNutrientId INTEGER NULL;");
+        }
+
         // Insert sample data only if ALL tables are empty (fresh database)
         if (seedData)
         {

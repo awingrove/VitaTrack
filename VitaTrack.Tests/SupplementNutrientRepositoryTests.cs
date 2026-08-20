@@ -165,6 +165,21 @@ public class SupplementNutrientRepositoryTests : SqliteTestBase
     }
 
     [TestMethod]
+    public async Task Add_WithParentId_PersistsAndReadsBack()
+    {
+        var supplementId = await SeedSupplementAsync();
+
+        var parent = new SupplementNutrient { SupplementId = supplementId, GenericName = "Proprietary Blend", SpecificForm = "Blend", Dosage = "500mg" };
+        var parentId = await _nutrientRepo.AddAsync(parent);
+        var child = new SupplementNutrient { SupplementId = supplementId, GenericName = "Zinc", SpecificForm = "Picolinate", Dosage = string.Empty, ParentNutrientId = parentId };
+        await _nutrientRepo.AddAsync(child);
+
+        var children = await _nutrientRepo.GetByParentIdAsync(parentId);
+        Assert.AreEqual(1, children.Count);
+        Assert.AreEqual("Zinc", children[0].GenericName);
+    }
+
+    [TestMethod]
     public async Task DeleteMultiple_EmptyListDeletesNothing()
     {
         var supplementId = await SeedSupplementAsync();

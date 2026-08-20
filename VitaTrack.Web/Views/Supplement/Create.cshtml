@@ -42,7 +42,14 @@
         <span asp-validation-for="Cost" class="text-danger"></span>
     </div>
     <div class="form-group mt-3">
-        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="submit"
+                class="btn btn-primary"
+                hx-post="/Supplement/CreateSave">Save</button>
+        <button type="submit"
+                id="enrich-btn"
+                class="btn btn-info"
+                hx-post="/Supplement/Enrich"
+                hx-indicator="#enrich-spinner">Enrich</button>
         <a asp-action="Index" class="btn btn-secondary">Cancel</a>
     </div>
 </form>
@@ -55,3 +62,5 @@
 </div>
 
 <div id="nutrient-editor-container"></div>
+
+<script src="/js/create.js"></script>

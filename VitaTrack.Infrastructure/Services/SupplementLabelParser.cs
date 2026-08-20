@@ -126,7 +126,9 @@ Return nutrients as an array. Only include nutrients explicitly listed on the la
         {
             GenericName = nutrientElement.GetProperty("genericName").GetString() ?? string.Empty,
             SpecificForm = nutrientElement.GetProperty("specificForm").GetString() ?? string.Empty,
-            Dosage = nutrientElement.GetProperty("dosage").GetString() ?? string.Empty
+            Dosage = nutrientElement.TryGetProperty("dosage", out var dosageElement) && dosageElement.ValueKind != JsonValueKind.Null
+                ? dosageElement.GetString() ?? string.Empty
+                : string.Empty
         };
 
         if (nutrientElement.TryGetProperty("unit", out var unitElement) && unitElement.ValueKind != JsonValueKind.Null)

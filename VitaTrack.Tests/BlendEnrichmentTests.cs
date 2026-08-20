@@ -81,6 +81,42 @@ public class BlendEnrichmentTests
     }
 
     [TestMethod]
+    public async Task ExtractNutrientsAsync_ChildWithoutDosageKey_DoesNotThrow()
+    {
+        var blendJson = @"{
+            ""nutrients"": [
+                {
+                    ""genericName"": ""Proprietary Herbal Blend"",
+                    ""specificForm"": """",
+                    ""dosage"": ""500mg"",
+                    ""children"": [
+                        { ""genericName"": ""Ashwagandha"", ""specificForm"": ""KSM-66"" },
+                        { ""genericName"": ""Rhodiola"", ""specificForm"": ""Root Extract"", ""dosage"": ""200mg"" }
+                    ]
+                }
+            ],
+            ""swapSuggestion"": null
+        }";
+
+        var llmClientMock = new Mock<ILlmClient>();
+        llmClientMock
+            .Setup(c => c.PostChatAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(new LlmCompletion(blendJson, null));
+        var parser = new SupplementLabelParser(llmClientMock.Object, NullLogger<SupplementLabelParser>.Instance);
+
+        var result = await parser.ExtractNutrientsAsync("Calm Blend", "Brand", "<html></html>");
+
+        Assert.IsNull(result.ExtractionError);
+        Assert.AreEqual(1, result.Nutrients.Count);
+        var blend = result.Nutrients[0];
+        Assert.IsNotNull(blend.Children);
+        Assert.AreEqual(2, blend.Children.Count);
+        Assert.AreEqual("Ashwagandha", blend.Children[0].GenericName);
+        Assert.AreEqual(string.Empty, blend.Children[0].Dosage);
+        Assert.AreEqual("200mg", blend.Children[1].Dosage);
+    }
+
+    [TestMethod]
     public async Task ExtractNutrientsAsync_PromptContainsBlendInstructions()
     {
         string? capturedPrompt = null;

@@ -15,4 +15,6 @@ public class SupplementNutrientDto
     public string Dosage { get; set; } = string.Empty;
     public string? Unit { get; set; }
     public decimal? AmountPerServing { get; set; }
+    public int? ParentNutrientId { get; set; }
+    public List<SupplementNutrientDto>? Children { get; set; }
 }

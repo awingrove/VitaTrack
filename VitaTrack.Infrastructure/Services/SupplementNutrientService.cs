@@ -21,41 +21,55 @@ public class SupplementNutrientService(
             await _nutrientRepo.DeleteAsync(n.Id);
         }
 
-        return await PersistAsync(supplementId, nutrients);
+        return await PersistHierarchyAsync(supplementId, nutrients);
     }
 
     public async Task<ReplaceNutrientsResult> AddAsync(
         int supplementId,
         IEnumerable<SupplementNutrientDto> nutrients)
     {
-        return await PersistAsync(supplementId, nutrients);
+        return await PersistHierarchyAsync(supplementId, nutrients);
     }
 
-    private async Task<ReplaceNutrientsResult> PersistAsync(
+    public async Task<ReplaceNutrientsResult> PersistHierarchyAsync(
         int supplementId,
-        IEnumerable<SupplementNutrientDto> nutrients)
+        IEnumerable<SupplementNutrientDto> roots)
     {
         var saved = new List<SupplementNutrient>();
         var failures = new List<NutrientFailure>();
 
-        foreach (var n in nutrients.Where(x => !string.IsNullOrWhiteSpace(x.GenericName)))
+        foreach (var root in roots.Where(r => !string.IsNullOrWhiteSpace(r.GenericName)))
         {
-            try
+            if (string.IsNullOrWhiteSpace(root.Dosage))
             {
-                var entity = new SupplementNutrient
-                {
-                    SupplementId = supplementId,
-                    GenericName = n.GenericName,
-                    SpecificForm = n.SpecificForm,
-                    Dosage = n.Dosage
-                };
-                await _nutrientRepo.AddAsync(entity);
-                saved.Add(entity);
+                failures.Add(new NutrientFailure(root.GenericName, "Top-level nutrient requires a dosage"));
+                continue;
             }
-            catch (Exception ex)
+
+            var parentId = await _nutrientRepo.AddAsync(new SupplementNutrient
             {
-                _logger.LogError(ex, "Failed to persist nutrient {GenericName} for supplement {SupplementId}", n.GenericName, supplementId);
-                failures.Add(new NutrientFailure(n.GenericName, ex.Message));
+                SupplementId = supplementId,
+                GenericName = root.GenericName,
+                SpecificForm = root.SpecificForm,
+                Dosage = root.Dosage
+            });
+            saved.Add(await _nutrientRepo.GetByIdAsync(parentId));
+
+            if (root.Children != null)
+            {
+                foreach (var c in root.Children.Where(x => !string.IsNullOrWhiteSpace(x.GenericName)))
+                {
+                    var child = new SupplementNutrient
+                    {
+                        SupplementId = supplementId,
+                        GenericName = c.GenericName,
+                        SpecificForm = c.SpecificForm,
+                        Dosage = c.Dosage ?? string.Empty,
+                        ParentNutrientId = parentId
+                    };
+                    await _nutrientRepo.AddAsync(child);
+                    saved.Add(child);
+                }
             }
         }
 

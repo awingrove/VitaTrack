@@ -38,6 +38,21 @@ public class SupplementController(
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateSave(CreateSupplementRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return PartialView("_ValidationErrors", ModelState);
+        }
+
+        var supplement = request.ToSupplement();
+        await _suppRepo.AddAsync(supplement);
+        Response.Headers["HX-Redirect"] = Url.Action("Index", "Supplement")!;
+        return new EmptyResult();
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Enrich(CreateSupplementRequest request)
     {
         if (!ModelState.IsValid)

@@ -33,6 +33,12 @@ public class SupplementControllerTests
             _nutrientService.Object,
             _llmService.Object,
             _csvImportService.Object);
+
+        var urlHelper = new Mock<IUrlHelper>();
+        urlHelper.Setup(u => u.Action(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlActionContext>()))
+                 .Returns("/Supplement/Index");
+        _controller.Url = urlHelper.Object;
+        _controller.ControllerContext = new ControllerContext { HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext() };
     }
 
     [TestMethod]
@@ -252,6 +258,38 @@ public class SupplementControllerTests
         var request = new CreateSupplementRequest { Brand = "Brand", DailyDose = "1 pill" };
 
         var result = await _controller.Enrich(request);
+
+        var partialResult = result as PartialViewResult;
+        Assert.IsNotNull(partialResult);
+        Assert.AreEqual("_ValidationErrors", partialResult.ViewName);
+    }
+
+    [TestMethod]
+    public async Task CreateSave_PersistsAndRedirectsWithoutEnrichment()
+    {
+        var request = new CreateSupplementRequest
+        {
+            Name = "PlainSupp",
+            Brand = "Brand",
+            DailyDose = "1 pill",
+            ManufacturerUrl = "https://example.com"
+        };
+        var result = await _controller.CreateSave(request);
+
+        var emptyResult = result as EmptyResult;
+        Assert.IsNotNull(emptyResult);
+        Assert.AreEqual("/Supplement/Index", _controller.Response.Headers["HX-Redirect"].ToString());
+        _suppRepo.Verify(r => r.AddAsync(It.IsAny<Supplement>()), Times.Once);
+        _llmService.Verify(s => s.EnrichSupplementAsync(It.IsAny<Supplement>()), Times.Never);
+        _nutrientService.Verify(s => s.AddAsync(It.IsAny<int>(), It.IsAny<IEnumerable<SupplementNutrientDto>>()), Times.Never);
+    }
+
+    [TestMethod]
+    public async Task CreateSave_InvalidModel_ReturnsValidationErrors()
+    {
+        _controller.ModelState.AddModelError("Name", "Name is required");
+        var request = new CreateSupplementRequest { Brand = "Brand", DailyDose = "1 pill" };
+        var result = await _controller.CreateSave(request);
 
         var partialResult = result as PartialViewResult;
         Assert.IsNotNull(partialResult);

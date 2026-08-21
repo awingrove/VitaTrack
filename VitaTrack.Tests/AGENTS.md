@@ -51,6 +51,13 @@ This is critical — missing cascade delete tests leads to foreign key constrain
 - In Visual Studio: Test Explorer.
 - Fail fast: treat any test failure as a blocker for committing.
 
+## Debugging When Behavior Contradicts Source
+When a running app behaves in a way the source says is impossible (e.g., validation errors that shouldn't fire), separate **code** from **deployment** before theorizing:
+1. Write a plain unit test against the compiled model/service (`Validator.TryValidateObject`, direct method call). If it passes, the code is fine and the problem is hosting/binding — e.g., MVC's NRT implicit `[Required]` layer, which plain `Validator` does not reproduce.
+2. Repro with `curl` against one manually started server (`dotnet run --environment Test --urls http://localhost:PORT`) — no Playwright loop. Capture server-side state (e.g., temporary controller logging of bound values + `ModelState` errors), not just page HTML.
+3. Never conclude "stale DLL" without proof. `grep -a` on .NET assemblies gives **false negatives**: string literals live in the UTF-16 #US heap, so ASCII greps miss them; identifiers are ASCII and do match. Prefer behavioral probes over binary archaeology.
+4. Kill leftover servers by port (`ss -ltnp` → kill pid); `pkill -f dotnet` can hang the shell. A stale server on a reused port poisons every subsequent repro.
+
 ## Coverage Goal
 - Aim for **≥80%** line coverage on repository and service layers (aspirational target, root AGENTS.md).
 - CI currently gates at **≥50%** line on `VitaTrack.Infrastructure` via `./coverage-check.sh` (current actual ~53%; see ArchitectureReview §2.11 and commit history). Raise the threshold via `COVERAGE_THRESHOLD=NN` as targeted test PRs ratchet coverage toward 80%.

@@ -11,8 +11,15 @@
 - Controllers: suffix `Controller`, inherit from `Controller`.
 - Actions: return `IActionResult`; prefer `async Task<IActionResult>`.
 - Use `[HttpGet]`/`[HttpPost]` attributes explicitly.
+- **Route params must match the URL shape:** conventional route is `{controller}/{action}/{id?}`. An action bound from the path segment must name its parameter `id` (`Edit(int id)`); an action bound from the query string keeps a descriptive name and every link/tag-helper passes it explicitly (`Create(int supplementId)` + `asp-route-supplementId`). A param named other than `id` silently never binds path values — it falls back to default (e.g., `0`) and surfaces as a confusing 404/NotFound. Action comments must show real, working URLs.
 - Keep controllers thin: call repository or service, map result, return view.
 - No direct `IDbAccess` or service instantiation; rely on DI.
+
+## Validation
+- `Program.cs` sets `SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true`. With NRT enabled MVC would otherwise treat non-nullable string props as implicitly `[Required]`, rejecting empty form fields before `IValidatableObject.Validate` runs. Do not remove this; do not assume "no attribute = optional".
+- Conditional rules (e.g., dosage required for top-level nutrients but optional for blend children) live in the model's `IValidatableObject.Validate`, not in views/controllers.
+- Client-side `required` attributes are toggled by external JS (`nutrient-form.js`, `nutrient-editor.js`); server-side validation is the authority — never hardcode `required` on inputs whose validity depends on another field's value.
+- Controller POST actions should normalize nullable strings to `string.Empty` before persisting (NOT NULL columns), e.g. `nutrient.Dosage ??= string.Empty;`.
 
 ## Views
 - Located under `Views/<Controller>/`.

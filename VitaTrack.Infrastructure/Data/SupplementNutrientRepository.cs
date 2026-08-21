@@ -75,7 +75,9 @@ public class SupplementNutrientRepository(IDbConnection db) : ISupplementNutrien
 
     public async Task<int> DeleteAsync(int id)
     {
-        const string sql = "DELETE FROM SupplementNutrients WHERE Id = @Id";
+        const string sql = @"
+                DELETE FROM SupplementNutrients WHERE ParentNutrientId = @Id;
+                DELETE FROM SupplementNutrients WHERE Id = @Id;";
         return await _db.ExecuteAsync(sql, new { Id = id });
     }
 
@@ -83,7 +85,9 @@ public class SupplementNutrientRepository(IDbConnection db) : ISupplementNutrien
     {
         var idList = ids.ToList();
         if (idList.Count == 0) return 0;
-        const string sql = "DELETE FROM SupplementNutrients WHERE Id IN @Ids";
+        const string sql = @"
+                DELETE FROM SupplementNutrients WHERE ParentNutrientId IN @Ids;
+                DELETE FROM SupplementNutrients WHERE Id IN @Ids;";
         return await _db.ExecuteAsync(sql, new { Ids = idList });
     }
 }

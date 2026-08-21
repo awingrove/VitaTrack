@@ -72,6 +72,50 @@ test.describe('Supplement Nutrients', () => {
     await expect(page.locator('h2')).toHaveText(/Nutrients for/);
   });
 
+  test('should add a sub-nutrient under a blend without a dosage', async ({ page }, testInfo) => {
+    const unique = Date.now();
+    const nutrientName = `BlendChild${unique}`;
+
+    await page.goto('/Supplement');
+    await expect(page.locator('table tbody tr').first()).toBeVisible();
+
+    // Navigate to Vitamin C's nutrients (has seeded root nutrients usable as blend parents)
+    await page.click('tr:has-text("Vitamin C") >> text=Nutrients');
+    await expect(page.locator('h2')).toHaveText(/Vitamin C/);
+
+    const rows = page.locator('table tbody tr');
+    const countBefore = await rows.count();
+
+    await page.click('text=Add Nutrient');
+
+    // Pick an existing root nutrient as the parent blend
+    const parentValue = await page.locator('#ParentNutrientId option:not([value=""])').first().getAttribute('value');
+    expect(parentValue).toBeTruthy();
+    await page.selectOption('#ParentNutrientId', parentValue);
+
+    // Dosage becomes optional once a parent is selected
+    await expect(page.locator('#Dosage')).not.toHaveAttribute('required', /.*/);
+
+    await page.fill('input[name="GenericName"]', nutrientName);
+    // Leave Dosage and SpecificForm blank on purpose
+
+    await page.click('input[type="submit"][value="Add Nutrient"]');
+
+    // Should redirect back to index with the new child row saved
+    await expect(page.locator('h2')).toHaveText(/Nutrients for/);
+    const newRow = page.locator(`table tbody tr:has-text("${nutrientName}")`);
+    await expect(newRow).toBeVisible();
+    const afterCount = await page.locator('table tbody tr').count();
+    expect(afterCount).toBe(countBefore + 1);
+    await screenshot(page, testInfo, 'blend-child-without-dosage');
+
+    // Clean up: delete the nutrient we just created
+    await newRow.locator('a.btn-danger').click();
+    await expect(page.locator('text=Are you sure')).toBeVisible();
+    await page.click('input[type="submit"][value="Delete"]');
+    await expect(page.locator('h2')).toHaveText(/Nutrients for/);
+  });
+
   test('should edit an existing nutrient', async ({ page }, testInfo) => {
     const unique = Date.now();
     const nutrientName = `EditMe${unique}`;

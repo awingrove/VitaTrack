@@ -165,6 +165,66 @@ public class SupplementNutrientRepositoryTests : SqliteTestBase
     }
 
     [TestMethod]
+    public async Task Delete_ParentBlend_AlsoDeletesChildren()
+    {
+        var supplementId = await SeedSupplementAsync();
+
+        var parent = new SupplementNutrient { SupplementId = supplementId, GenericName = "Proprietary Blend", SpecificForm = "Blend", Dosage = "500mg" };
+        var parentId = await _nutrientRepo.AddAsync(parent);
+        var child1 = new SupplementNutrient { SupplementId = supplementId, GenericName = "Zinc", SpecificForm = "Picolinate", Dosage = string.Empty, ParentNutrientId = parentId };
+        var child2 = new SupplementNutrient { SupplementId = supplementId, GenericName = "Magnesium", SpecificForm = "Glycinate", Dosage = string.Empty, ParentNutrientId = parentId };
+        await _nutrientRepo.AddAsync(child1);
+        await _nutrientRepo.AddAsync(child2);
+
+        // Act
+        await _nutrientRepo.DeleteAsync(parentId);
+
+        // Assert – parent and all children gone
+        Assert.IsNull(await _nutrientRepo.GetByIdAsync(parentId));
+        Assert.AreEqual(0, (await _nutrientRepo.GetByParentIdAsync(parentId)).Count);
+        Assert.AreEqual(0, (await _nutrientRepo.GetBySupplementIdAsync(supplementId)).Count);
+    }
+
+    [TestMethod]
+    public async Task Delete_Child_KeepsParentAndSiblings()
+    {
+        var supplementId = await SeedSupplementAsync();
+
+        var parent = new SupplementNutrient { SupplementId = supplementId, GenericName = "Proprietary Blend", SpecificForm = "Blend", Dosage = "500mg" };
+        var parentId = await _nutrientRepo.AddAsync(parent);
+        var child1 = new SupplementNutrient { SupplementId = supplementId, GenericName = "Zinc", SpecificForm = "Picolinate", Dosage = string.Empty, ParentNutrientId = parentId };
+        var child1Id = await _nutrientRepo.AddAsync(child1);
+        await _nutrientRepo.AddAsync(new SupplementNutrient { SupplementId = supplementId, GenericName = "Magnesium", SpecificForm = "Glycinate", Dosage = string.Empty, ParentNutrientId = parentId });
+
+        // Act
+        await _nutrientRepo.DeleteAsync(child1Id);
+
+        // Assert
+        Assert.IsNotNull(await _nutrientRepo.GetByIdAsync(parentId));
+        var children = await _nutrientRepo.GetByParentIdAsync(parentId);
+        Assert.AreEqual(1, children.Count);
+        Assert.AreEqual("Magnesium", children[0].GenericName);
+    }
+
+    [TestMethod]
+    public async Task DeleteMultiple_WithParentBlend_AlsoDeletesChildren()
+    {
+        var supplementId = await SeedSupplementAsync();
+
+        var blendA = new SupplementNutrient { SupplementId = supplementId, GenericName = "Blend A", SpecificForm = "Blend", Dosage = "500mg" };
+        var blendAId = await _nutrientRepo.AddAsync(blendA);
+        await _nutrientRepo.AddAsync(new SupplementNutrient { SupplementId = supplementId, GenericName = "Zinc", SpecificForm = "Picolinate", Dosage = string.Empty, ParentNutrientId = blendAId });
+        var standalone = new SupplementNutrient { SupplementId = supplementId, GenericName = "Vitamin D", SpecificForm = "Cholecalciferol", Dosage = "1000IU" };
+        var standaloneId = await _nutrientRepo.AddAsync(standalone);
+
+        // Act – delete blend A and the standalone nutrient
+        await _nutrientRepo.DeleteAsync(new List<int> { blendAId, standaloneId });
+
+        // Assert – only nothing remains; child of blend A cascaded away
+        Assert.AreEqual(0, (await _nutrientRepo.GetBySupplementIdAsync(supplementId)).Count);
+    }
+
+    [TestMethod]
     public async Task Add_WithParentId_PersistsAndReadsBack()
     {
         var supplementId = await SeedSupplementAsync();

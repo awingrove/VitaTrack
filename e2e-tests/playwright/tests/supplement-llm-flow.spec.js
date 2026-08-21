@@ -17,7 +17,7 @@ test.describe('Supplement LLM Enrichment Flow', () => {
     // No ManufacturerUrl — ensures no API call
     await screenshot(page, testInfo, 'create-form-no-url');
 
-    await page.click('button[type="submit"]:has-text("Save")');
+    await page.click('button#enrich-btn');
 
     // Nutrient editor should appear inline via HTMX (no page navigation)
     await expect(page.locator('h4')).toContainText('Nutrients for');
@@ -39,7 +39,7 @@ test.describe('Supplement LLM Enrichment Flow', () => {
     await page.fill('input[name="Cost"]', '15.00');
     // No URL — ensures no API call
 
-    await page.click('button[type="submit"]:has-text("Save")');
+    await page.click('button#enrich-btn');
     await expect(page.locator('h4')).toContainText('Nutrients for');
 
     // Add a nutrient manually
@@ -88,7 +88,7 @@ test.describe('Supplement LLM Enrichment Flow', () => {
     await page.fill('input[name="Cost"]', '10.00');
     // No URL — ensures no API call
 
-    await page.click('button[type="submit"]:has-text("Save")');
+    await page.click('button#enrich-btn');
     await expect(page.locator('h4')).toContainText('Nutrients for');
 
     // Add two nutrients

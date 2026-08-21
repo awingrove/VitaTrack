@@ -21,7 +21,7 @@ test.describe('Supplement LLM Integration (Real API)', () => {
     await screenshot(page, testInfo, 'llm-create-form-filled');
 
     // Submit — this will trigger LLM enrichment (may take 5-30s), HTMX swaps nutrient editor inline
-    await page.click('button[type="submit"]:has-text("Save")');
+    await page.click('button#enrich-btn');
 
     // Wait for the nutrient editor to appear — the LLM call may take time
     await expect(page.locator('h4')).toContainText('Nutrients for', { timeout: 90000 });
@@ -96,7 +96,7 @@ test.describe('Supplement LLM Integration (Real API)', () => {
     // No ManufacturerUrl — LLM enrichment is skipped, no API call made
     await screenshot(page, testInfo, 'manual-create-form');
 
-    await page.click('button[type="submit"]:has-text("Save")');
+    await page.click('button#enrich-btn');
 
     // Nutrient editor should appear inline via HTMX
     await expect(page.locator('h4')).toContainText('Nutrients for');
@@ -135,5 +135,63 @@ test.describe('Supplement LLM Integration (Real API)', () => {
     await expect(page.locator('table tbody tr:has-text("Magnesium Citrate")')).toBeVisible();
     await expect(page.locator('table tbody tr:has-text("100mg")')).toBeVisible();
     await screenshot(page, testInfo, 'manual-nutrient-verified');
+  });
+
+  test('should extract blend with 6 sub-nutrients from G.I. Detox URL', async ({ page }, testInfo) => {
+    const apiKey = process.env.LLM_API_KEY || process.env.VitaTrack__ApiKey;
+    test.skip(!apiKey, 'Skipping — no API key configured');
+
+    test.setTimeout(180000);
+
+    await page.goto('/Supplement');
+    await expect(page.locator('table tbody tr').first()).toBeVisible();
+    await page.click('text=Add New Supplement');
+
+    await page.fill('input[name="Name"]', 'G.I. Detox');
+    await page.fill('input[name="Brand"]', 'Biocidin Botanicals');
+    await page.fill('input[name="DailyDose"]', '1 capsule');
+    await page.fill('input[name="ManufacturerUrl"]', 'https://supplementhub.co.uk/products/gi-detox-60-capsules-biocidin-botanicals');
+    await page.fill('input[name="Cost"]', '29.99');
+    await screenshot(page, testInfo, 'gi-detox-create-form');
+
+    // Click Enrich button to trigger LLM extraction
+    await page.click('button#enrich-btn');
+
+    // Wait for the nutrient editor to appear — the LLM call may take time
+    await expect(page.locator('h4')).toContainText('Nutrients for', { timeout: 90000 });
+
+    // The LLM must succeed — no error alerts allowed
+    const errorAlert = page.locator('.alert-info, .alert-warning');
+    await expect(errorAlert).toHaveCount(0, { timeout: 5000 });
+
+    // Verify the nutrient editor appeared
+    await expect(page.locator('#nutrients-table')).toBeVisible();
+    await screenshot(page, testInfo, 'gi-detox-nutrient-editor');
+
+    // Verify a blend parent row exists (look for "Proprietary Blend" or similar)
+    const blendRows = page.locator('tr:has(.add-sub-nutrient)');
+    const blendCount = await blendRows.count();
+    console.log(`Found ${blendCount} blend parent rows`);
+    expect(blendCount).toBeGreaterThan(0);
+
+    // Get the first blend row
+    const firstBlend = blendRows.first();
+    const blendName = await firstBlend.locator('input[name$=".GenericName"]').inputValue();
+    console.log('Blend name:', blendName);
+
+    // Verify the blend has 6 child rows (sub-nutrients)
+    const childRows = page.locator('tr.blend-child');
+    const childCount = await childRows.count();
+    console.log(`Found ${childCount} child nutrient rows`);
+    expect(childCount).toBe(6);
+
+    // Verify each child has a GenericName
+    for (let i = 0; i < childCount; i++) {
+      const childName = await childRows.nth(i).locator('input[name$=".GenericName"]').inputValue();
+      console.log(`Child ${i + 1}:`, childName);
+      expect(childName.length).toBeGreaterThan(0);
+    }
+
+    await screenshot(page, testInfo, 'gi-detox-blend-with-children');
   });
 });

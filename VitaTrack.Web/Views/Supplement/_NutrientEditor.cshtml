@@ -44,10 +44,7 @@
                         <td><input name="nutrients[@seq].SpecificForm" value="@root.SpecificForm" class="form-control" /></td>
                         <td><input name="nutrients[@seq].Dosage" value="@root.Dosage" class="form-control" required /></td>
                         <td>
-                            @if (root.Children != null && root.Children.Count > 0)
-                            {
-                                <button type="button" class="btn btn-sm btn-outline-primary add-sub-nutrient" data-parent-key="root-@r">Add sub-nutrient</button>
-                            }
+                            <button type="button" class="btn btn-sm btn-outline-primary add-sub-nutrient" data-parent-key="root-@r">Add sub-nutrient</button>
                             <button type="button" class="btn btn-sm btn-danger remove-row">Remove</button>
                         </td>
                     </tr>

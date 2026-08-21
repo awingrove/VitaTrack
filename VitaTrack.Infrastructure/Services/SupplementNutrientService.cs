@@ -84,7 +84,7 @@ public class SupplementNutrientService(
                 {
                     SupplementId = supplementId,
                     GenericName = root.GenericName,
-                    SpecificForm = root.SpecificForm,
+                    SpecificForm = string.IsNullOrWhiteSpace(root.SpecificForm) ? "Blend" : root.SpecificForm,
                     Dosage = root.Dosage
                 });
                 var parent = await _nutrientRepo.GetByIdAsync(parentId);
@@ -108,8 +108,8 @@ public class SupplementNutrientService(
                     {
                         SupplementId = supplementId,
                         GenericName = c.GenericName,
-                        SpecificForm = c.SpecificForm,
-                        Dosage = c.Dosage,
+                        SpecificForm = string.IsNullOrWhiteSpace(c.SpecificForm) ? "N/A" : c.SpecificForm,
+                        Dosage = c.Dosage ?? string.Empty,
                         ParentNutrientId = parentId
                     };
                     try

@@ -109,4 +109,42 @@ test.describe('Supplement Nutrient Blends', () => {
     await expect(page.locator('.blend-child').first().locator('input[name$=".Dosage"]')).toHaveValue('');
     await screenshot(page, testInfo, 'blend-child-no-dosage');
   });
+
+  test('should add a sub-nutrient to an existing blend that has no children', async ({ page }, testInfo) => {
+    const name = `EmptyBlend${Date.now()}`;
+    await reachEditorForNewSupplement(page, testInfo, name);
+
+    // Create a blend with no sub-nutrients yet.
+    await page.click('#add-blend-row');
+    const blendRow = page.locator('#nutrients-table tbody tr', { has: page.locator('.add-sub-nutrient') });
+    await blendRow.locator('input[name$=".GenericName"]').fill('Lonely Blend');
+    await blendRow.locator('input[name$=".Dosage"]').fill('500mg');
+
+    await page.click('button:has-text("Save Changes")');
+    await expect(page.locator('text=Nutrients saved successfully.')).toBeVisible();
+
+    // Reload: the blend must still offer an "Add sub-nutrient" button even with zero children.
+    const id = await readSupplementId(page);
+    await page.goto(`/Supplement/EditNutrients/${id}`);
+    const reloadBlend = page.locator('#nutrients-table tbody tr:has(input[value="Lonely Blend"])');
+    await expect(reloadBlend).toBeVisible();
+    await expect(reloadBlend.locator('.add-sub-nutrient')).toHaveCount(1);
+
+    // Add a sub-nutrient with no dosage and save.
+    await reloadBlend.locator('.add-sub-nutrient').click();
+    const child = page.locator('.blend-child').first();
+    await expect(child).toBeVisible();
+    await child.locator('input[name$=".GenericName"]').fill('First Sub No Dose');
+
+    await page.click('button:has-text("Save Changes")');
+    await expect(page.locator('text=Nutrients saved successfully.')).toBeVisible();
+    await expect(page.locator('.blend-child')).toHaveCount(1);
+
+    // Confirm persistence after a fresh reload.
+    const id2 = await readSupplementId(page);
+    await page.goto(`/Supplement/EditNutrients/${id2}`);
+    await expect(page.locator('.blend-child')).toHaveCount(1);
+    await expect(page.locator('.blend-child').first().locator('input[name$=".GenericName"]')).toHaveValue('First Sub No Dose');
+    await screenshot(page, testInfo, 'empty-blend-got-sub');
+  });
 });

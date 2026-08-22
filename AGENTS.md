@@ -16,7 +16,9 @@ This document defines the coding standards, architectural guidelines, testing ph
 *   **Interactivity:** HTMX is load-bearing (`hx-post`/`hx-target`/`hx-swap`/`hx-swap-oob` in Create/UpdateNutrients/Review flows). Vanilla JS (external `.js` under `wwwroot/js`) alongside HTMX for row add/remove and checkbox selection.
 *   **CSP:** `Program.cs` sets `script-src 'self' https://cdn.jsdelivr.net` in non-Dev envs (no `'unsafe-inline'`). Self-host JS under `wwwroot/lib` or `wwwroot/js`; htmx re-executes external `<script src>` tags on swap, so partials can include their own `<script src="/js/...">`.
 *   **Styling:** Bootstrap 5 (CDN via `cdn.jsdelivr.net`). Avoid custom CSS unless absolutely necessary.
+*   **No Orphan Pages:** Every GET action/page must be reachable from inside the running app — a nav/list-row button, tag-helper link, or controller redirect — **in the same change that adds it**. Direct-URL-only access is a defect. When adding an action, name its entry point; if none exists, stop and wire one. Enforced mechanically by `UiReachabilityTests` (scans views/JS/redirects for inbound references; E2E specs navigating raw URLs deliberately don't count). For the same reason, at least one E2E test per surface must arrive by clicking in-app links rather than `goto()` deep URLs.
 *   **Razor Gotcha — ValueTuples and `dynamic`:** Do **not** pass `ValueTuple` types through `ViewData` and cast to `dynamic` in Razor views. Razor's DLR cannot resolve named tuple fields (`Item1`, `Item2`) as properties. Always project tuples into **anonymous objects** before assigning to `ViewData` (e.g., `ViewData["Items"] = list.Select(x => new { x.Name, x.Value }).ToList()`).
+*   **Razor Gotcha — TagHelpers need async scope:** Inline markup containing `asp-*` tag helpers cannot live inside a synchronous local function in a view (MVC1006). Precompute an ordered data structure first, then loop over it with plain Razor markup.
 
 ## 💾 Data Access & External Services
 *   **Database:** SQLite (`VitaTrack.db` relative to the executable). Tables are created on startup via `DbInit.EnsureCreated`.
@@ -81,6 +83,7 @@ This document defines the coding standards, architectural guidelines, testing ph
 *   **Location:** [`storymap.yaml`](storymap.yaml)
 *   **Purpose:** Machine-readable story map capturing all user activities, tasks, and stories with priority, status, and test coverage.
 *   **Usage:** Reference when adding new features to understand existing scope and where new stories fit.
+*   **Entry Points:** Every task carries an `entry_point` describing how the user reaches it from inside the app (nav bar or another reachable page). A task without a navigable `entry_point` chain is incomplete even if its stories are `done` — this pairs with the No Orphan Pages rule and `UiReachabilityTests`. Update the story map **in the same change** that adds or completes a feature; a stale map is treated as a defect.
 
 ## 🤖 AI Workflow Directives
 1.  **Understand Context:** Before modifying a file, check how it interacts with the layered folders (Controller -> Service -> Repository).

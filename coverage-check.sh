@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Run unit tests with coverage and gate at the current coverage floor.
 # Floor is intentionally set below the aspirational AGENTS.md target (≥80%
-# on Infrastructure) because the codebase has not yet reached it (Aug 2026:
-# Infra ~53%). Gate prevents regression; raise the threshold here as
-# targeted test PRs ratchet coverage up toward 80%.
+# on Infrastructure) because the codebase has not yet reached it. Aug 2026:
+# actual line coverage 66.8%, floor ratcheted to 65%. Raise as targeted
+# test PRs push coverage toward 80%.
 set -euo pipefail
 
-THRESHOLD="${COVERAGE_THRESHOLD:-50}"
+THRESHOLD="${COVERAGE_THRESHOLD:-65}"
 THRESHOLD_TYPE="${COVERAGE_THRESHOLD_TYPE:-line}"
 CONFIGURATION="${CONFIGURATION:-Debug}"
 

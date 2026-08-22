@@ -60,7 +60,7 @@ When a running app behaves in a way the source says is impossible (e.g., validat
 
 ## Coverage Goal
 - Aim for **≥80%** line coverage on repository and service layers (aspirational target, root AGENTS.md).
-- CI currently gates at **≥50%** line on `VitaTrack.Infrastructure` via `./coverage-check.sh` (current actual ~53%; see ArchitectureReview §2.11 and commit history). Raise the threshold via `COVERAGE_THRESHOLD=NN` as targeted test PRs ratchet coverage toward 80%.
+- CI gates at **≥65%** line via `./coverage-check.sh` (actual 66.8% as of Aug 2026). Ratchet rule: when a PR adds tests that raise actual coverage, bump the default `THRESHOLD` in `coverage-check.sh` to just below the new actual — the floor only moves up, never down.
 - UI layer tested via Playwright E2E tests (in `e2e-tests/playwright/`).
 
 ## Playwright E2E Tests

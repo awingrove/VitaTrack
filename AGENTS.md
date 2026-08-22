@@ -75,7 +75,7 @@ This document defines the coding standards, architectural guidelines, testing ph
     *   Run Web: `dotnet run --project VitaTrack.Web`
     *   Test: `dotnet test`
     *   Format: `dotnet format VitaTrack.sln` (auto-fix) or `./format-check.sh` (verify-only)
-    *   Coverage: `./coverage-check.sh` (gates Infrastructure line coverage at \`COVERAGE_THRESHOLD\` env, default 50%)
+    *   Coverage: `./coverage-check.sh` (gates Infrastructure line coverage at \`COVERAGE_THRESHOLD\` env, default 65%; ratchet upward as coverage grows)
 *   **Pre-commit Hook:** run `./scripts/install-pre-commit-hook.sh` once after clone. It gates on `dotnet format --verify-no-changes` and `VitaTrack.ArchitectureTests` (sub-second). Bypass with `git commit --no-verify` when intentionally sidestepping it.
 *   **Architecture Decision Records** live in [`docs/adr/`](docs/adr/). Check for relevant ADRs before adding abstractions that might fight the original intent (pragmatic MVC vs Clean Arch, Dapper vs EF Core, SQLite vs PostgreSQL, no auth, HTMX vs SPA). Each ADR is append-only — supersede by adding `NNNN-...`, never edit an existing one.
 
@@ -91,3 +91,5 @@ This document defines the coding standards, architectural guidelines, testing ph
 2.  **Naming:** Ensure generated names clearly describe *intent* without needing supplementary comments.
 3.  **Refactoring:** If asked to add a feature to a file nearing 300 lines, stop and refactor the file into smaller components first.
 4.  **Debug Hygiene:** Temporary debug artifacts — `File.AppendAllText` logging lines, throwaway spec files, ad-hoc playwright configs, `reuseExistingServer: true`, probe members in models — must be tracked as todo items and reverted/removed before commit. Never let debug scaffolding ride along in a feature diff.
+5.  **Resumable Plans:** Feature work beyond ~3 tasks gets a committed plan at `docs/plans/<feature>.md` with checkbox tasks, updated as steps complete. Session context lives in the plan file, not in chat history — any agent must be able to resume cold from it.
+6.  **Post-Mortem Capture:** When fixing a bug whose root cause reveals a systemic gap (a gotcha, a missing rule, an unenforced convention), updating the relevant AGENTS.md / story map is part of the fix — same commit or immediate follow-up, not optional cleanup.

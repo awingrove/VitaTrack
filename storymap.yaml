@@ -1,84 +1,109 @@
 # VitaTrack Story Map
 # Generated from PROJECT_PLAN.md and existing views
+#
+# Conventions:
+# - every task has a unique `id` and an `entry_point` (how the user reaches it)
+# - test refs are machine-checked by VitaTrack.ArchitectureTests/StoryMapConsistencyTests:
+#     unit: <TestClass>.<TestMethod>          (must exist in VitaTrack.Tests sources)
+#     e2e:  <spec-stem>::<title fragment>     (file must exist; fragment must appear in it)
 
 meta:
   project: VitaTrack
   description: Vitamin and Supplement Tracking Application
   last_updated: 2026-08-22
-  # entry_point: how the user reaches this task from inside the app.
-  # Every task must chain back to persistent nav or another reachable page.
-  # Enforced by VitaTrack.ArchitectureTests/UiReachabilityTests (no orphan pages).
 
 activities:
   - name: Manage Family Members
     tasks:
-      - name: View family members
+      - id: MF-1
+        name: View family members
         entry_point: nav bar -> Family
         stories:
           - title: See all family members in a list
             status: done
             priority: high
             tests:
-              - unit: 3
-              - e2e: home navigation
-      - name: Add a family member
+              - e2e: home::should navigate to Family page via link
+              - e2e: family-member::should display family members index page
+      - id: MF-2
+        name: Add a family member
         entry_point: Family index -> Add Family Member
         stories:
           - title: Fill out name and display name
             status: done
             priority: high
-      - name: Edit a family member
+            tests:
+              - e2e: family-member::should create a new family member
+              - unit: FamilyRepositoryTests.Add_GetAll_GetById_Update_Works
+      - id: MF-3
+        name: Edit a family member
         entry_point: Family index row -> Edit button
         stories:
           - title: Update name or display name
             status: done
             priority: high
-      - name: Delete a family member
+            tests:
+              - e2e: family-member::should edit a family member
+      - id: MF-4
+        name: Delete a family member
         entry_point: Family index row -> Delete button
         stories:
           - title: Remove a family member with confirmation
             status: done
             priority: medium
             tests:
-              - e2e: family-member delete
+              - e2e: family-member::should delete a family member
           - title: Remove a family member that has prescribed doses
             status: done
             priority: high
             tests:
               - unit: FamilyRepositoryTests.Delete_RemovesFamilyMemberWithPrescribedDoses
-              - e2e: family-member delete with prescribed doses
+              - e2e: family-member::should delete a family member with prescribed doses
 
   - name: Manage Supplements
     tasks:
-      - name: View supplements
+      - id: MS-1
+        name: View supplements
         entry_point: nav bar -> Supplements
         stories:
           - title: See all supplements in a table with cost
             status: done
             priority: high
             tests:
-              - e2e: supplement-nutrient display
-      - name: Add a supplement
+              - e2e: supplement-crud::should display supplements list
+      - id: MS-2
+        name: Add a supplement
         entry_point: Supplements index -> Add Supplement
         stories:
           - title: Enter basic supplement info
             status: done
             priority: high
+            tests:
+              - e2e: supplement-crud::should create a new supplement
           - title: Provide manufacturer URL for LLM enrichment
             status: done
             priority: medium
+            tests:
+              - e2e: supplement-crud::should show separate Save and Enrich buttons on Create
           - title: Skip URL and manually enter nutrients
             status: done
             priority: medium
             tests:
-              - e2e: LLM UI flow (review page, manual add/remove)
-      - name: Edit a supplement
+              - e2e: supplement-llm-flow::should show nutrient editor inline when creating a supplement without a URL
+              - e2e: supplement-llm-flow::should allow adding nutrients in the inline editor and saving
+      - id: MS-3
+        name: Edit a supplement
         entry_point: Supplements index row -> Edit button
         stories:
           - title: Update supplement details and re-enrich via LLM
             status: done
             priority: high
-      - name: Delete a supplement
+            tests:
+              - e2e: supplement-crud::should edit a supplement
+              - e2e: supplement-crud::should warn before enriching when supplement already has nutrients (Edit)
+              - e2e: supplement-crud::should save without enrichment on Edit navigates to list
+      - id: MS-4
+        name: Delete a supplement
         entry_point: Supplements index row -> Delete / Delete Selected
         stories:
           - title: Remove a supplement with confirmation dialog
@@ -86,74 +111,95 @@ activities:
             priority: high
             tests:
               - unit: SupplementControllerTests.Delete_CallsRepoAndRedirectsToIndex
-              - e2e: supplement-crud delete
+              - e2e: supplement-crud::should delete a supplement
           - title: Delete multiple supplements via checkboxes and Delete Selected button
             status: done
             priority: high
             tests:
               - unit: SupplementControllerTests.DeleteSelected_DeletesCheckedSupplementsAndRedirects
               - unit: SupplementRepositoryTests.DeleteMultiple_RemovesSupplementsWithNutrients
-              - e2e: supplement-crud bulk delete
+              - e2e: supplement-crud::should delete multiple supplements via checkboxes
+      - id: MS-5
+        name: Import supplements from CSV
+        entry_point: Supplements index -> Import CSV
+        stories:
+          - title: Parse CSV rows with validation errors reported per row
+            status: done
+            priority: medium
+            tests:
+              - unit: CsvImportServiceTests.ParseAsync_ValidCsvThreeRows_ReturnsThreeRows
+              - unit: CsvImportServiceTests.ParseAsync_MissingName_ReturnsErrorForRow
+              - e2e: csv-import::should import a valid CSV and show report
+          - title: Open import modal and download sample CSV
+            status: done
+            priority: medium
+            tests:
+              - e2e: csv-import::should open import modal and download sample CSV
+
       - name: Manage supplement nutrients
+        id: MS-6
         entry_point: Supplements index row -> Nutrients; Supplement Edit -> Manage All Nutrients
         stories:
           - title: View nutrients for a supplement
             status: done
             priority: high
             tests:
-              - e2e: supplement-nutrient display
+              - e2e: supplement-nutrient::should display nutrients for a supplement
           - title: Add a nutrient manually
             status: done
             priority: high
             tests:
-              - e2e: supplement-nutrient add
+              - e2e: supplement-nutrient::should add a new nutrient
           - title: Add a sub-nutrient under a blend without a dosage
             status: done
             priority: high
             tests:
-              - e2e: supplement-nutrient blend-child-without-dosage
+              - e2e: supplement-nutrient::should add a sub-nutrient under a blend without a dosage
           - title: Edit an existing nutrient
             status: done
             priority: high
             tests:
-              - e2e: supplement-nutrient edit
+              - e2e: supplement-nutrient::should edit an existing nutrient
           - title: Delete a nutrient
             status: done
             priority: high
             tests:
-              - e2e: supplement-nutrient delete
+              - e2e: supplement-nutrient::should delete a nutrient
+              - unit: SupplementNutrientControllerTests.DeleteSelected_DeletesCheckedNutrientsAndRedirects
           - title: View multiple supplements with their own nutrients
             status: done
             priority: medium
             tests:
-              - e2e: supplement-nutrient multi-supplement
+              - e2e: supplement-nutrient::should show multiple supplements with their own nutrients
 
       - name: Build and manage nutrient blends
+        id: MS-7
         entry_point: Supplement Edit -> Edit Nutrient Breakdown; Nutrient index -> Edit Breakdown (Blends)
         stories:
           - title: Create a blend parent row in the breakdown editor
             status: done
             priority: high
             tests:
-              - e2e: supplement-blends build blend
+              - e2e: supplement-blends::should add a blend with sub-nutrients and persist grouping
           - title: Group sub-nutrients under a blend parent (optional dosage)
             status: done
             priority: high
             tests:
-              - e2e: supplement-blends optional dosage
+              - e2e: supplement-blends::should save a blend child without dosage
+              - unit: SupplementNutrientValidationTests.Child_WithBlankDosage_AndParent_IsValid
           - title: Add sub-nutrient to an existing childless blend after reload
             status: done
             priority: high
             tests:
-              - e2e: supplement-blends add to childless blend
-          - title: Display blend hierarchy on nutrient index (indent + badge)
-            status: done
-            priority: medium
-          - title: Attach a nutrient to an existing blend via standalone form
+              - e2e: supplement-blends::should add a sub-nutrient to an existing blend that has no children
+          - title: Display seeded blend hierarchy in breakdown editor
             status: done
             priority: medium
             tests:
-              - e2e: supplement-nutrient Parent blend dropdown
+              - e2e: supplement-blends::should display a seeded blend with child nutrients
+          - title: Display blend hierarchy on nutrient index (indent + badge)
+            status: done
+            priority: medium
           - title: Deleting a blend parent cascades to its children
             status: done
             priority: medium
@@ -162,54 +208,59 @@ activities:
 
   - name: Track Prescribed Doses
     tasks:
-      - name: View prescribed doses
+      - id: PD-1
+        name: View prescribed doses
         entry_point: nav bar -> Doses
         stories:
           - title: See all prescribed doses in a list
             status: done
             priority: high
             tests:
-              - e2e: prescribed-dose index
-      - name: Add a prescribed dose
+              - e2e: prescribed-dose::should display prescribed doses index page
+      - id: PD-2
+        name: Add a prescribed dose
         entry_point: Doses index -> Add Prescribed Dose
         stories:
           - title: Select family member and supplement, set dosage and frequency
             status: done
             priority: high
             tests:
-              - e2e: prescribed-dose create
-      - name: Edit a prescribed dose
+              - e2e: prescribed-dose::should create a new prescribed dose
+      - id: PD-3
+        name: Edit a prescribed dose
         entry_point: Doses index row -> Edit button
         stories:
           - title: Update dosage, frequency, or instructions
             status: done
             priority: high
             tests:
-              - e2e: prescribed-dose edit
-      - name: Delete a prescribed dose
+              - e2e: prescribed-dose::should edit a prescribed dose
+      - id: PD-4
+        name: Delete a prescribed dose
         entry_point: Doses index row -> Delete button
         stories:
           - title: Remove a prescribed dose
             status: done
             priority: high
             tests:
-              - e2e: prescribed-dose delete
+              - e2e: prescribed-dose::should delete a prescribed dose
 
   - name: View Reports
     tasks:
-      - name: Daily Nutrient Report
+      - id: RP-1
+        name: Daily Nutrient Report
         entry_point: nav bar -> Nutrient Report
         stories:
           - title: See per-family-member nutrient breakdown
             status: done
             priority: high
             tests:
-              - e2e: nutrient-report page load
+              - e2e: nutrient-report::should display nutrient report page
           - title: View nutrient totals across all members
             status: done
             priority: medium
             tests:
-              - e2e: nutrient-report supplements table
+              - e2e: nutrient-report::should show supplements in report table
           - title: See monthly cost estimate
             status: done
             priority: medium
@@ -217,77 +268,104 @@ activities:
             status: done
             priority: low
             tests:
-              - e2e: nutrient-report no-data message
-      - name: Cost Report
+              - e2e: nutrient-report::should show no-active-doses message or nutrient data
+          - title: Link from report to manage prescribed doses
+            status: done
+            priority: low
+            tests:
+              - e2e: nutrient-report::should have link to manage prescribed doses
+      - id: RP-2
+        name: Cost Report
         entry_point: nav bar -> Cost Report
         stories:
           - title: See cost breakdown by supplement
             status: done
             priority: high
             tests:
-              - e2e: cost-report supplement costs
+              - e2e: cost-report::should show supplement costs table with seeded data
           - title: See cost breakdown by family member
             status: done
             priority: high
             tests:
-              - e2e: cost-report member costs
+              - e2e: cost-report::should show family member costs table
           - title: View grand total cost
             status: done
             priority: medium
             tests:
-              - e2e: cost-report grand total
+              - e2e: cost-report::should show grand total
 
   - name: LLM Enrichment
     tasks:
-      - name: Auto-extract nutrients from URL
+      - id: LLM-1
+        name: Auto-extract nutrients from URL
         entry_point: Supplement Create/Edit -> Enrich button
         stories:
           - title: Scrape manufacturer URL and extract nutrients via OpenRouter
             status: done
             priority: medium
             tests:
-              - unit: 5 (mocked HTTP)
-              - e2e: 1 (real API, skips without key)
+              - unit: LlmServiceTests.EnrichSupplementAsync_ExtractsNutrients_WhenApiReturnsValidResponse
+              - e2e: supplement-llm-integration::should extract nutrients from a real product URL using LLM
+          - title: Extract blends with nested children from product labels
+            status: done
+            priority: medium
+            tests:
+              - unit: BlendEnrichmentTests.ExtractNutrientsAsync_ParsesNestedBlendChildren
+              - e2e: supplement-llm-integration::should extract blend with 6 sub-nutrients from G.I. Detox URL
           - title: Review extracted nutrients before saving
             status: done
             priority: medium
             tests:
-              - e2e: LLM UI flow (review page)
-      - name: Error handling
+              - unit: SupplementControllerEditTests.Edit_Post_MergesNutrientsAndRedirectsToReview
+              - e2e: supplement-llm-flow::should allow removing nutrients in the inline editor and saving
+      - id: LLM-2
+        name: Error handling
         entry_point: n/a (error-path behavior, not navigable)
         stories:
           - title: Gracefully handle missing API key
             status: done
             priority: low
             tests:
-              - unit: OpenRouterLlmServiceTests.NoApiKey_ReturnsError
+              - unit: LlmServiceTests.EnrichSupplementAsync_ReturnsEmpty_WhenApiKeyMissing
           - title: Gracefully handle fetch failure
             status: done
             priority: low
             tests:
-              - unit: OpenRouterLlmServiceTests.FetchFailure_ReturnsError
+              - unit: LlmServiceTests.EnrichSupplementAsync_ReturnsError_WhenUrlFetchFails
           - title: Gracefully handle malformed response
             status: done
             priority: low
             tests:
-              - unit: OpenRouterLlmServiceTests.MalformedResponse_ReturnsError
+              - unit: LlmServiceTests.EnrichSupplementAsync_ReturnsError_WhenApiResponseHasMalformedJson
 
   - name: Application Shell
     tasks:
-      - name: Navigation
+      - id: SHELL-1
+        name: Navigation
         entry_point: persistent nav bar in _Layout.cshtml
         stories:
           - title: Home page loads with correct title
             status: done
             priority: high
             tests:
-              - e2e: home title
+              - e2e: home::should have correct title
           - title: Navigate to family page via link
             status: done
             priority: high
             tests:
-              - e2e: home navigation
-      - name: Error handling
+              - e2e: home::should navigate to Family page via link
+      - id: SHELL-2
+        name: Frontend infrastructure
+        entry_point: n/a (load-bearing infrastructure, verified per page load)
+        stories:
+          - title: htmx self-hosted, CSP clean, no inline scripts
+            status: done
+            priority: high
+            tests:
+              - e2e: htmx-load::htmx script is self-hosted (no CDN)
+              - e2e: htmx-load::no CSP violations block htmx
+      - id: SHELL-3
+        name: Error handling
         entry_point: n/a (error-path behavior, not navigable)
         stories:
           - title: Show error page on unhandled exception

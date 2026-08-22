@@ -83,7 +83,8 @@ This document defines the coding standards, architectural guidelines, testing ph
 *   **Location:** [`storymap.yaml`](storymap.yaml)
 *   **Purpose:** Machine-readable story map capturing all user activities, tasks, and stories with priority, status, and test coverage.
 *   **Usage:** Reference when adding new features to understand existing scope and where new stories fit.
-*   **Entry Points:** Every task carries an `entry_point` describing how the user reaches it from inside the app (nav bar or another reachable page). A task without a navigable `entry_point` chain is incomplete even if its stories are `done` — this pairs with the No Orphan Pages rule and `UiReachabilityTests`. Update the story map **in the same change** that adds or completes a feature; a stale map is treated as a defect.
+*   **Entry Points:** Every task carries a unique `id` and an `entry_point` describing how the user reaches it from inside the app (nav bar or another reachable page). A task without a navigable `entry_point` chain is incomplete even if its stories are `done` — this pairs with the No Orphan Pages rule and `UiReachabilityTests`. Update the story map **in the same change** that adds or completes a feature; a stale map is treated as a defect.
+*   **Machine-Checked Refs:** `StoryMapConsistencyTests` validates the map: unique ids, entry points present, every `unit: <TestClass>.<Method>` / `e2e: <spec>::<title fragment>` reference resolves to a real test, and no E2E spec is left unreferenced by any story. If it fails after your change, fix the map — do not weaken the test.
 
 ## 🤖 AI Workflow Directives
 1.  **Understand Context:** Before modifying a file, check how it interacts with the layered folders (Controller -> Service -> Repository).

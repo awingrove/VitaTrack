@@ -139,6 +139,26 @@ test.describe('Supplement CRUD', () => {
     await screenshot(page, testInfo, 'supplement-after-delete');
   });
 
+  test('should sort supplements by a column when header clicked', async ({ page }, testInfo) => {
+    await page.goto('/Supplement');
+
+    // Initially sorted by Name ascending (server ORDER BY) -> Name header shows ▲
+    await expect(page.locator('th[data-sort-key="Name"]')).toContainText('▲');
+
+    // Click Nutrient Count header -> numeric ascending; compare raw sort values
+    await page.locator('th[data-sort-key="NutrientCount"]').click();
+    const firstCount = await page.locator('table tbody tr:first-child td[data-sort-key="NutrientCount"]').getAttribute('data-sort-value');
+    const secondCount = await page.locator('table tbody tr:nth-child(2) td[data-sort-key="NutrientCount"]').getAttribute('data-sort-value');
+    expect(Number(firstCount)).toBeLessThanOrEqual(Number(secondCount));
+
+    // Click again -> descending
+    await page.locator('th[data-sort-key="NutrientCount"]').click();
+    const firstDesc = await page.locator('table tbody tr:first-child td[data-sort-key="NutrientCount"]').getAttribute('data-sort-value');
+    const secondDesc = await page.locator('table tbody tr:nth-child(2) td[data-sort-key="NutrientCount"]').getAttribute('data-sort-value');
+    expect(Number(firstDesc)).toBeGreaterThanOrEqual(Number(secondDesc));
+    await screenshot(page, testInfo, 'supplement-sorted');
+  });
+
   test('should show confirm dialog and not delete when dismissed', async ({ page }, testInfo) => {
     const unique = Date.now();
     const suppName = `CancelDelete${unique}`;

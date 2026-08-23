@@ -113,6 +113,11 @@ activities:
               - unit: SupplementControllerTests.Delete_CallsRepoAndRedirectsToIndex
               - e2e: supplement-crud::should delete a supplement
               - e2e: supplement-crud::should show confirm dialog and not delete when dismissed
+          - title: Sort supplements by column
+            status: done
+            priority: medium
+            tests:
+              - e2e: supplement-crud::should sort supplements by a column when header clicked
           - title: Delete multiple supplements via checkboxes and Delete Selected button
             status: done
             priority: high
@@ -169,6 +174,7 @@ activities:
               - e2e: supplement-nutrient::should delete a nutrient
               - e2e: supplement-nutrient::should warn about blend children when bulk deleting nutrients
               - e2e: supplement-nutrient::should show blend-child cascade warning when deleting a blend
+              - e2e: supplement-nutrient::should sort nutrients by a column when header clicked
               - unit: SupplementNutrientControllerTests.DeleteSelected_DeletesCheckedNutrientsAndRedirects
           - title: View multiple supplements with their own nutrients
             status: done

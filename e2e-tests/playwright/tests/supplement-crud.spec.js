@@ -313,6 +313,32 @@ test.describe('Supplement CRUD', () => {
     await screenshot(page, testInfo, 'enrich-spinner');
   });
 
+  test('should submit enrich and reach Review when supplement has no nutrients', async ({ page }, testInfo) => {
+    const unique = Date.now();
+    const suppName = `EnrichFlow${unique}`;
+
+    // Create a supplement with zero nutrients
+    await page.goto('/Supplement/Create');
+    await page.fill('input#Name', suppName);
+    await page.fill('input#Brand', 'FlowBrand');
+    await page.fill('input#DailyDose', '1 cap');
+    await page.click('button[hx-post="/Supplement/CreateSave"]');
+    await expect(page.locator('h2')).toHaveText('Supplements');
+
+    // Edit it and click Enrich (no confirm dialog since nutrient count is 0)
+    await page.click(`tr:has-text("${suppName}") >> text=Edit`);
+    await expect(page.locator('h2')).toHaveText('Edit Supplement');
+    const spinner = page.locator('#enrich-spinner');
+    await expect(spinner).toBeHidden();
+
+    await page.click('#enrich-btn');
+
+    // The postback should land on the Review page (proves submission happened;
+    // the spinner shows during the wait and disappears on navigation)
+    await expect(page.locator('h2')).toHaveText('Review Supplement', { timeout: 15000 });
+    await screenshot(page, testInfo, 'enrich-flow-review');
+  });
+
   test('should save without enrichment on Edit navigates to list', async ({ page }, testInfo) => {
     await page.goto('/Supplement/Edit/1');
     await expect(page.locator('h2')).toHaveText('Edit Supplement');

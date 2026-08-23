@@ -25,7 +25,8 @@ public record NutrientReportData(
     decimal TotalCost,
     IReadOnlyList<string> MemberNames,
     IReadOnlyList<Dictionary<string, string>> MemberData,
-    IReadOnlyList<Supplement> Supplements);
+    IReadOnlyList<Supplement> Supplements,
+    IReadOnlyDictionary<int, decimal> SupplementMonthlyCosts);
 
 public record CostReportData(
     DateTime ReportDate,

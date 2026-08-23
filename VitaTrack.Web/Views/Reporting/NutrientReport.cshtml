@@ -3,7 +3,6 @@
     Layout = "_Layout";
 }
 @using System.Text.Json
-@using VitaTrack.Infrastructure.Models
 @model IEnumerable<Supplement>
 
 @{
@@ -102,16 +101,16 @@ else
 <h3>Supplements in Report</h3>
 <table class="table">
     <thead>
-        <tr><th>Name</th><th>Brand</th><th>Serving</th><th>Monthly Cost</th></tr>
+        <tr><th>Name</th><th>Brand</th><th>Serving</th><th>Estimated Monthly Cost</th></tr>
     </thead>
     <tbody>
-    @foreach (var s in Model)
+    @foreach (var s in (IEnumerable<dynamic>)ViewData["SupplementRows"]!)
     {
         <tr>
             <td>@s.Name</td>
             <td>@s.Brand</td>
             <td>@s.DailyDose</td>
-            <td>@(s.Cost.HasValue ? $"£{s.Cost.Value:F2}" : "N/A")</td>
+            <td>£@s.MonthlyCost</td>
         </tr>
     }
     </tbody>

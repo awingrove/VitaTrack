@@ -22,6 +22,7 @@ public class ReportingService(
         var nutrientCache = new Dictionary<int, List<SupplementNutrient>>();
         var memberTotals = new Dictionary<int, Dictionary<string, decimal>>();
         var grandTotals = new Dictionary<string, decimal>();
+        var supplementMonthlyCosts = new Dictionary<int, decimal>();
         decimal totalCost = 0;
 
         foreach (var pd in activeDoses)
@@ -35,22 +36,25 @@ public class ReportingService(
                 nutrientCache[pd.SupplementId] = [.. list];
             }
 
-            var dailyFrequency = pd.FrequencyPerDay > 0 ? pd.FrequencyPerDay : 1;
+            var dailyFrequency = GetDailyFrequency(pd);
             memberTotals.TryAdd(pd.FamilyMemberId, []);
 
             foreach (var n in nutrientCache[pd.SupplementId])
             {
                 var nutrientValue = DosageParser.ParseAmount(n.Dosage);
-                var dailyAmount = nutrientValue * pd.FrequencyPerDay;
+                var dailyAmount = nutrientValue * dailyFrequency;
 
                 memberTotals[pd.FamilyMemberId][n.GenericName] =
                     memberTotals[pd.FamilyMemberId].GetValueOrDefault(n.GenericName) + dailyAmount;
                 grandTotals[n.GenericName] = grandTotals.GetValueOrDefault(n.GenericName) + dailyAmount;
             }
 
-            if (supplement.Cost.HasValue)
+            var monthlyCost = GetMonthlyCost(supplement, dailyFrequency);
+            if (monthlyCost > 0m)
             {
-                totalCost += supplement.Cost.Value * dailyFrequency;
+                totalCost += monthlyCost;
+                supplementMonthlyCosts[pd.SupplementId] =
+                    supplementMonthlyCosts.GetValueOrDefault(pd.SupplementId) + monthlyCost;
             }
         }
 
@@ -76,7 +80,8 @@ public class ReportingService(
             TotalCost: totalCost,
             MemberNames: memberNames,
             MemberData: memberData,
-            Supplements: supplements);
+            Supplements: supplements,
+            SupplementMonthlyCosts: supplementMonthlyCosts);
     }
 
     public async Task<CostReportData> GetCostReportDataAsync()
@@ -92,14 +97,14 @@ public class ReportingService(
         foreach (var pd in activeDoses)
         {
             var supplement = await GetCachedAsync(supplementCache, pd.SupplementId, _supplementRepo.GetByIdAsync);
-            if (supplement == null || !supplement.Cost.HasValue) continue;
+            if (supplement == null || !supplement.Cost.HasValue || supplement.ServingsPerBottle is not > 0) continue;
 
-            var dailyFrequency = pd.FrequencyPerDay > 0 ? pd.FrequencyPerDay : 1;
-            var monthlyCost = supplement.Cost.Value * dailyFrequency;
+            var dailyFrequency = GetDailyFrequency(pd);
+            var monthlyCost = GetMonthlyCost(supplement, dailyFrequency);
 
             supplementCosts[pd.SupplementId] = supplementCosts.TryGetValue(pd.SupplementId, out var existing)
                 ? existing with { MonthlyCost = existing.MonthlyCost + monthlyCost }
-                : new SupplementCostRow(supplement.Name, supplement.Brand, supplement.Cost.Value, monthlyCost);
+                : new SupplementCostRow(supplement.Name, supplement.Brand, GetUnitCost(supplement), monthlyCost);
 
             var member = await GetCachedAsync(familyCache, pd.FamilyMemberId, _familyRepo.GetByIdAsync);
             var memberName = member?.DisplayName ?? $"Member #{pd.FamilyMemberId}";
@@ -117,6 +122,22 @@ public class ReportingService(
             MemberCosts: memberCosts.Values.ToList(),
             GrandTotal: grandTotal);
     }
+
+    private static decimal GetDailyFrequency(PrescribedDose pd) => pd.FrequencyPerDay > 0 ? pd.FrequencyPerDay : 1;
+
+    private static bool HasServings(Supplement supplement) => supplement.ServingsPerBottle is > 0;
+
+    private static decimal GetMonthlyCost(Supplement supplement, decimal dailyFrequency)
+        => HasServings(supplement) && supplement.Cost.HasValue
+            // `!` safe: HasServings proves ServingsPerBottle non-null; Cost guarded by HasValue
+            ? supplement.Cost.Value / supplement.ServingsPerBottle!.Value * dailyFrequency * 30m
+            : 0m;
+
+    // Caller guarantees Cost.HasValue; HasServings guards the servings divisor.
+    private static decimal GetUnitCost(Supplement supplement)
+        => HasServings(supplement)
+            ? supplement.Cost!.Value / supplement.ServingsPerBottle!.Value
+            : supplement.Cost!.Value;
 
     private async Task<(List<PrescribedDose> ActiveDoses, DateTime Today)> GetActiveDosesAsync()
     {

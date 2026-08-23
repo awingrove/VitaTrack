@@ -41,6 +41,11 @@
         <input asp-for="Cost" class="form-control" type="number" step="0.01" />
         <span asp-validation-for="Cost" class="text-danger"></span>
     </div>
+    <div class="form-group">
+        <label asp-for="ServingsPerBottle" class="control-label"></label>
+        <input asp-for="ServingsPerBottle" class="form-control" type="number" step="1" />
+        <span asp-validation-for="ServingsPerBottle" class="text-danger"></span>
+    </div>
     <div class="form-group mt-3">
         <button type="submit"
                 class="btn btn-primary"

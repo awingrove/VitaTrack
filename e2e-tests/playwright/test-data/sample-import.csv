@@ -1,4 +1,4 @@
-Name,Brand,DailyDose,ManufacturerUrl,Cost
+Name,Brand,DailyDose,ManufacturerUrl,Cost,ServingsPerBottle
 TestCSV Product Alpha,TestBrand Alpha,1 tablet,,
 TestCSV Product Beta,TestBrand Beta,2 capsules,,
 TestCSV Product Gamma,TestBrand Gamma,1 tablet,,

@@ -209,7 +209,8 @@ public partial class SupplementController(
                     Brand = row.Brand,
                     DailyDose = row.DailyDose,
                     ManufacturerUrl = row.ManufacturerUrl,
-                    Cost = row.Cost
+                    Cost = row.Cost,
+                    ServingsPerBottle = row.ServingsPerBottle
                 };
 
                 var nutrientCount = 0;

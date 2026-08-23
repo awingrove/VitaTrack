@@ -7,7 +7,7 @@ namespace VitaTrack.Infrastructure.Services;
 public class CsvImportService : ICsvImportService
 {
     private const int MaxRows = 20;
-    private static readonly string[] ExpectedHeaders = ["Name", "Brand", "DailyDose", "ManufacturerUrl", "Cost"];
+    private static readonly string[] ExpectedHeaders = ["Name", "Brand", "DailyDose", "ManufacturerUrl", "Cost", "ServingsPerBottle"];
 
     public async Task<CsvParseResult> ParseAsync(Stream csvStream)
     {
@@ -85,6 +85,7 @@ public class CsvImportService : ICsvImportService
         var dailyDose = fields.Length > 2 ? fields[2].Trim() : string.Empty;
         var manufacturerUrl = fields.Length > 3 ? fields[3].Trim() : null;
         var costStr = fields.Length > 4 ? fields[4].Trim() : null;
+        var servingsStr = fields.Length > 5 ? fields[5].Trim() : null;
 
         if (string.IsNullOrWhiteSpace(name))
             return (null, new CsvParseError(lineNumber, "Missing required field: Name"));
@@ -115,10 +116,23 @@ public class CsvImportService : ICsvImportService
                 return (null, new CsvParseError(lineNumber, $"Invalid Cost value: '{costStr}'"));
         }
 
+        decimal? servingsPerBottle = null;
+        if (!string.IsNullOrWhiteSpace(servingsStr))
+        {
+            if (decimal.TryParse(servingsStr, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedServings))
+            {
+                if (parsedServings <= 0)
+                    return (null, new CsvParseError(lineNumber, "ServingsPerBottle must be positive"));
+                servingsPerBottle = parsedServings;
+            }
+            else
+                return (null, new CsvParseError(lineNumber, $"Invalid ServingsPerBottle value: '{servingsStr}'"));
+        }
+
         if (string.IsNullOrWhiteSpace(manufacturerUrl))
             manufacturerUrl = null;
 
-        var row = new CsvSupplementRow(lineNumber, name, brand, dailyDose, manufacturerUrl, cost);
+        var row = new CsvSupplementRow(lineNumber, name, brand, dailyDose, manufacturerUrl, cost, servingsPerBottle);
         return (row, null);
     }
 

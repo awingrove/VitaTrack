@@ -13,7 +13,7 @@ public class SupplementRepository(IDbConnection db) : ISupplementRepository
 
     public async Task<IReadOnlyList<Supplement>> GetAllAsync()
     {
-        const string sql = "SELECT Id, Name, Brand, DailyDose, ManufacturerUrl, NutritionJson, SwapSuggestion, Cost, ServingsPerBottle FROM Supplements";
+        const string sql = "SELECT Id, Name, Brand, DailyDose, ManufacturerUrl, NutritionJson, SwapSuggestion, Cost, ServingsPerBottle FROM Supplements ORDER BY Name";
         var rows = await _db.QueryAsync<Supplement>(sql);
         return rows.ToList();
     }

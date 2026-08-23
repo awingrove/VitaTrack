@@ -109,6 +109,20 @@ public class SupplementRepositoryTests : SqliteTestBase
     }
 
     [TestMethod]
+    public async Task GetAllAsync_ReturnsRowsOrderedByName()
+    {
+        // Insert out of alphabetical order
+        await _repo.AddAsync(new Supplement { Name = "Zeta", Brand = "B", DailyDose = "1 pill" });
+        await _repo.AddAsync(new Supplement { Name = "Alpha", Brand = "B", DailyDose = "1 pill" });
+        await _repo.AddAsync(new Supplement { Name = "Mango", Brand = "B", DailyDose = "1 pill" });
+
+        var rows = await _repo.GetAllAsync();
+        var names = rows.Select(r => r.Name).ToList();
+
+        CollectionAssert.AreEqual(new[] { "Alpha", "Mango", "Zeta" }, names);
+    }
+
+    [TestMethod]
     public async Task DeleteMultiple_RemovesSupplementsWithNutrients()
     {
         // Arrange – create supplements with nutrients and prescribed doses

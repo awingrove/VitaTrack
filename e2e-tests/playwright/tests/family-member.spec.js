@@ -72,10 +72,16 @@ test.describe('Family Members', () => {
     await expect(page.locator('h2')).toHaveText('Family Members');
     await screenshot(page, testInfo, 'family-before-delete');
 
-    // Click Delete on the new member
+    // Click Delete on the new member (dialog must actually fire — CSP regression guard)
     const row = page.locator(`table tbody tr:has-text("Doom${unique}")`).first();
-    page.on('dialog', dialog => dialog.accept());
+    let dialogFired = false;
+    page.on('dialog', async dialog => {
+      dialogFired = true;
+      expect(dialog.message()).toMatch(/prescribed doses/i);
+      await dialog.accept();
+    });
     await row.locator('button:has-text("Delete")').click();
+    expect(dialogFired).toBe(true);
 
     // Should redirect to index
     await expect(page.locator('h2')).toHaveText('Family Members');

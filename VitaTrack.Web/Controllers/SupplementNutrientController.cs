@@ -104,6 +104,8 @@ public class SupplementNutrientController(
         var nutrient = await _nutrientRepo.GetByIdAsync(id);
         if (nutrient == null) return NotFound();
 
+        var all = await _nutrientRepo.GetBySupplementIdAsync(nutrient.SupplementId);
+        ViewData["HasChildren"] = all.Any(n => n.ParentNutrientId == id);
         var supplement = await _supplementRepo.GetByIdAsync(nutrient.SupplementId);
         ViewData["Supplement"] = supplement;
         return View(nutrient);

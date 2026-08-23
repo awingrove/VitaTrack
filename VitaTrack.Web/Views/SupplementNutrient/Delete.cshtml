@@ -13,6 +13,11 @@
     Are you sure you want to delete this nutrient from <strong>@supplement?.Name</strong>?
 </div>
 
+@if ((bool)(ViewData["HasChildren"] ?? false))
+{
+    <div class="alert alert-warning">This blend's child nutrients will also be deleted.</div>
+}
+
 <dl class="row">
     <dt class="col-sm-3">Generic Name</dt>
     <dd class="col-sm-9">@Model.GenericName</dd>

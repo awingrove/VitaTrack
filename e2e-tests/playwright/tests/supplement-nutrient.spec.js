@@ -292,6 +292,51 @@ test.describe('Supplement Nutrients', () => {
     await screenshot(page, testInfo, 'nutrient-bulk-delete-warning');
   });
 
+  test('should show blend-child cascade warning when deleting a blend', async ({ page }, testInfo) => {
+    const unique = Date.now();
+    const suppName = `BlendCascade${unique}`;
+    const parentName = `BlendParent${unique}`;
+    const childName = `BlendChild${unique}`;
+
+    // Isolated supplement so parallel workers never share rows
+    await page.goto('/Supplement/Create');
+    await page.fill('input#Name', suppName);
+    await page.fill('input#Brand', 'BlendBrand');
+    await page.fill('input#DailyDose', '1 cap');
+    await page.click('button[hx-post="/Supplement/CreateSave"]');
+    await expect(page.locator('h2')).toHaveText('Supplements');
+    await page.click(`tr:has-text("${suppName}") >> text=Nutrients`);
+
+    // Add the blend parent
+    await page.click('text=Add Nutrient');
+    await page.fill('input[name="GenericName"]', parentName);
+    await page.fill('input[name="SpecificForm"]', `${parentName}-form`);
+    await page.fill('input[name="Dosage"]', '10mg');
+    await page.click('input[type="submit"][value="Add Nutrient"]');
+    await expect(page.locator(`table tbody tr:has-text("${parentName}")`)).toBeVisible();
+
+    // Add a child under that blend
+    await page.click('text=Add Nutrient');
+    await page.fill('input[name="GenericName"]', childName);
+    const optionValue = await page.locator('select[name="ParentNutrientId"] option', { hasText: parentName }).getAttribute('value');
+    await page.selectOption('select[name="ParentNutrientId"]', optionValue);
+    await page.click('input[type="submit"][value="Add Nutrient"]');
+    await expect(page.locator(`table tbody tr:has-text("${childName}")`)).toBeVisible();
+
+    // Open the blend parent's delete confirmation page
+    const parentRow = page.locator(`table tbody tr:has-text("${parentName}")`);
+    await parentRow.locator('a.btn-danger').click();
+    await expect(page.locator('text=Are you sure')).toBeVisible();
+    await expect(page.locator("text=/child nutrients will also be deleted/i")).toBeVisible();
+    await screenshot(page, testInfo, 'blend-delete-cascade-warning');
+
+    // Confirming deletes the blend AND its children
+    await page.click('input[type="submit"][value="Delete"]');
+    await expect(page.locator('h2')).toHaveText(/Nutrients for/);
+    await expect(page.locator(`table tbody tr:has-text("${parentName}")`)).toHaveCount(0);
+    await expect(page.locator(`table tbody tr:has-text("${childName}")`)).toHaveCount(0);
+  });
+
   test('should show supplement serving info on nutrient page', async ({ page }, testInfo) => {
     await page.goto('/Supplement');
     await expect(page.locator('table tbody tr').first()).toBeVisible();

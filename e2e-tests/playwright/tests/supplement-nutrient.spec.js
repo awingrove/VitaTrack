@@ -337,6 +337,19 @@ test.describe('Supplement Nutrients', () => {
     await expect(page.locator(`table tbody tr:has-text("${childName}")`)).toHaveCount(0);
   });
 
+  test('should sort nutrients by a column when header clicked', async ({ page }, testInfo) => {
+    await page.goto('/Supplement');
+    await page.click('tr:has-text("Multivitamin") >> text=Nutrients');
+    await expect(page.locator('h2')).toHaveText(/Multivitamin/);
+
+    await page.locator('th[data-sort-key="GenericName"]').click();
+    const firstName = (await page.locator('table tbody tr:first-child td[data-sort-key="GenericName"]').textContent()).trim();
+    const secondName = (await page.locator('table tbody tr:nth-child(2) td[data-sort-key="GenericName"]').textContent()).trim();
+    expect(String(firstName).localeCompare(String(secondName), undefined, { numeric: true }) <= 0).toBeTruthy();
+
+    await screenshot(page, testInfo, 'nutrient-sorted');
+  });
+
   test('should show supplement serving info on nutrient page', async ({ page }, testInfo) => {
     await page.goto('/Supplement');
     await expect(page.locator('table tbody tr').first()).toBeVisible();

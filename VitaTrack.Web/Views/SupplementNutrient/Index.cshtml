@@ -29,13 +29,13 @@ else
 
         <button type="submit" class="btn btn-danger mb-3" id="delete-selected-btn" disabled>Delete Selected</button>
 
-        <table class="table">
+        <table class="table" data-sortable>
             <thead>
                 <tr>
                     <th><input type="checkbox" id="select-all" /></th>
-                    <th>Generic Name</th>
-                    <th>Specific Form</th>
-                    <th>Dosage</th>
+                    <th data-sort-key="GenericName" data-sort-type="text">Generic Name</th>
+                    <th data-sort-key="SpecificForm" data-sort-type="text">Specific Form</th>
+                    <th data-sort-key="Dosage" data-sort-type="text">Dosage</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -64,7 +64,7 @@ else
             {
                 <tr>
                     <td><input type="checkbox" name="ids" value="@nutrient.Id" class="row-checkbox" /></td>
-                    <td>
+                    <td data-sort-key="GenericName">
                         @if (isChild)
                         {
                             <span class="text-muted ms-3">&#8627;</span><span class="ms-1">@nutrient.GenericName</span>
@@ -78,8 +78,8 @@ else
                             }
                         }
                     </td>
-                    <td>@nutrient.SpecificForm</td>
-                    <td>@nutrient.Dosage</td>
+                    <td data-sort-key="SpecificForm">@nutrient.SpecificForm</td>
+                    <td data-sort-key="Dosage">@nutrient.Dosage</td>
                     <td>
                         <a class="btn btn-sm btn-primary" asp-action="Edit" asp-route-id="@nutrient.Id">Edit</a>
                         <a class="btn btn-sm btn-danger" asp-action="Delete" asp-route-id="@nutrient.Id">Delete</a>
@@ -92,3 +92,4 @@ else
 }
 
 <script src="~/js/delete-selected.js"></script>
+<script src="~/js/table-sort.js"></script>

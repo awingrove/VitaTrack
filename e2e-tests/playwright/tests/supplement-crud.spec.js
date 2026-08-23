@@ -296,6 +296,23 @@ test.describe('Supplement CRUD', () => {
     await screenshot(page, testInfo, 'edit-enrich-warning');
   });
 
+  test('should show a wait spinner while enriching', async ({ page }, testInfo) => {
+    await page.goto('/Supplement/Edit/1');
+    await expect(page.locator('#enrich-spinner')).toHaveCount(1);
+    await expect(page.locator('#enrich-spinner')).toBeHidden();
+
+    // Prevent the real postback so the spinner stays observable
+    await page.evaluate(() => {
+      const form = document.querySelector('form');
+      form.addEventListener('submit', (e) => e.preventDefault(), true);
+    });
+    page.on('dialog', dialog => dialog.accept());
+    await page.click('#enrich-btn');
+
+    await expect(page.locator('#enrich-spinner')).toBeVisible();
+    await screenshot(page, testInfo, 'enrich-spinner');
+  });
+
   test('should save without enrichment on Edit navigates to list', async ({ page }, testInfo) => {
     await page.goto('/Supplement/Edit/1');
     await expect(page.locator('h2')).toHaveText('Edit Supplement');

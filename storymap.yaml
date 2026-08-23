@@ -102,6 +102,7 @@ activities:
               - e2e: supplement-crud::should edit a supplement
               - e2e: supplement-crud::should warn before enriching when supplement already has nutrients (Edit)
               - e2e: supplement-crud::should save without enrichment on Edit navigates to list
+              - e2e: supplement-crud::should show a wait spinner while enriching
       - id: MS-4
         name: Delete a supplement
         entry_point: Supplements index row -> Delete / Delete Selected

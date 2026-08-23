@@ -54,6 +54,11 @@
                 formaction="/Supplement/Edit"
                 data-nutrient-count="@Model.NutrientCount">Enrich</button>
     </div>
+
+    <div id="enrich-spinner" class="text-center my-4" style="display:none">
+        <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+        <p class="text-muted mt-2">Enriching with AI… this may take a moment.</p>
+    </div>
 </form>
 
 <hr />

@@ -15,8 +15,8 @@ test.describe('HTMX loads under CSP', () => {
     await page.goto('/');
     const htmxRequests = requests.filter((u) => u.includes('htmx'));
     expect(htmxRequests.length).toBeGreaterThan(0);
-    const baseOrigin = new URL(page.baseURL()).origin;
-    expect(htmxRequests.every((u) => !/^https?:\/\//i.test(u) || new URL(u).origin === baseOrigin)).toBeTruthy();
+    const pageOrigin = new URL(page.url()).origin;
+    expect(htmxRequests.every((u) => !/^https?:\/\//i.test(u) || new URL(u).origin === pageOrigin)).toBeTruthy();
     expect(htmxRequests.some((u) => u.includes('unpkg.com'))).toBeFalsy();
   });
 

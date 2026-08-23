@@ -12,7 +12,8 @@
     <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#importCsvModal">Import CSV</button>
 </p>
 
-<form asp-action="DeleteSelected" method="post" id="delete-selected-form" data-entity-name="supplement">
+<form asp-action="DeleteSelected" method="post" id="delete-selected-form" data-entity-name="supplement"
+      data-cascade-warning="Their nutrients and prescribed doses will be deleted as well.">
     @Html.AntiForgeryToken()
     <button type="submit" class="btn btn-danger mb-3" id="delete-selected-btn" disabled>Delete Selected</button>
 </form>

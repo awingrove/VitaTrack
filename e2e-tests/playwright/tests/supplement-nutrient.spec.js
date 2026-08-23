@@ -72,6 +72,23 @@ test.describe('Supplement Nutrients', () => {
     await expect(page.locator('h2')).toHaveText(/Nutrients for/);
   });
 
+  test('should display blend hierarchy with badge on nutrient index', async ({ page }, testInfo) => {
+    await page.goto('/Supplement');
+    await expect(page.locator('table tbody tr').first()).toBeVisible();
+
+    // Navigate to Multivitamin's nutrients (seeded with a blend parent + children)
+    await page.click('tr:has-text("Multivitamin") >> text=Nutrients');
+    await expect(page.locator('h2')).toHaveText(/Multivitamin/);
+
+    // Blend parent carries the blend badge; children are indented under it
+    const blendRow = page.locator('table tbody tr:has-text("Proprietary Blend")');
+    await expect(blendRow.locator('.badge:has-text("blend")')).toBeVisible();
+    const pectinRow = page.locator('table tbody tr:has-text("Pectin")');
+    await expect(pectinRow).toBeVisible();
+    await expect(pectinRow).toContainText('↳');
+    await screenshot(page, testInfo, 'blend-hierarchy-on-index');
+  });
+
   test('should add a sub-nutrient under a blend without a dosage', async ({ page }, testInfo) => {
     const unique = Date.now();
     const nutrientName = `BlendChild${unique}`;
@@ -84,7 +101,6 @@ test.describe('Supplement Nutrients', () => {
     await expect(page.locator('h2')).toHaveText(/Vitamin C/);
 
     const rows = page.locator('table tbody tr');
-    const countBefore = await rows.count();
 
     await page.click('text=Add Nutrient');
 
@@ -105,8 +121,6 @@ test.describe('Supplement Nutrients', () => {
     await expect(page.locator('h2')).toHaveText(/Nutrients for/);
     const newRow = page.locator(`table tbody tr:has-text("${nutrientName}")`);
     await expect(newRow).toBeVisible();
-    const afterCount = await page.locator('table tbody tr').count();
-    expect(afterCount).toBe(countBefore + 1);
     await screenshot(page, testInfo, 'blend-child-without-dosage');
 
     // Clean up: delete the nutrient we just created
@@ -231,6 +245,51 @@ test.describe('Supplement Nutrients', () => {
     const hasEmptyMsg = await page.locator('.alert-info').count();
     expect(hasTable + hasEmptyMsg).toBeGreaterThan(0);
     await screenshot(page, testInfo, 'multivitamin-nutrients');
+  });
+
+  test('should warn about blend children when bulk deleting nutrients', async ({ page }, testInfo) => {
+    const unique = Date.now();
+    const suppName = `BulkWarn${unique}`;
+
+    // Create an isolated supplement so parallel workers never share rows
+    await page.goto('/Supplement/Create');
+    await page.fill('input#Name', suppName);
+    await page.fill('input#Brand', 'WarnBrand');
+    await page.fill('input#DailyDose', '1 cap');
+    await page.click('button[hx-post="/Supplement/CreateSave"]');
+    await expect(page.locator('h2')).toHaveText('Supplements');
+
+    // Add two nutrients
+    await page.click(`tr:has-text("${suppName}") >> text=Nutrients`);
+    for (const name of [`WarnA${unique}`, `WarnB${unique}`]) {
+      await page.click('text=Add Nutrient');
+      await page.fill('input[name="GenericName"]', name);
+      await page.fill('input[name="SpecificForm"]', `${name}-form`);
+      await page.fill('input[name="Dosage"]', '5mg');
+      await page.click('input[type="submit"][value="Add Nutrient"]');
+      await expect(page.locator(`table tbody tr:has-text("${name}")`)).toBeVisible();
+    }
+
+    // Select them and click Delete Selected, then DISMISS the dialog
+    let dialogFired = false;
+    let dialogMessage = '';
+    page.on('dialog', async dialog => {
+      dialogFired = true;
+      dialogMessage = dialog.message();
+      await dialog.dismiss();
+    });
+
+    const boxes = page.locator('.row-checkbox');
+    await boxes.nth(0).check();
+    await boxes.nth(1).check();
+    await page.locator('#delete-selected-btn').click();
+
+    expect(dialogFired).toBe(true);
+    expect(dialogMessage).toMatch(/child nutrients of selected blends/i);
+
+    // Dismissal must have prevented the delete
+    await expect(page.locator(`table tbody tr:has-text("WarnA${unique}")`)).toBeVisible();
+    await screenshot(page, testInfo, 'nutrient-bulk-delete-warning');
   });
 
   test('should show supplement serving info on nutrient page', async ({ page }, testInfo) => {

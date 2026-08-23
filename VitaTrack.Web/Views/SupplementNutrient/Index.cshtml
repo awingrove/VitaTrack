@@ -23,7 +23,8 @@
 }
 else
 {
-    <form asp-action="DeleteSelected" asp-route-supplementId="@supplement?.Id" method="post" id="delete-selected-form" data-entity-name="nutrient">
+    <form asp-action="DeleteSelected" asp-route-supplementId="@supplement?.Id" method="post" id="delete-selected-form" data-entity-name="nutrient"
+          data-cascade-warning="Child nutrients of selected blends will be deleted as well.">
         @Html.AntiForgeryToken()
 
         <button type="submit" class="btn btn-danger mb-3" id="delete-selected-btn" disabled>Delete Selected</button>

@@ -26,7 +26,10 @@
             e.preventDefault();
             return;
         }
-        if (!confirm('Delete ' + checked.length + ' selected ' + entityName + '(s)?')) {
+        let message = 'Delete ' + checked.length + ' selected ' + entityName + '(s)?';
+        const cascadeWarning = form.dataset.cascadeWarning;
+        if (cascadeWarning) message += ' ' + cascadeWarning;
+        if (!confirm(message)) {
             e.preventDefault();
         }
     });

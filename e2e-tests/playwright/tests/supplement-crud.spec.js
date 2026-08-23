@@ -208,8 +208,14 @@ test.describe('Supplement CRUD', () => {
     await screenshot(page, testInfo, 'bulk-delete-selected');
 
     // Click Delete Selected and confirm dialog
-    page.on('dialog', dialog => dialog.accept());
+    let bulkDialogMessage = '';
+    page.on('dialog', async dialog => {
+      bulkDialogMessage = dialog.message();
+      await dialog.accept();
+    });
     await page.locator('#delete-selected-btn').click();
+
+    expect(bulkDialogMessage).toMatch(/prescribed doses/i);
 
     // Should be on supplements list without the deleted supplements
     await expect(page.locator('h2')).toHaveText('Supplements');

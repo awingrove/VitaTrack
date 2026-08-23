@@ -122,15 +122,49 @@ test.describe('Supplement CRUD', () => {
     await expect(page.locator('table tbody tr:has-text("ToDelete")')).toBeVisible();
     await screenshot(page, testInfo, 'supplement-list-before-delete');
 
-    // Click delete button and confirm the JS dialog
+    // Click delete button and confirm the JS dialog (must actually fire — CSP regression guard)
     const row = page.locator('table tbody tr:has-text("ToDelete")');
-    page.on('dialog', dialog => dialog.accept());
-    await row.locator('button:has-text("Delete")').click();
+    let deleteDialogMessage = '';
+    page.on('dialog', async dialog => {
+      deleteDialogMessage = dialog.message();
+      await dialog.accept();
+    });
+    await row.locator('form button:has-text("Delete")').click();
+
+    expect(deleteDialogMessage).toMatch(/nutrients and prescribed doses/i);
 
     // Should be on supplements list without the deleted supplement
     await expect(page.locator('h2')).toHaveText('Supplements');
     await expect(page.locator('table tbody tr:has-text("ToDelete")')).toHaveCount(0);
     await screenshot(page, testInfo, 'supplement-after-delete');
+  });
+
+  test('should show confirm dialog and not delete when dismissed', async ({ page }, testInfo) => {
+    const unique = Date.now();
+    const suppName = `CancelDelete${unique}`;
+
+    // Create a supplement first to avoid touching seed data
+    await page.goto('/Supplement/Create');
+    await page.fill('input#Name', suppName);
+    await page.fill('input#Brand', 'CancelBrand');
+    await page.fill('input#DailyDose', '1 cap');
+    await page.click('button[hx-post="/Supplement/CreateSave"]');
+    await expect(page.locator('h2')).toHaveText('Supplements');
+
+    let dialogFired = false;
+    page.on('dialog', async dialog => {
+      dialogFired = true;
+      expect(dialog.message()).toMatch(/nutrients and prescribed doses/i);
+      await dialog.dismiss();
+    });
+
+    const row = page.locator(`table tbody tr:has-text("${suppName}")`);
+    await row.locator('form button:has-text("Delete")').click();
+
+    // Dismissing the confirm must prevent deletion, and the dialog must have fired at all
+    expect(dialogFired).toBe(true);
+    await expect(page.locator(`table tbody tr:has-text("${suppName}")`)).toBeVisible();
+    await screenshot(page, testInfo, 'supplement-delete-dismissed');
   });
 
   test('should delete multiple supplements via checkboxes', async ({ page }, testInfo) => {

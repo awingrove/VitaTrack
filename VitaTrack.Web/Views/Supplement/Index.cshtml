@@ -51,7 +51,8 @@
             <td>
                 <a class="btn btn-sm btn-outline-info" asp-controller="SupplementNutrient" asp-action="Index" asp-route-supplementId="@s.Id">Nutrients</a>
                 <a class="btn btn-sm btn-primary" asp-action="Edit" asp-route-id="@s.Id">Edit</a>
-                <form asp-action="Delete" asp-route-id="@s.Id" method="post" style="display:inline" onsubmit="return confirm('Delete this supplement?')">
+                <form asp-action="Delete" asp-route-id="@s.Id" method="post" style="display:inline"
+                      data-confirm-message="Delete this supplement? Its nutrients and prescribed doses will also be deleted.">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                 </form>
@@ -61,6 +62,7 @@
     </tbody>
 </table>
 
+<script src="~/js/delete-confirm.js"></script>
 <script src="~/js/delete-selected.js"></script>
 <script src="~/js/import-csv.js"></script>
 <partial name="_ImportModal" />

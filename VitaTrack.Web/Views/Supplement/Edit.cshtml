@@ -44,7 +44,10 @@
         <span asp-validation-for="Cost" class="text-danger"></span>
     </div>
     <div class="form-group">
-        <input type="submit" value="Save" class="btn btn-primary" />
+        <button type="submit" class="btn btn-primary" formaction="/Supplement/EditSave">Save</button>
+        <button type="submit" id="enrich-btn" class="btn btn-info"
+                formaction="/Supplement/Edit"
+                data-nutrient-count="@Model.NutrientCount">Enrich</button>
     </div>
 </form>
 
@@ -52,14 +55,16 @@
 <h4>Nutrient Breakdown</h4>
 <p class="text-muted">This supplement has @Model.NutrientCount nutrient(s) recorded.</p>
 <p>
+    <a class="btn btn-sm btn-primary" asp-controller="Supplement" asp-action="EditNutrients" asp-route-id="@Model.Id">Edit Nutrient Breakdown</a>
+    <span class="text-muted ms-2">Group ingredients into blends there — or manage single nutrients below.</span>
+</p>
+<p>
     <a class="btn btn-sm btn-success" asp-controller="SupplementNutrient" asp-action="Create" asp-route-supplementId="@Model.Id">Add Nutrient</a>
     <a class="btn btn-sm btn-outline-info" asp-controller="SupplementNutrient" asp-action="Index" asp-route-supplementId="@Model.Id">Manage All Nutrients</a>
 </p>
-<div id="nutrient-list">
-    @* Nutrient list will be loaded by the Index view *@
-    <p class="text-muted">Use the links above to view, add, or edit nutrients for this supplement.</p>
-</div>
 
 <div>
     <a asp-action="Index">Back to List</a>
 </div>
+
+<script src="/js/edit.js"></script>

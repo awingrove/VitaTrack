@@ -1,3 +1,4 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -58,10 +59,23 @@ public class LlmService(
 
             if (parsed.Nutrients.Count > 0)
             {
-                var nutritionDict = parsed.Nutrients.ToDictionary(
-                    n => n.GenericName,
-                    n => DosageParser.ParseAmount(n.Dosage));
-                result.NutritionJson = JsonSerializer.Serialize(new { nutrition = nutritionDict });
+                var nutritionDict = new Dictionary<string, decimal>();
+                foreach (var nutrient in parsed.Nutrients)
+                {
+                    nutritionDict[nutrient.GenericName] = DosageParser.ParseAmount(nutrient.Dosage);
+                    if (nutrient.Children is { Count: > 0 })
+                    {
+                        foreach (var child in nutrient.Children)
+                        {
+                            nutritionDict[$"{nutrient.GenericName} > {child.GenericName}"] =
+                                DosageParser.ParseAmount(child.Dosage);
+                        }
+                    }
+                }
+
+                result.NutritionJson = JsonSerializer.Serialize(
+                    new { nutrition = nutritionDict },
+                    new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
             }
         }
         catch (Exception ex)

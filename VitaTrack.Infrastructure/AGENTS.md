@@ -36,7 +36,13 @@ When deleting a `FamilyMember`, delete in this order:
 
 Bulk deletes (`DeleteAsync(IEnumerable<int> ids)`) must follow the same order using `WHERE Id IN @Ids`.
 
-When adding new tables with foreign keys, update the relevant `DeleteAsync` methods accordingly.
+When deleting a `SupplementNutrient` that is a blend parent, delete its children first:
+1. `DELETE FROM SupplementNutrients WHERE ParentNutrientId = @Id`
+2. `DELETE FROM SupplementNutrients WHERE Id = @Id`
+
+`SupplementNutrients.ParentNutrientId` is a self-reference **without a DB constraint** (added via `ALTER TABLE` in `DbInit`); the cascade above is app-enforced and is the only thing preventing orphaned child rows.
+
+When adding new tables (or FK-like columns, via `CREATE TABLE` or `ALTER TABLE` migration in `DbInit`) with foreign keys, update the relevant `DeleteAsync` methods **in the same change** — a migration without its cascade update silently orphans or blocks deletes at runtime. Add cascade-delete unit tests alongside (`Delete_Parent_AlsoDeletesChildren` pattern).
 
 ## Transaction Handling
 - Currently each repository method opens/closes the connection via Dapper (connection is scoped from Web).

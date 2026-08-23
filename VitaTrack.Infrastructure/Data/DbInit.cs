@@ -64,6 +64,13 @@ public static class DbInit
                 ");
         }
 
+        // Add ParentNutrientId column if it doesn't exist (self-reference for nutrient blends)
+        var parentCol = db.QuerySingle<int>("SELECT COUNT(*) FROM pragma_table_info('SupplementNutrients') WHERE name = 'ParentNutrientId';");
+        if (parentCol == 0)
+        {
+            db.Execute("ALTER TABLE SupplementNutrients ADD COLUMN ParentNutrientId INTEGER NULL;");
+        }
+
         // Insert sample data only if ALL tables are empty (fresh database)
         if (seedData)
         {
@@ -104,6 +111,17 @@ public static class DbInit
                         (3, 'Vitamin D', 'Cholecalciferol', '20mcg'),
                         (3, 'Iron', 'Ferrous Fumarate', '18mg'),
                         (3, 'Calcium', 'Calcium Carbonate', '200mg')
+                    ");
+
+                db.Execute(@"
+                        INSERT INTO SupplementNutrients (Id, SupplementId, GenericName, SpecificForm, Dosage, ParentNutrientId) VALUES 
+                        (9001, 3, 'Proprietary Blend', 'Blend', '500mg', NULL)
+                    ");
+
+                db.Execute(@"
+                        INSERT INTO SupplementNutrients (SupplementId, GenericName, SpecificForm, Dosage, ParentNutrientId) VALUES 
+                        (3, 'Pectin', 'Citrus', '200mg', 9001),
+                        (3, 'Botanical Extract', 'Proprietary', '', 9001)
                     ");
 
                 db.Execute(@"

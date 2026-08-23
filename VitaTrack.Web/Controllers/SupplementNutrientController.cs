@@ -1,3 +1,4 @@
+using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using VitaTrack.Infrastructure.Data;
 using VitaTrack.Infrastructure.Models;
@@ -11,7 +12,7 @@ public class SupplementNutrientController(
     private readonly ISupplementNutrientRepository _nutrientRepo = nutrientRepo;
     private readonly ISupplementRepository _supplementRepo = supplementRepo;
 
-    // GET: /SupplementNutrient/Index/5
+    // GET: /SupplementNutrient/Index?supplementId=5
     public async Task<IActionResult> Index(int supplementId)
     {
         var supplement = await _supplementRepo.GetByIdAsync(supplementId);
@@ -22,29 +23,39 @@ public class SupplementNutrientController(
         return View(nutrients);
     }
 
-    // GET: /SupplementNutrient/Create/5
+    // GET: /SupplementNutrient/Create?supplementId=5
     public async Task<IActionResult> Create(int supplementId)
     {
         var supplement = await _supplementRepo.GetByIdAsync(supplementId);
         if (supplement == null) return NotFound();
 
         ViewData["Supplement"] = supplement;
+        ViewData["ParentOptions"] = (await _nutrientRepo.GetBySupplementIdAsync(supplementId))
+            .Where(n => n.ParentNutrientId == null)
+            .Select(n => new { Id = n.Id, Name = $"{n.GenericName} – {n.SpecificForm}" })
+            .ToList();
         return View(new SupplementNutrient { SupplementId = supplementId });
     }
 
-    // POST: /SupplementNutrient/Create/5
+    // POST: /SupplementNutrient/Create?supplementId=5
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(SupplementNutrient nutrient)
     {
         if (ModelState.IsValid)
         {
+            nutrient.Dosage = nutrient.Dosage ?? string.Empty;
+            nutrient.SpecificForm = nutrient.SpecificForm ?? string.Empty;
             await _nutrientRepo.AddAsync(nutrient);
             return RedirectToAction(nameof(Index), new { supplementId = nutrient.SupplementId });
         }
 
         var supplement = await _supplementRepo.GetByIdAsync(nutrient.SupplementId);
         ViewData["Supplement"] = supplement;
+        ViewData["ParentOptions"] = (await _nutrientRepo.GetBySupplementIdAsync(nutrient.SupplementId))
+            .Where(n => n.ParentNutrientId == null)
+            .Select(n => new { Id = n.Id, Name = $"{n.GenericName} – {n.SpecificForm}" })
+            .ToList();
         return View(nutrient);
     }
 
@@ -56,6 +67,10 @@ public class SupplementNutrientController(
 
         var supplement = await _supplementRepo.GetByIdAsync(nutrient.SupplementId);
         ViewData["Supplement"] = supplement;
+        ViewData["ParentOptions"] = (await _nutrientRepo.GetBySupplementIdAsync(nutrient.SupplementId))
+            .Where(n => n.ParentNutrientId == null && n.Id != nutrient.Id)
+            .Select(n => new { Id = n.Id, Name = $"{n.GenericName} – {n.SpecificForm}" })
+            .ToList();
         return View(nutrient);
     }
 
@@ -68,12 +83,18 @@ public class SupplementNutrientController(
 
         if (ModelState.IsValid)
         {
+            nutrient.Dosage = nutrient.Dosage ?? string.Empty;
+            nutrient.SpecificForm = nutrient.SpecificForm ?? string.Empty;
             await _nutrientRepo.UpdateAsync(nutrient);
             return RedirectToAction(nameof(Index), new { supplementId = nutrient.SupplementId });
         }
 
         var supplement = await _supplementRepo.GetByIdAsync(nutrient.SupplementId);
         ViewData["Supplement"] = supplement;
+        ViewData["ParentOptions"] = (await _nutrientRepo.GetBySupplementIdAsync(nutrient.SupplementId))
+            .Where(n => n.ParentNutrientId == null && n.Id != nutrient.Id)
+            .Select(n => new { Id = n.Id, Name = $"{n.GenericName} – {n.SpecificForm}" })
+            .ToList();
         return View(nutrient);
     }
 

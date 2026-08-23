@@ -8,11 +8,9 @@
 # What it runs:
 #   1. `dotnet format --verify-no-changes` — block if files need reformatting.
 #      Run `dotnet format VitaTrack.sln` locally to auto-fix, then re-stage.
-#   2. `VitaTrack.ArchitectureTests` only — fast (~1s), catches the rules
-#      csproj can't express (controllers must not depend on data layers,
-#      EF Core transitive banned, repo naming, 300-line file-size gate,
-#      no `catch (Exception)` in controllers). The full unit test suite is
-#      intentionally skipped here so the hook stays sub-second.
+#   2. `dotnet test` on ArchitectureTests + the full unit suite (~1s total
+#      with incremental build) — catches architecture violations AND
+#      behavioral regressions before they land.
 #
 # Bypass for a noisy commit in flight: `git commit --no-verify`.
 
@@ -24,8 +22,7 @@ cd "$REPO_ROOT"
 echo "[pre-commit] dotnet format --verify-no-changes ..."
 dotnet format VitaTrack.sln --verify-no-changes --no-restore 1>/dev/null
 
-echo "[pre-commit] ArchitectureTests ..."
-dotnet test VitaTrack.ArchitectureTests/VitaTrack.ArchitectureTests.csproj \
-    --no-restore --nologo --verbosity quiet 1>/dev/null
+echo "[pre-commit] tests (architecture + unit) ..."
+dotnet test VitaTrack.sln --no-restore --nologo --verbosity quiet 1>/dev/null
 
 echo "[pre-commit] OK"

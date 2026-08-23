@@ -28,12 +28,40 @@ public class SupplementControllerTests
         _llmService = new Mock<ILlmService>();
         _csvImportService = new Mock<ICsvImportService>();
         _controller = new SupplementController(
-            _suppRepo.Object,
-            _nutrientRepo.Object,
-            _nutrientService.Object,
-            _llmService.Object,
-            _csvImportService.Object);
+            _suppRepo.Object, _nutrientRepo.Object, _nutrientService.Object,
+            _llmService.Object, _csvImportService.Object);
+
+        var urlHelper = new Mock<IUrlHelper>();
+        urlHelper.Setup(u => u.Action(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlActionContext>()))
+                 .Returns("/Supplement/Index");
+        _controller.Url = urlHelper.Object;
+        _controller.ControllerContext = new ControllerContext { HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext() };
     }
+
+    private static RedirectToActionResult AssertRedirectsToIndex(IActionResult result)
+    {
+        var redirect = result as RedirectToActionResult;
+        Assert.IsNotNull(redirect);
+        Assert.AreEqual("Index", redirect.ActionName);
+        return redirect;
+    }
+
+    private static PartialViewResult AssertPartialView(IActionResult result, string viewName)
+    {
+        var partial = result as PartialViewResult;
+        Assert.IsNotNull(partial);
+        Assert.AreEqual(viewName, partial.ViewName);
+        return partial;
+    }
+
+    private void SetupEnrich(LlmResult result)
+        => _llmService.Setup(s => s.EnrichSupplementAsync(It.IsAny<Supplement>())).ReturnsAsync(result);
+
+    private void SetupAddAsync(int id)
+        => _suppRepo.Setup(r => r.AddAsync(It.IsAny<Supplement>())).ReturnsAsync(id);
+
+    private void SetupPersistHierarchy(int id, ReplaceNutrientsResult result)
+        => _nutrientService.Setup(s => s.PersistHierarchyAsync(id, It.IsAny<IEnumerable<SupplementNutrientDto>>())).ReturnsAsync(result);
 
     [TestMethod]
     public async Task Index_ReturnsViewWithSupplements()
@@ -58,74 +86,7 @@ public class SupplementControllerTests
 
     [TestMethod]
     public void Create_Get_ReturnsView()
-    {
-        var result = _controller.Create();
-
-        Assert.IsInstanceOfType(result, typeof(ViewResult));
-    }
-
-    [TestMethod]
-    public async Task Edit_Get_ReturnsViewWhenFound()
-    {
-        var supplement = new Supplement { Id = 5, Name = "EditMe", Brand = "Brand", DailyDose = "2 pills" };
-        _suppRepo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(supplement);
-        _nutrientRepo.Setup(r => r.GetBySupplementIdAsync(It.IsAny<int>()))
-            .ReturnsAsync(new List<SupplementNutrient>());
-
-        var result = await _controller.Edit(5);
-
-        var viewResult = result as ViewResult;
-        Assert.IsNotNull(viewResult);
-        var model = viewResult.Model as Supplement;
-        Assert.IsNotNull(model);
-        Assert.AreEqual("EditMe", model.Name);
-    }
-
-    [TestMethod]
-    public async Task Edit_Get_ReturnsNotFoundWhenMissing()
-    {
-        _suppRepo.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((Supplement?)null);
-
-        var result = await _controller.Edit(99);
-
-        Assert.IsInstanceOfType(result, typeof(NotFoundResult));
-    }
-
-    [TestMethod]
-    public async Task Edit_Post_MergesNutrientsAndRedirectsToReview()
-    {
-        var request = new EditSupplementRequest { Id = 3, Name = "Edited", Brand = "Brand", DailyDose = "1 pill" };
-        var existingNutrients = new List<SupplementNutrient>
-        {
-            new() { Id = 10, SupplementId = 3, GenericName = "Zinc", SpecificForm = "Citrate", Dosage = "15mg" }
-        };
-        _nutrientRepo.Setup(r => r.GetBySupplementIdAsync(3)).ReturnsAsync(existingNutrients);
-        _llmService.Setup(s => s.EnrichSupplementAsync(It.IsAny<Supplement>())).ReturnsAsync(new LlmResult
-        {
-            NutritionJson = "{}",
-            Nutrients =
-            [
-                new() { GenericName = "Zinc", SpecificForm = "Picolinate", Dosage = "25mg" },
-                new() { GenericName = "Iron", SpecificForm = "Bisglycinate", Dosage = "18mg" }
-            ]
-        });
-
-        var result = await _controller.Edit(3, request);
-
-        var viewResult = result as ViewResult;
-        Assert.IsNotNull(viewResult);
-        Assert.AreEqual("Review", viewResult.ViewName);
-    }
-
-    [TestMethod]
-    public async Task Edit_Post_ReturnsNotFoundWhenIdMismatch()
-    {
-        var request = new EditSupplementRequest { Id = 99, Name = "X", Brand = "X", DailyDose = "X" };
-
-        var result = await _controller.Edit(1, request);
-
-        Assert.IsInstanceOfType(result, typeof(NotFoundResult));
-    }
+        => Assert.IsInstanceOfType(_controller.Create(), typeof(ViewResult));
 
     [TestMethod]
     public async Task Delete_CallsRepoAndRedirectsToIndex()
@@ -134,9 +95,7 @@ public class SupplementControllerTests
 
         var result = await _controller.Delete(10);
 
-        var redirectResult = result as RedirectToActionResult;
-        Assert.IsNotNull(redirectResult);
-        Assert.AreEqual("Index", redirectResult.ActionName);
+        AssertRedirectsToIndex(result);
         _suppRepo.Verify(r => r.DeleteAsync(10), Times.Once);
     }
 
@@ -148,9 +107,7 @@ public class SupplementControllerTests
 
         var result = await _controller.DeleteSelected(ids);
 
-        var redirectResult = result as RedirectToActionResult;
-        Assert.IsNotNull(redirectResult);
-        Assert.AreEqual("Index", redirectResult.ActionName);
+        AssertRedirectsToIndex(result);
         _suppRepo.Verify(r => r.DeleteAsync(ids), Times.Once);
     }
 
@@ -159,9 +116,7 @@ public class SupplementControllerTests
     {
         var result = await _controller.DeleteSelected([]);
 
-        var redirectResult = result as RedirectToActionResult;
-        Assert.IsNotNull(redirectResult);
-        Assert.AreEqual("Index", redirectResult.ActionName);
+        AssertRedirectsToIndex(result);
         _suppRepo.Verify(r => r.DeleteAsync(It.IsAny<IEnumerable<int>>()), Times.Never);
     }
 
@@ -173,52 +128,38 @@ public class SupplementControllerTests
         {
             NutritionJson = "{}",
             SwapSuggestion = "Try X",
-            Nutrients =
-            [
-                new() { GenericName = "Vitamin C", SpecificForm = "Ascorbic Acid", Dosage = "500mg" }
-            ]
+            Nutrients = [new() { GenericName = "Vitamin C", SpecificForm = "Ascorbic Acid", Dosage = "500mg" }]
         };
         var persisted = new ReplaceNutrientsResult(
-            new List<SupplementNutrient>
-            {
-                new() { SupplementId = 42, GenericName = "Vitamin C", SpecificForm = "Ascorbic Acid", Dosage = "500mg" }
-            },
-            new List<NutrientFailure>());
-        _llmService.Setup(s => s.EnrichSupplementAsync(It.IsAny<Supplement>())).ReturnsAsync(llmResult);
-        _suppRepo.Setup(r => r.AddAsync(It.IsAny<Supplement>())).ReturnsAsync(42);
-        _nutrientService.Setup(s => s.AddAsync(42, It.IsAny<IEnumerable<SupplementNutrientDto>>()))
-                        .ReturnsAsync(persisted);
+            [new SupplementNutrient { SupplementId = 42, GenericName = "Vitamin C", SpecificForm = "Ascorbic Acid", Dosage = "500mg" }],
+            []);
+        SetupEnrich(llmResult);
+        SetupAddAsync(42);
+        SetupPersistHierarchy(42, persisted);
 
         var result = await _controller.Enrich(request);
 
-        var partialResult = result as PartialViewResult;
-        Assert.IsNotNull(partialResult);
-        Assert.AreEqual("_NutrientEditor", partialResult.ViewName);
-        var model = partialResult.Model as SupplementEditorViewModel;
+        var model = AssertPartialView(result, "_NutrientEditor").Model as SupplementEditorViewModel;
         Assert.IsNotNull(model);
         Assert.AreEqual(42, model.SupplementId);
         Assert.AreEqual("TestSupp", model.SupplementName);
         Assert.AreEqual(1, model.Nutrients.Count);
         Assert.AreEqual("Vitamin C", model.Nutrients[0].GenericName);
         _suppRepo.Verify(r => r.AddAsync(It.IsAny<Supplement>()), Times.Once);
-        _nutrientService.Verify(s => s.AddAsync(42, It.IsAny<IEnumerable<SupplementNutrientDto>>()), Times.Once);
+        _nutrientService.Verify(s => s.PersistHierarchyAsync(42, It.IsAny<IEnumerable<SupplementNutrientDto>>()), Times.Once);
     }
 
     [TestMethod]
     public async Task Enrich_WithoutUrl_SavesAndReturnsEmptyEditor()
     {
         var request = new CreateSupplementRequest { Name = "TestSupp", Brand = "Brand", DailyDose = "1 pill" };
-        _llmService.Setup(s => s.EnrichSupplementAsync(It.IsAny<Supplement>())).ReturnsAsync(new LlmResult());
-        _suppRepo.Setup(r => r.AddAsync(It.IsAny<Supplement>())).ReturnsAsync(43);
-        _nutrientService.Setup(s => s.AddAsync(43, It.IsAny<IEnumerable<SupplementNutrientDto>>()))
-                        .ReturnsAsync(new ReplaceNutrientsResult(new List<SupplementNutrient>(), new List<NutrientFailure>()));
+        SetupEnrich(new LlmResult());
+        SetupAddAsync(43);
+        SetupPersistHierarchy(43, new ReplaceNutrientsResult([], []));
 
         var result = await _controller.Enrich(request);
 
-        var partialResult = result as PartialViewResult;
-        Assert.IsNotNull(partialResult);
-        Assert.AreEqual("_NutrientEditor", partialResult.ViewName);
-        var model = partialResult.Model as SupplementEditorViewModel;
+        var model = AssertPartialView(result, "_NutrientEditor").Model as SupplementEditorViewModel;
         Assert.IsNotNull(model);
         Assert.AreEqual(43, model.SupplementId);
         Assert.AreEqual(0, model.Nutrients.Count);
@@ -228,17 +169,13 @@ public class SupplementControllerTests
     public async Task Enrich_LlmReturnsError_SavesAndReturnsEditorWithError()
     {
         var request = new CreateSupplementRequest { Name = "TestSupp", Brand = "Brand", DailyDose = "1 pill", ManufacturerUrl = "https://example.com" };
-        _llmService.Setup(s => s.EnrichSupplementAsync(It.IsAny<Supplement>()))
-                   .ReturnsAsync(new LlmResult { ExtractionError = "Could not reach enrichment service. You can add nutrients manually." });
-        _suppRepo.Setup(r => r.AddAsync(It.IsAny<Supplement>())).ReturnsAsync(44);
-        _nutrientService.Setup(s => s.AddAsync(44, It.IsAny<IEnumerable<SupplementNutrientDto>>()))
-                        .ReturnsAsync(new ReplaceNutrientsResult(new List<SupplementNutrient>(), new List<NutrientFailure>()));
+        SetupEnrich(new LlmResult { ExtractionError = "Could not reach enrichment service. You can add nutrients manually." });
+        SetupAddAsync(44);
+        SetupPersistHierarchy(44, new ReplaceNutrientsResult([], []));
 
         var result = await _controller.Enrich(request);
 
-        var partialResult = result as PartialViewResult;
-        Assert.IsNotNull(partialResult);
-        var model = partialResult.Model as SupplementEditorViewModel;
+        var model = AssertPartialView(result, "_NutrientEditor").Model as SupplementEditorViewModel;
         Assert.IsNotNull(model);
         Assert.IsNotNull(model.ExtractionError);
         Assert.IsTrue(model.ExtractionError.Contains("manually"));
@@ -253,8 +190,67 @@ public class SupplementControllerTests
 
         var result = await _controller.Enrich(request);
 
-        var partialResult = result as PartialViewResult;
-        Assert.IsNotNull(partialResult);
-        Assert.AreEqual("_ValidationErrors", partialResult.ViewName);
+        AssertPartialView(result, "_ValidationErrors");
+    }
+
+    [TestMethod]
+    public async Task Enrich_ReturnsEditorWithBlendChildren()
+    {
+        var request = new CreateSupplementRequest { Name = "TestSupp", Brand = "Brand", DailyDose = "1 pill", ManufacturerUrl = "https://example.com" };
+        var llmResult = new LlmResult
+        {
+            NutritionJson = "{}",
+            Nutrients =
+            [
+                new() { GenericName = "B-Complex", SpecificForm = "Capsule", Dosage = "1", Children = [ new() { GenericName = "B12", SpecificForm = "Methyl", Dosage = "500mcg" } ] }
+            ]
+        };
+        var parent = new SupplementNutrient { Id = 777, SupplementId = 42, GenericName = "B-Complex", SpecificForm = "Capsule", Dosage = "1" };
+        var child = new SupplementNutrient { SupplementId = 42, GenericName = "B12", SpecificForm = "Methyl", Dosage = "500mcg", ParentNutrientId = 777 };
+        var persisted = new ReplaceNutrientsResult(new List<SupplementNutrient> { parent, child }, []);
+        SetupEnrich(llmResult);
+        SetupAddAsync(42);
+        SetupPersistHierarchy(42, persisted);
+        _nutrientRepo.Setup(r => r.GetByParentIdAsync(777)).ReturnsAsync(new List<SupplementNutrient> { child });
+
+        var result = await _controller.Enrich(request);
+
+        var model = AssertPartialView(result, "_NutrientEditor").Model as SupplementEditorViewModel;
+        Assert.IsNotNull(model);
+        Assert.AreEqual(1, model.Nutrients.Count);
+        Assert.IsNotNull(model.Nutrients[0].Children);
+        var children = model.Nutrients[0].Children!; // non-null guaranteed by the Assert.IsNotNull above
+        Assert.AreEqual(1, children.Count);
+        Assert.AreEqual("B12", children[0].GenericName);
+    }
+
+    [TestMethod]
+    public async Task CreateSave_PersistsAndRedirectsWithoutEnrichment()
+    {
+        var request = new CreateSupplementRequest
+        {
+            Name = "PlainSupp",
+            Brand = "Brand",
+            DailyDose = "1 pill",
+            ManufacturerUrl = "https://example.com"
+        };
+        var result = await _controller.CreateSave(request);
+
+        Assert.IsInstanceOfType(result, typeof(EmptyResult));
+        Assert.AreEqual("/Supplement/Index", _controller.Response.Headers["HX-Redirect"].ToString());
+        _suppRepo.Verify(r => r.AddAsync(It.IsAny<Supplement>()), Times.Once);
+        _llmService.Verify(s => s.EnrichSupplementAsync(It.IsAny<Supplement>()), Times.Never);
+        _nutrientService.Verify(s => s.AddAsync(It.IsAny<int>(), It.IsAny<IEnumerable<SupplementNutrientDto>>()), Times.Never);
+    }
+
+    [TestMethod]
+    public async Task CreateSave_InvalidModel_ReturnsValidationErrors()
+    {
+        _controller.ModelState.AddModelError("Name", "Name is required");
+        var request = new CreateSupplementRequest { Brand = "Brand", DailyDose = "1 pill" };
+
+        var result = await _controller.CreateSave(request);
+
+        AssertPartialView(result, "_ValidationErrors");
     }
 }

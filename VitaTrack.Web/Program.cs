@@ -4,7 +4,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<VitaTrackOptions>(
     builder.Configuration.GetSection("VitaTrack"));
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+{
+    options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+});
 builder.Services.AddInfra(builder.Configuration);
 
 var app = builder.Build();

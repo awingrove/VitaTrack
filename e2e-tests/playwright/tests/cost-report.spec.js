@@ -3,6 +3,13 @@ const { screenshot } = require('../helpers/screenshot');
 
 test.describe('Cost Report', () => {
 
+  test('should arrive via nav bar Cost Report link', async ({ page }, testInfo) => {
+    await page.goto('/');
+    await page.click('nav >> text=Cost Report');
+    await expect(page.locator('h2')).toHaveText('Cost Report');
+    await screenshot(page, testInfo, 'cost-report-via-nav');
+  });
+
   test('should display cost report page with heading', async ({ page }, testInfo) => {
     await page.goto('/Reporting/CostReport');
     await expect(page.locator('h2')).toHaveText('Cost Report');

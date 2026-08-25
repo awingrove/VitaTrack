@@ -13,7 +13,7 @@ public class SupplementRepository(IDbConnection db) : ISupplementRepository
 
     public async Task<IReadOnlyList<Supplement>> GetAllAsync()
     {
-        const string sql = "SELECT Id, Name, Brand, DailyDose, ManufacturerUrl, NutritionJson, SwapSuggestion, Cost FROM Supplements";
+        const string sql = "SELECT Id, Name, Brand, DailyDose, ManufacturerUrl, NutritionJson, SwapSuggestion, Cost, ServingsPerBottle FROM Supplements ORDER BY Name";
         var rows = await _db.QueryAsync<Supplement>(sql);
         return rows.ToList();
     }
@@ -21,7 +21,7 @@ public class SupplementRepository(IDbConnection db) : ISupplementRepository
     public async Task<Supplement?> GetByIdAsync(int id)
     {
         const string sql = @"
-SELECT Id, Name, Brand, DailyDose, ManufacturerUrl, NutritionJson, SwapSuggestion, Cost
+SELECT Id, Name, Brand, DailyDose, ManufacturerUrl, NutritionJson, SwapSuggestion, Cost, ServingsPerBottle
 FROM Supplements WHERE Id = @Id";
         return await _db.QuerySingleOrDefaultAsync<Supplement>(sql, new { Id = id });
     }
@@ -29,8 +29,8 @@ FROM Supplements WHERE Id = @Id";
     public async Task<int> AddAsync(Supplement supplement)
     {
         const string sql = @"
-INSERT INTO Supplements (Name, Brand, DailyDose, ManufacturerUrl, NutritionJson, SwapSuggestion, Cost)
-VALUES (@Name, @Brand, @DailyDose, @ManufacturerUrl, @NutritionJson, @SwapSuggestion, @Cost);
+INSERT INTO Supplements (Name, Brand, DailyDose, ManufacturerUrl, NutritionJson, SwapSuggestion, Cost, ServingsPerBottle)
+VALUES (@Name, @Brand, @DailyDose, @ManufacturerUrl, @NutritionJson, @SwapSuggestion, @Cost, @ServingsPerBottle);
 SELECT last_insert_rowid();";
         return await _db.ExecuteScalarAsync<int>(sql, supplement);
     }
@@ -43,7 +43,8 @@ SET Name = @Name, Brand = @Brand, DailyDose = @DailyDose,
     ManufacturerUrl = @ManufacturerUrl,
     NutritionJson = @NutritionJson,
     SwapSuggestion = @SwapSuggestion,
-    Cost = @Cost
+    Cost = @Cost,
+    ServingsPerBottle = @ServingsPerBottle
 WHERE Id = @Id";
         await _db.ExecuteAsync(sql, supplement);
     }

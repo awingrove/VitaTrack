@@ -1,6 +1,9 @@
 // playwright.config.js
 const { defineConfig, devices } = require('@playwright/test');
 
+// E2E_PORT lets the suite run on another port (e.g., while a dev server holds 5000).
+const e2eBaseUrl = `http://localhost:${process.env.E2E_PORT || 5000}`;
+
 module.exports = defineConfig({
   testDir: './tests',
   timeout: 30 * 1000,
@@ -19,7 +22,7 @@ module.exports = defineConfig({
 
   use: {
     actionTimeout: 0,
-    baseURL: 'http://localhost:5000',
+    baseURL: e2eBaseUrl,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -32,9 +35,9 @@ module.exports = defineConfig({
   ],
 
   webServer: {
-    command: 'dotnet run --environment Test --urls http://localhost:5000',
+    command: `dotnet run --environment Test --urls ${e2eBaseUrl}`,
     cwd: '../../VitaTrack.Web',
-    url: 'http://localhost:5000',
+    url: e2eBaseUrl,
     timeout: 120 * 1000,
     reuseExistingServer: false,
     env: {

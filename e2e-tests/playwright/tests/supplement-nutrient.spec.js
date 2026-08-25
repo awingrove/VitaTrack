@@ -3,39 +3,81 @@ const { screenshot } = require('../helpers/screenshot');
 
 test.describe('Supplement Nutrients', () => {
 
-  test('should display nutrients for a supplement', async ({ page }, testInfo) => {
+  // Create a dedicated supplement per test: seed data shifts and parallel
+  // workers mutate shared rows, so tests must never navigate via seed names.
+  async function createOwnSupplement(page, unique, { brand, dailyDose } = {}) {
+    const suppName = `NutrientTest${unique}`;
+    await page.goto('/Supplement/Create');
+    await page.fill('input#Name', suppName);
+    await page.fill('input#Brand', brand ?? `Brand${unique}`);
+    await page.fill('input#DailyDose', dailyDose ?? '1 tablet');
+    await page.click('button[hx-post="/Supplement/CreateSave"]');
+    await expect(page.locator('h2')).toHaveText('Supplements');
+    return suppName;
+  }
+
+  async function openNutrientsFor(page, suppName) {
     await page.goto('/Supplement');
     await expect(page.locator('table tbody tr').first()).toBeVisible();
+    await page.click(`tr:has-text("${suppName}") >> text=Nutrients`);
+    await expect(page.locator('h2')).toHaveText(`Nutrients for ${suppName}`);
+  }
 
-    // Click the Nutrients button for Vitamin C
-    await page.click('tr:has-text("Vitamin C") >> text=Nutrients');
+  async function addNutrient(page, { name, form, dosage }) {
+    await page.click('text=Add Nutrient');
+    await page.fill('input[name="GenericName"]', name);
+    if (form) {
+      await page.fill('input[name="SpecificForm"]', form);
+    }
+    if (dosage) {
+      await page.fill('input[name="Dosage"]', dosage);
+    }
+    await page.click('input[type="submit"][value="Add Nutrient"]');
+    await expect(page.locator('h2')).toContainText('Nutrients for');
+  }
 
-    // Should be on the nutrient index page
-    await expect(page.locator('h2')).toHaveText(/Nutrients for/);
-    await expect(page.locator('h2')).toHaveText(/Vitamin C/);
+  // Adds a child under an existing root nutrient of the current supplement
+  async function addChildUnderFirstBlend(page, name, dosage) {
+    await page.click('text=Add Nutrient');
+    const parentValue = await page.locator('#ParentNutrientId option:not([value=""])').first().getAttribute('value');
+    expect(parentValue).toBeTruthy();
+    await page.selectOption('#ParentNutrientId', parentValue);
+    await page.fill('input[name="GenericName"]', name);
+    if (dosage) {
+      await page.fill('input[name="Dosage"]', dosage);
+    }
+    await page.click('input[type="submit"][value="Add Nutrient"]');
+    await expect(page.locator('h2')).toContainText('Nutrients for');
+  }
 
-    // Should show the seed nutrients for Vitamin C (at least 2)
+  test('should display nutrients for a supplement', async ({ page }, testInfo) => {
+    const unique = Date.now();
+    const suppName = await createOwnSupplement(page, unique);
+    await openNutrientsFor(page, suppName);
+
+    // Fresh supplement starts empty
+    await expect(page.locator('.alert-info')).toContainText('No nutrients defined');
+
+    // Add two nutrients, then verify both display on the index
+    const first = `DisplayOne${unique}`;
+    const second = `DisplayTwo${unique}`;
+    await addNutrient(page, { name: first, form: `FormA${unique}`, dosage: '10mg' });
+    await addNutrient(page, { name: second, form: `FormB${unique}`, dosage: '20mg' });
+
     const rows = page.locator('table tbody tr');
     await expect(rows.first()).toBeVisible();
-    expect(await rows.count()).toBeGreaterThanOrEqual(2);
-
-    // Check specific values in the table (use first row, may be edited by parallel tests)
-    const firstRow = rows.nth(0);
-    await expect(firstRow).toContainText('Vitamin C');
-    await screenshot(page, testInfo, 'vitamin-c-nutrients');
+    expect(await rows.count()).toBe(2);
+    await expect(rows.first()).toContainText(first);
+    await screenshot(page, testInfo, 'supplement-nutrients-displayed');
   });
 
   test('should add a new nutrient', async ({ page }, testInfo) => {
     const unique = Date.now();
     const nutrientName = `Selenium${unique}`;
     const specificForm = `Selenium Yeast ${unique}`;
+    const suppName = await createOwnSupplement(page, unique);
 
-    await page.goto('/Supplement');
-    await expect(page.locator('table tbody tr').first()).toBeVisible();
-
-    // Navigate to Vitamin C's nutrients
-    await page.click('tr:has-text("Vitamin C") >> text=Nutrients');
-    await expect(page.locator('h2')).toHaveText(/Vitamin C/);
+    await openNutrientsFor(page, suppName);
 
     // Record current count
     const rows = page.locator('table tbody tr');
@@ -72,19 +114,36 @@ test.describe('Supplement Nutrients', () => {
     await expect(page.locator('h2')).toHaveText(/Nutrients for/);
   });
 
+  test('should display blend hierarchy with badge on nutrient index', async ({ page }, testInfo) => {
+    const unique = Date.now();
+    const suppName = await createOwnSupplement(page, unique);
+    const blendName = `Proprietary Blend${unique}`;
+    const childName = `Pectin${unique}`;
+
+    await openNutrientsFor(page, suppName);
+
+    // Build a blend parent + child in our own supplement
+    await addNutrient(page, { name: blendName, form: `BlendForm${unique}`, dosage: '500mg' });
+    await addChildUnderFirstBlend(page, childName);
+
+    // Blend parent carries the blend badge; children are indented under it
+    const blendRow = page.locator(`table tbody tr:has-text("${blendName}")`);
+    await expect(blendRow.locator('.badge:has-text("blend")')).toBeVisible();
+    const childRow = page.locator(`table tbody tr:has-text("${childName}")`);
+    await expect(childRow).toBeVisible();
+    await expect(childRow).toContainText('↳');
+    await screenshot(page, testInfo, 'blend-hierarchy-on-index');
+  });
+
   test('should add a sub-nutrient under a blend without a dosage', async ({ page }, testInfo) => {
     const unique = Date.now();
     const nutrientName = `BlendChild${unique}`;
+    const suppName = await createOwnSupplement(page, unique);
 
-    await page.goto('/Supplement');
-    await expect(page.locator('table tbody tr').first()).toBeVisible();
+    await openNutrientsFor(page, suppName);
 
-    // Navigate to Vitamin C's nutrients (has seeded root nutrients usable as blend parents)
-    await page.click('tr:has-text("Vitamin C") >> text=Nutrients');
-    await expect(page.locator('h2')).toHaveText(/Vitamin C/);
-
-    const rows = page.locator('table tbody tr');
-    const countBefore = await rows.count();
+    // Seed a root nutrient in our own supplement to act as the blend parent
+    await addNutrient(page, { name: `BlendParent${unique}`, form: `ParentForm${unique}`, dosage: '1g' });
 
     await page.click('text=Add Nutrient');
 
@@ -105,8 +164,6 @@ test.describe('Supplement Nutrients', () => {
     await expect(page.locator('h2')).toHaveText(/Nutrients for/);
     const newRow = page.locator(`table tbody tr:has-text("${nutrientName}")`);
     await expect(newRow).toBeVisible();
-    const afterCount = await page.locator('table tbody tr').count();
-    expect(afterCount).toBe(countBefore + 1);
     await screenshot(page, testInfo, 'blend-child-without-dosage');
 
     // Clean up: delete the nutrient we just created
@@ -120,13 +177,9 @@ test.describe('Supplement Nutrients', () => {
     const unique = Date.now();
     const nutrientName = `EditMe${unique}`;
     const specificForm = `Form${unique}`;
+    const suppName = await createOwnSupplement(page, unique);
 
-    await page.goto('/Supplement');
-    await expect(page.locator('table tbody tr').first()).toBeVisible();
-
-    // Navigate to Vitamin C's nutrients
-    await page.click('tr:has-text("Vitamin C") >> text=Nutrients');
-    await expect(page.locator('h2')).toHaveText(/Vitamin C/);
+    await openNutrientsFor(page, suppName);
 
     // Create a nutrient to edit (avoids race conditions with seed data)
     await page.click('text=Add Nutrient');
@@ -169,13 +222,9 @@ test.describe('Supplement Nutrients', () => {
   test('should delete a nutrient', async ({ page }, testInfo) => {
     const unique = Date.now();
     const nutrientName = `DeleteMe${unique}`;
+    const suppName = await createOwnSupplement(page, unique);
 
-    await page.goto('/Supplement');
-    await expect(page.locator('table tbody tr').first()).toBeVisible();
-
-    // Navigate to Multivitamin's nutrients
-    await page.click('tr:has-text("Multivitamin") >> text=Nutrients');
-    await expect(page.locator('h2')).toHaveText(/Multivitamin/);
+    await openNutrientsFor(page, suppName);
 
     // Create a nutrient to delete (avoids race conditions with seed data)
     await page.click('text=Add Nutrient');
@@ -209,41 +258,146 @@ test.describe('Supplement Nutrients', () => {
   });
 
   test('should show multiple supplements with their own nutrients', async ({ page }, testInfo) => {
-    await page.goto('/Supplement');
-    await expect(page.locator('table tbody tr').first()).toBeVisible();
+    const unique = Date.now();
+    const suppA = await createOwnSupplement(page, unique);
+    const suppB = await createOwnSupplement(page, unique + 1);
+    const nutrientA = `Omega-3${unique}`;
+    const nutrientB = `Calcium${unique}`;
 
-    // Check Fish Oil nutrients
-    await page.click('tr:has-text("Fish Oil") >> text=Nutrients');
-    await expect(page.locator('h2')).toHaveText(/Fish Oil/);
-    await expect(page.locator('table tbody tr:has-text("Omega-3")')).toBeVisible();
-    await expect(page.locator('table tbody tr:has-text("1000mg")')).toBeVisible();
+    // Check first supplement's nutrients
+    await openNutrientsFor(page, suppA);
+    await addNutrient(page, { name: nutrientA, form: `Form${unique}`, dosage: '1000mg' });
+    await expect(page.locator(`table tbody tr:has-text("${nutrientA}")`)).toBeVisible();
+    await expect(page.locator(`table tbody tr:has-text("1000mg")`)).toBeVisible();
     await screenshot(page, testInfo, 'fish-oil-nutrients');
 
     // Navigate back
     await page.click('text=Back to Supplements');
     await expect(page.locator('h2')).toHaveText('Supplements');
 
-    // Check Multivitamin nutrients (may have been modified by parallel tests)
-    await page.click('tr:has-text("Multivitamin") >> text=Nutrients');
-    await expect(page.locator('h2')).toHaveText(/Multivitamin/);
-    // Verify page loaded - show nutrient info or empty message
-    const hasTable = await page.locator('table tbody tr').count();
-    const hasEmptyMsg = await page.locator('.alert-info').count();
-    expect(hasTable + hasEmptyMsg).toBeGreaterThan(0);
+    // Check second supplement's nutrients are independent
+    await openNutrientsFor(page, suppB);
+    await addNutrient(page, { name: nutrientB, form: `Form${unique}b`, dosage: '50mg' });
+    await expect(page.locator(`table tbody tr:has-text("${nutrientB}")`)).toBeVisible();
     await screenshot(page, testInfo, 'multivitamin-nutrients');
   });
 
-  test('should show supplement serving info on nutrient page', async ({ page }, testInfo) => {
-    await page.goto('/Supplement');
-    await expect(page.locator('table tbody tr').first()).toBeVisible();
+  test('should warn about blend children when bulk deleting nutrients', async ({ page }, testInfo) => {
+    const unique = Date.now();
+    const suppName = `BulkWarn${unique}`;
 
-    // Navigate to Fish Oil nutrients
-    await page.click('tr:has-text("Fish Oil") >> text=Nutrients');
-    await expect(page.locator('h2')).toHaveText(/Fish Oil/);
+    // Create an isolated supplement so parallel workers never share rows
+    await page.goto('/Supplement/Create');
+    await page.fill('input#Name', suppName);
+    await page.fill('input#Brand', 'WarnBrand');
+    await page.fill('input#DailyDose', '1 cap');
+    await page.click('button[hx-post="/Supplement/CreateSave"]');
+    await expect(page.locator('h2')).toHaveText('Supplements');
+
+    // Add two nutrients
+    await page.click(`tr:has-text("${suppName}") >> text=Nutrients`);
+    for (const name of [`WarnA${unique}`, `WarnB${unique}`]) {
+      await page.click('text=Add Nutrient');
+      await page.fill('input[name="GenericName"]', name);
+      await page.fill('input[name="SpecificForm"]', `${name}-form`);
+      await page.fill('input[name="Dosage"]', '5mg');
+      await page.click('input[type="submit"][value="Add Nutrient"]');
+      await expect(page.locator(`table tbody tr:has-text("${name}")`)).toBeVisible();
+    }
+
+    // Select them and click Delete Selected, then DISMISS the dialog
+    let dialogFired = false;
+    let dialogMessage = '';
+    page.on('dialog', async dialog => {
+      dialogFired = true;
+      dialogMessage = dialog.message();
+      await dialog.dismiss();
+    });
+
+    const boxes = page.locator('.row-checkbox');
+    await boxes.nth(0).check();
+    await boxes.nth(1).check();
+    await page.locator('#delete-selected-btn').click();
+
+    expect(dialogFired).toBe(true);
+    expect(dialogMessage).toMatch(/child nutrients of selected blends/i);
+
+    // Dismissal must have prevented the delete
+    await expect(page.locator(`table tbody tr:has-text("WarnA${unique}")`)).toBeVisible();
+    await screenshot(page, testInfo, 'nutrient-bulk-delete-warning');
+  });
+
+  test('should show blend-child cascade warning when deleting a blend', async ({ page }, testInfo) => {
+    const unique = Date.now();
+    const suppName = `BlendCascade${unique}`;
+    const parentName = `BlendParent${unique}`;
+    const childName = `BlendChild${unique}`;
+
+    // Isolated supplement so parallel workers never share rows
+    await page.goto('/Supplement/Create');
+    await page.fill('input#Name', suppName);
+    await page.fill('input#Brand', 'BlendBrand');
+    await page.fill('input#DailyDose', '1 cap');
+    await page.click('button[hx-post="/Supplement/CreateSave"]');
+    await expect(page.locator('h2')).toHaveText('Supplements');
+    await page.click(`tr:has-text("${suppName}") >> text=Nutrients`);
+
+    // Add the blend parent
+    await page.click('text=Add Nutrient');
+    await page.fill('input[name="GenericName"]', parentName);
+    await page.fill('input[name="SpecificForm"]', `${parentName}-form`);
+    await page.fill('input[name="Dosage"]', '10mg');
+    await page.click('input[type="submit"][value="Add Nutrient"]');
+    await expect(page.locator(`table tbody tr:has-text("${parentName}")`)).toBeVisible();
+
+    // Add a child under that blend
+    await page.click('text=Add Nutrient');
+    await page.fill('input[name="GenericName"]', childName);
+    const optionValue = await page.locator('select[name="ParentNutrientId"] option', { hasText: parentName }).getAttribute('value');
+    await page.selectOption('select[name="ParentNutrientId"]', optionValue);
+    await page.click('input[type="submit"][value="Add Nutrient"]');
+    await expect(page.locator(`table tbody tr:has-text("${childName}")`)).toBeVisible();
+
+    // Open the blend parent's delete confirmation page
+    const parentRow = page.locator(`table tbody tr:has-text("${parentName}")`);
+    await parentRow.locator('a.btn-danger').click();
+    await expect(page.locator('text=Are you sure')).toBeVisible();
+    await expect(page.locator("text=/child nutrients will also be deleted/i")).toBeVisible();
+    await screenshot(page, testInfo, 'blend-delete-cascade-warning');
+
+    // Confirming deletes the blend AND its children
+    await page.click('input[type="submit"][value="Delete"]');
+    await expect(page.locator('h2')).toHaveText(/Nutrients for/);
+    await expect(page.locator(`table tbody tr:has-text("${parentName}")`)).toHaveCount(0);
+    await expect(page.locator(`table tbody tr:has-text("${childName}")`)).toHaveCount(0);
+  });
+
+  test('should sort nutrients by a column when header clicked', async ({ page }, testInfo) => {
+    const unique = Date.now();
+    const suppName = await createOwnSupplement(page, unique);
+
+    await openNutrientsFor(page, suppName);
+    await addNutrient(page, { name: `Zinc${unique}`, form: `Form${unique}`, dosage: '10mg' });
+    await addNutrient(page, { name: `Algae${unique}`, form: `Form${unique}b`, dosage: '20mg' });
+
+    await page.locator('th[data-sort-key="GenericName"]').click();
+    const firstName = (await page.locator('table tbody tr:first-child td[data-sort-key="GenericName"]').textContent()).trim();
+    const secondName = (await page.locator('table tbody tr:nth-child(2) td[data-sort-key="GenericName"]').textContent()).trim();
+    expect(String(firstName).localeCompare(String(secondName), undefined, { numeric: true }) <= 0).toBeTruthy();
+
+    await screenshot(page, testInfo, 'nutrient-sorted');
+  });
+
+  test('should show supplement serving info on nutrient page', async ({ page }, testInfo) => {
+    const unique = Date.now();
+    const suppName = await createOwnSupplement(page, unique, { brand: `Kirkland${unique}`, dailyDose: '1 softgel' });
+
+    // Navigate to the supplement's nutrients
+    await openNutrientsFor(page, suppName);
 
     // Should show the serving info in the text-muted paragraph
     await expect(page.locator('p.text-muted')).toHaveText(/1 softgel/);
-    await expect(page.locator('p.text-muted')).toHaveText(/Kirkland/);
+    await expect(page.locator('p.text-muted')).toHaveText(new RegExp(`Kirkland${unique}`));
     await screenshot(page, testInfo, 'fish-oil-serving-info');
   });
 });

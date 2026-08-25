@@ -17,6 +17,16 @@ public class ReportingController(IReportingService reportingService) : Controlle
         ViewData["ReportDate"] = data.ReportDate.ToString("yyyy-MM-dd");
         ViewData["MemberNames"] = JsonSerializer.Serialize(data.MemberNames);
         ViewData["MemberData"] = JsonSerializer.Serialize(data.MemberData);
+        ViewData["SupplementRows"] = data.Supplements
+            .Select(s => new
+            {
+                s.Name,
+                s.Brand,
+                s.DailyDose,
+                MonthlyCost = data.SupplementMonthlyCosts.TryGetValue(s.Id, out var cost)
+                    ? cost.ToString("F2")
+                    : (string?)"N/A"
+            }).ToList();
 
         return View(data.Supplements);
     }

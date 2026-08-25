@@ -6,5 +6,6 @@ public record CsvSupplementRow(
     string Brand,
     string DailyDose,
     string? ManufacturerUrl,
-    decimal? Cost
+    decimal? Cost,
+    decimal? ServingsPerBottle
 );

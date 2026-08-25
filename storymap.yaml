@@ -10,7 +10,7 @@
 meta:
   project: VitaTrack
   description: Vitamin and Supplement Tracking Application
-  last_updated: 2026-08-22
+  last_updated: 2026-08-23
 
 activities:
   - name: Manage Family Members
@@ -102,6 +102,7 @@ activities:
               - e2e: supplement-crud::should edit a supplement
               - e2e: supplement-crud::should warn before enriching when supplement already has nutrients (Edit)
               - e2e: supplement-crud::should save without enrichment on Edit navigates to list
+              - e2e: supplement-crud::should show a wait spinner while enriching
       - id: MS-4
         name: Delete a supplement
         entry_point: Supplements index row -> Delete / Delete Selected
@@ -112,6 +113,12 @@ activities:
             tests:
               - unit: SupplementControllerTests.Delete_CallsRepoAndRedirectsToIndex
               - e2e: supplement-crud::should delete a supplement
+              - e2e: supplement-crud::should show confirm dialog and not delete when dismissed
+          - title: Sort supplements by column
+            status: done
+            priority: medium
+            tests:
+              - e2e: supplement-crud::should sort supplements by a column when header clicked
           - title: Delete multiple supplements via checkboxes and Delete Selected button
             status: done
             priority: high
@@ -129,6 +136,7 @@ activities:
             tests:
               - unit: CsvImportServiceTests.ParseAsync_ValidCsvThreeRows_ReturnsThreeRows
               - unit: CsvImportServiceTests.ParseAsync_MissingName_ReturnsErrorForRow
+              - unit: CsvImportServiceTests.ParseAsync_WithServingsPerBottle_ParsesOptionalValue
               - e2e: csv-import::should import a valid CSV and show report
           - title: Open import modal and download sample CSV
             status: done
@@ -165,6 +173,9 @@ activities:
             priority: high
             tests:
               - e2e: supplement-nutrient::should delete a nutrient
+              - e2e: supplement-nutrient::should warn about blend children when bulk deleting nutrients
+              - e2e: supplement-nutrient::should show blend-child cascade warning when deleting a blend
+              - e2e: supplement-nutrient::should sort nutrients by a column when header clicked
               - unit: SupplementNutrientControllerTests.DeleteSelected_DeletesCheckedNutrientsAndRedirects
           - title: View multiple supplements with their own nutrients
             status: done
@@ -200,6 +211,8 @@ activities:
           - title: Display blend hierarchy on nutrient index (indent + badge)
             status: done
             priority: medium
+            tests:
+              - e2e: supplement-nutrient::should display blend hierarchy with badge on nutrient index
           - title: Deleting a blend parent cascades to its children
             status: done
             priority: medium
@@ -256,14 +269,18 @@ activities:
             priority: high
             tests:
               - e2e: nutrient-report::should display nutrient report page
+              - e2e: nutrient-report::should arrive via nav bar Report link
           - title: View nutrient totals across all members
             status: done
             priority: medium
             tests:
               - e2e: nutrient-report::should show supplements in report table
-          - title: See monthly cost estimate
+          - title: See monthly cost estimate from bottle price and servings
             status: done
             priority: medium
+            tests:
+              - unit: ReportingServiceTests.CostReport_MonthlyCost_IsBottlePriceTimesDosesDividedByServings
+              - unit: ReportingServiceTests.NutrientReport_TotalCost_MatchesCostReportMonthlyFormula
           - title: Handle empty state when no doses are prescribed
             status: done
             priority: low
@@ -283,6 +300,8 @@ activities:
             priority: high
             tests:
               - e2e: cost-report::should show supplement costs table with seeded data
+              - e2e: cost-report::should arrive via nav bar Cost Report link
+              - unit: ReportingServiceTests.CostReport_ExcludesSupplementWithoutServingsOrCost
           - title: See cost breakdown by family member
             status: done
             priority: high

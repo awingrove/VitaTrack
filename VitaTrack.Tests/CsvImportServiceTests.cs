@@ -15,7 +15,7 @@ public class CsvImportServiceTests
     public async Task ParseAsync_ValidCsvThreeRows_ReturnsThreeRows()
     {
         var csv = """
-            Name,Brand,DailyDose,ManufacturerUrl,Cost
+            Name,Brand,DailyDose,ManufacturerUrl,Cost,ServingsPerBottle
             Vitamin D3,NatureWise,2 capsules,https://example.com,15.99
             Magnesium,Doctor's Best,2 tablets,https://example.com,12.49
             Zinc Complex,NOW,1 capsule,,
@@ -36,7 +36,7 @@ public class CsvImportServiceTests
     public async Task ParseAsync_MissingName_ReturnsErrorForRow()
     {
         var csv = """
-            Name,Brand,DailyDose,ManufacturerUrl,Cost
+            Name,Brand,DailyDose,ManufacturerUrl,Cost,ServingsPerBottle
             ,BrandX,1 tablet,,
             """;
 
@@ -52,7 +52,7 @@ public class CsvImportServiceTests
     public async Task ParseAsync_MissingBrand_ReturnsErrorForRow()
     {
         var csv = """
-            Name,Brand,DailyDose,ManufacturerUrl,Cost
+            Name,Brand,DailyDose,ManufacturerUrl,Cost,ServingsPerBottle
             Vitamin C,,500mg,,
             """;
 
@@ -67,7 +67,7 @@ public class CsvImportServiceTests
     public async Task ParseAsync_MissingDailyDose_ReturnsErrorForRow()
     {
         var csv = """
-            Name,Brand,DailyDose,ManufacturerUrl,Cost
+            Name,Brand,DailyDose,ManufacturerUrl,Cost,ServingsPerBottle
             Vitamin C,NatureWise,,,
             """;
 
@@ -81,7 +81,7 @@ public class CsvImportServiceTests
     [TestMethod]
     public async Task ParseAsync_Exceeds20Rows_RejectsEntireFile()
     {
-        var sb = new StringBuilder("Name,Brand,DailyDose,ManufacturerUrl,Cost\n");
+        var sb = new StringBuilder("Name,Brand,DailyDose,ManufacturerUrl,Cost,ServingsPerBottle\n");
         for (var i = 1; i <= 21; i++)
             sb.AppendLine($"Product{i},Brand{i},1 tablet,,");
 
@@ -95,7 +95,7 @@ public class CsvImportServiceTests
     public async Task ParseAsync_QuotedFieldWithComma_ParsedCorrectly()
     {
         var csv = """
-            Name,Brand,DailyDose,ManufacturerUrl,Cost
+            Name,Brand,DailyDose,ManufacturerUrl,Cost,ServingsPerBottle
             "Vitamin D, 5000 IU",NatureWise,1 capsule,,
             """;
 
@@ -110,7 +110,7 @@ public class CsvImportServiceTests
     {
         var csv = """
 
-            Name,Brand,DailyDose,ManufacturerUrl,Cost
+            Name,Brand,DailyDose,ManufacturerUrl,Cost,ServingsPerBottle
 
             Vitamin D3,NatureWise,2 capsules,,
 
@@ -128,7 +128,7 @@ public class CsvImportServiceTests
     public async Task ParseAsync_InvalidCost_ReturnsError()
     {
         var csv = """
-            Name,Brand,DailyDose,ManufacturerUrl,Cost
+            Name,Brand,DailyDose,ManufacturerUrl,Cost,ServingsPerBottle
             Vitamin D3,NatureWise,2 capsules,,abc
             """;
 
@@ -143,7 +143,7 @@ public class CsvImportServiceTests
     public async Task ParseAsync_BomCharacter_Handled()
     {
         var bytes = new byte[] { 0xEF, 0xBB, 0xBF };
-        var csvBytes = Encoding.UTF8.GetBytes("Name,Brand,DailyDose,ManufacturerUrl,Cost\nVitamin D3,NatureWise,2 capsules,,");
+        var csvBytes = Encoding.UTF8.GetBytes("Name,Brand,DailyDose,ManufacturerUrl,Cost,ServingsPerBottle\nVitamin D3,NatureWise,2 capsules,,");
         var stream = new MemoryStream(bytes.Concat(csvBytes).ToArray());
 
         var result = await _service.ParseAsync(stream);
@@ -173,5 +173,37 @@ public class CsvImportServiceTests
 
         Assert.AreEqual(0, result.Rows.Count);
         Assert.IsTrue(result.Errors.Any(e => e.Message.Contains("empty")));
+    }
+
+    [TestMethod]
+    public async Task ParseAsync_WithServingsPerBottle_ParsesOptionalValue()
+    {
+        var csv = """
+            Name,Brand,DailyDose,ManufacturerUrl,Cost,ServingsPerBottle
+            Vitamin D3,NatureWise,2 capsules,https://example.com,15.99,60
+            Zinc,NOW,1 capsule,,
+            """;
+
+        var result = await _service.ParseAsync(ToStream(csv));
+
+        Assert.AreEqual(2, result.Rows.Count);
+        Assert.AreEqual(0, result.Errors.Count);
+        Assert.AreEqual(60m, result.Rows[0].ServingsPerBottle);
+        Assert.IsNull(result.Rows[1].ServingsPerBottle);
+    }
+
+    [TestMethod]
+    public async Task ParseAsync_NonPositiveServingsPerBottle_ReturnsError()
+    {
+        var csv = """
+            Name,Brand,DailyDose,ManufacturerUrl,Cost,ServingsPerBottle
+            Vitamin D3,NatureWise,2 capsules,,15.99,0
+            """;
+
+        var result = await _service.ParseAsync(ToStream(csv));
+
+        Assert.AreEqual(0, result.Rows.Count);
+        Assert.AreEqual(1, result.Errors.Count);
+        Assert.IsTrue(result.Errors[0].Message.Contains("ServingsPerBottle"));
     }
 }

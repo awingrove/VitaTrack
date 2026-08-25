@@ -53,7 +53,7 @@ public class SupplementControllerImportCsvTests
     {
         var csvRows = new List<CsvSupplementRow>
         {
-            new(2, "Vitamin D3", "NatureWise", "2 capsules", null, null)
+            new(2, "Vitamin D3", "NatureWise", "2 capsules", null, null, null)
         };
         var parseResult = new CsvParseResult(csvRows, []);
         _csvImportService.Setup(s => s.ParseAsync(It.IsAny<Stream>())).ReturnsAsync(parseResult);

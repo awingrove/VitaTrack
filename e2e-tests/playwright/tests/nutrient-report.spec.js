@@ -3,6 +3,13 @@ const { screenshot } = require('../helpers/screenshot');
 
 test.describe('Nutrient Report', () => {
 
+  test('should arrive via nav bar Report link', async ({ page }, testInfo) => {
+    await page.goto('/');
+    await page.click('nav >> text=Report');
+    await expect(page.locator('h2')).toHaveText('Daily Nutrient Report');
+    await screenshot(page, testInfo, 'nutrient-report-via-nav');
+  });
+
   test('should display nutrient report page', async ({ page }, testInfo) => {
     await page.goto('/Reporting/NutrientReport');
     await expect(page.locator('h2')).toHaveText('Daily Nutrient Report');

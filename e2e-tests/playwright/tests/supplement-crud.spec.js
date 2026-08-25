@@ -122,15 +122,69 @@ test.describe('Supplement CRUD', () => {
     await expect(page.locator('table tbody tr:has-text("ToDelete")')).toBeVisible();
     await screenshot(page, testInfo, 'supplement-list-before-delete');
 
-    // Click delete button and confirm the JS dialog
+    // Click delete button and confirm the JS dialog (must actually fire — CSP regression guard)
     const row = page.locator('table tbody tr:has-text("ToDelete")');
-    page.on('dialog', dialog => dialog.accept());
-    await row.locator('button:has-text("Delete")').click();
+    let deleteDialogMessage = '';
+    page.on('dialog', async dialog => {
+      deleteDialogMessage = dialog.message();
+      await dialog.accept();
+    });
+    await row.locator('form button:has-text("Delete")').click();
+
+    expect(deleteDialogMessage).toMatch(/nutrients and prescribed doses/i);
 
     // Should be on supplements list without the deleted supplement
     await expect(page.locator('h2')).toHaveText('Supplements');
     await expect(page.locator('table tbody tr:has-text("ToDelete")')).toHaveCount(0);
     await screenshot(page, testInfo, 'supplement-after-delete');
+  });
+
+  test('should sort supplements by a column when header clicked', async ({ page }, testInfo) => {
+    await page.goto('/Supplement');
+
+    // Initially sorted by Name ascending (server ORDER BY) -> Name header shows ▲
+    await expect(page.locator('th[data-sort-key="Name"]')).toContainText('▲');
+
+    // Click Nutrient Count header -> numeric ascending; compare raw sort values
+    await page.locator('th[data-sort-key="NutrientCount"]').click();
+    const firstCount = await page.locator('table tbody tr:first-child td[data-sort-key="NutrientCount"]').getAttribute('data-sort-value');
+    const secondCount = await page.locator('table tbody tr:nth-child(2) td[data-sort-key="NutrientCount"]').getAttribute('data-sort-value');
+    expect(Number(firstCount)).toBeLessThanOrEqual(Number(secondCount));
+
+    // Click again -> descending
+    await page.locator('th[data-sort-key="NutrientCount"]').click();
+    const firstDesc = await page.locator('table tbody tr:first-child td[data-sort-key="NutrientCount"]').getAttribute('data-sort-value');
+    const secondDesc = await page.locator('table tbody tr:nth-child(2) td[data-sort-key="NutrientCount"]').getAttribute('data-sort-value');
+    expect(Number(firstDesc)).toBeGreaterThanOrEqual(Number(secondDesc));
+    await screenshot(page, testInfo, 'supplement-sorted');
+  });
+
+  test('should show confirm dialog and not delete when dismissed', async ({ page }, testInfo) => {
+    const unique = Date.now();
+    const suppName = `CancelDelete${unique}`;
+
+    // Create a supplement first to avoid touching seed data
+    await page.goto('/Supplement/Create');
+    await page.fill('input#Name', suppName);
+    await page.fill('input#Brand', 'CancelBrand');
+    await page.fill('input#DailyDose', '1 cap');
+    await page.click('button[hx-post="/Supplement/CreateSave"]');
+    await expect(page.locator('h2')).toHaveText('Supplements');
+
+    let dialogFired = false;
+    page.on('dialog', async dialog => {
+      dialogFired = true;
+      expect(dialog.message()).toMatch(/nutrients and prescribed doses/i);
+      await dialog.dismiss();
+    });
+
+    const row = page.locator(`table tbody tr:has-text("${suppName}")`);
+    await row.locator('form button:has-text("Delete")').click();
+
+    // Dismissing the confirm must prevent deletion, and the dialog must have fired at all
+    expect(dialogFired).toBe(true);
+    await expect(page.locator(`table tbody tr:has-text("${suppName}")`)).toBeVisible();
+    await screenshot(page, testInfo, 'supplement-delete-dismissed');
   });
 
   test('should delete multiple supplements via checkboxes', async ({ page }, testInfo) => {
@@ -174,8 +228,14 @@ test.describe('Supplement CRUD', () => {
     await screenshot(page, testInfo, 'bulk-delete-selected');
 
     // Click Delete Selected and confirm dialog
-    page.on('dialog', dialog => dialog.accept());
+    let bulkDialogMessage = '';
+    page.on('dialog', async dialog => {
+      bulkDialogMessage = dialog.message();
+      await dialog.accept();
+    });
     await page.locator('#delete-selected-btn').click();
+
+    expect(bulkDialogMessage).toMatch(/prescribed doses/i);
 
     // Should be on supplements list without the deleted supplements
     await expect(page.locator('h2')).toHaveText('Supplements');
@@ -234,6 +294,49 @@ test.describe('Supplement CRUD', () => {
     // Enrichment proceeds to the Review page
     await expect(page.locator('h2')).toHaveText('Review Supplement');
     await screenshot(page, testInfo, 'edit-enrich-warning');
+  });
+
+  test('should show a wait spinner while enriching', async ({ page }, testInfo) => {
+    await page.goto('/Supplement/Edit/1');
+    await expect(page.locator('#enrich-spinner')).toHaveCount(1);
+    await expect(page.locator('#enrich-spinner')).toBeHidden();
+
+    // Prevent the real postback so the spinner stays observable
+    await page.evaluate(() => {
+      const form = document.querySelector('form');
+      form.addEventListener('submit', (e) => e.preventDefault(), true);
+    });
+    page.on('dialog', dialog => dialog.accept());
+    await page.click('#enrich-btn');
+
+    await expect(page.locator('#enrich-spinner')).toBeVisible();
+    await screenshot(page, testInfo, 'enrich-spinner');
+  });
+
+  test('should submit enrich and reach Review when supplement has no nutrients', async ({ page }, testInfo) => {
+    const unique = Date.now();
+    const suppName = `EnrichFlow${unique}`;
+
+    // Create a supplement with zero nutrients
+    await page.goto('/Supplement/Create');
+    await page.fill('input#Name', suppName);
+    await page.fill('input#Brand', 'FlowBrand');
+    await page.fill('input#DailyDose', '1 cap');
+    await page.click('button[hx-post="/Supplement/CreateSave"]');
+    await expect(page.locator('h2')).toHaveText('Supplements');
+
+    // Edit it and click Enrich (no confirm dialog since nutrient count is 0)
+    await page.click(`tr:has-text("${suppName}") >> text=Edit`);
+    await expect(page.locator('h2')).toHaveText('Edit Supplement');
+    const spinner = page.locator('#enrich-spinner');
+    await expect(spinner).toBeHidden();
+
+    await page.click('#enrich-btn');
+
+    // The postback should land on the Review page (proves submission happened;
+    // the spinner shows during the wait and disappears on navigation)
+    await expect(page.locator('h2')).toHaveText('Review Supplement', { timeout: 15000 });
+    await screenshot(page, testInfo, 'enrich-flow-review');
   });
 
   test('should save without enrichment on Edit navigates to list', async ({ page }, testInfo) => {

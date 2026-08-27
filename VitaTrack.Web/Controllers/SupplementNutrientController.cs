@@ -98,19 +98,6 @@ public class SupplementNutrientController(
         return View(nutrient);
     }
 
-    // GET: /SupplementNutrient/Delete/5
-    public async Task<IActionResult> Delete(int id)
-    {
-        var nutrient = await _nutrientRepo.GetByIdAsync(id);
-        if (nutrient == null) return NotFound();
-
-        var all = await _nutrientRepo.GetBySupplementIdAsync(nutrient.SupplementId);
-        ViewData["HasChildren"] = all.Any(n => n.ParentNutrientId == id);
-        var supplement = await _supplementRepo.GetByIdAsync(nutrient.SupplementId);
-        ViewData["Supplement"] = supplement;
-        return View(nutrient);
-    }
-
     // POST: /SupplementNutrient/Delete/5
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]

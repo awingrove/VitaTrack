@@ -35,9 +35,15 @@
             <td>@pd.Instructions</td>
             <td>
                 <a class="btn btn-sm btn-primary" asp-action="Edit" asp-route-id="@pd.Id">Edit</a>
-                <a class="btn btn-sm btn-danger" asp-action="Delete" asp-route-id="@pd.Id">Delete</a>
+                <form asp-action="Delete" asp-route-id="@pd.Id" method="post" style="display:inline"
+                      data-confirm-message="Delete this prescribed dose?">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
             </td>
         </tr>
     }
     </tbody>
 </table>
+
+<script src="~/js/delete-confirm.js"></script>

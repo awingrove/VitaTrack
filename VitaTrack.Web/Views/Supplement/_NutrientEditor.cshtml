@@ -55,7 +55,7 @@
                         {
                             var child = root.Children[c];
                             <tr data-row-key="child-@r-@c" data-parent-key="root-@r" class="blend-child">
-                                <td style="padding-left:2rem"><input name="nutrients[@seq].GenericName" value="@child.GenericName" class="form-control" /></td>
+                                <td class="ps-4"><input name="nutrients[@seq].GenericName" value="@child.GenericName" class="form-control" /></td>
                                 <td><input name="nutrients[@seq].SpecificForm" value="@child.SpecificForm" class="form-control" /></td>
                                 <td><input name="nutrients[@seq].Dosage" value="@child.Dosage" class="form-control" /></td>
                                 <td><button type="button" class="btn btn-sm btn-danger remove-row">Remove</button></td>
@@ -75,9 +75,9 @@
         </tbody>
     </table>
     <button type="button" class="btn btn-sm btn-success" id="add-nutrient-row">Add Nutrient</button>
-    <button type="button" class="btn btn-sm btn-info" id="add-blend-row">Add Blend</button>
+    <button type="button" class="btn btn-sm btn-outline-primary" id="add-blend-row">Add Blend</button>
 
-    <div class="form-group mt-3">
+    <div class="mt-3">
         <button type="button" class="btn btn-primary"
                 hx-post="/Supplement/UpdateNutrients"
                 hx-include="#nutrient-editor-form"
@@ -85,7 +85,7 @@
                 hx-swap="innerHTML">
             Save Changes
         </button>
-        <a href="/Supplement/Index" class="btn btn-secondary">Done</a>
+        <a href="/Supplement/Index" class="btn btn-outline-secondary">Done</a>
     </div>
 </form>
 

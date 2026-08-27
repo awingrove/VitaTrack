@@ -27,6 +27,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: e2e-tests/playwright/package-lock.json
 
+      - name: Design system lint
+        run: npx -y @google/design.md lint DESIGN.md
+
       - name: Format check
         run: |
           dotnet format VitaTrack.sln --verify-no-changes --no-restore || {

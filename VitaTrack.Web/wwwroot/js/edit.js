@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Defer disabling so the triggering button stays enabled long enough
         // for the browser to commit the submit (disabling it inline cancels it).
         var spinner = document.getElementById('enrich-spinner');
-        if (spinner) spinner.style.display = 'block';
+        if (spinner) spinner.hidden = false;
         setTimeout(function () {
             enrichBtn.disabled = true;
             var saveBtn = document.querySelector('button[formaction="/Supplement/EditSave"]');

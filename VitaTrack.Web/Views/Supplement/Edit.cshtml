@@ -9,25 +9,25 @@
 <p class="text-muted">Serving: how much to take at once (e.g., "2 tablets"). Nutrients added separately below. If you change the manufacturer URL, it will be re-scraped on save.</p>
 
 <form asp-action="Edit">
-    <div class="form-group">
+    <div class="mb-3">
         <input type="hidden" asp-for="Id" />
     </div>
-    <div class="form-group">
+    <div class="mb-3">
         <label asp-for="Name" class="control-label"></label>
         <input asp-for="Name" class="form-control" />
         <span asp-validation-for="Name" class="text-danger"></span>
     </div>
-    <div class="form-group">
+    <div class="mb-3">
         <label asp-for="Brand" class="control-label"></label>
         <input asp-for="Brand" class="form-control" />
         <span asp-validation-for="Brand" class="text-danger"></span>
     </div>
-    <div class="form-group">
+    <div class="mb-3">
         <label asp-for="DailyDose" class="control-label">Serving</label>
         <input asp-for="DailyDose" class="form-control" placeholder="e.g. 2 tablets, 5ml" />
         <span asp-validation-for="DailyDose" class="text-danger"></span>
     </div>
-    <div class="form-group">
+    <div class="mb-3">
         <label asp-for="ManufacturerUrl" class="control-label">Manufacturer URL</label>
         <div class="input-group">
             <input asp-for="ManufacturerUrl" class="form-control" />
@@ -38,24 +38,24 @@
         </div>
         <span asp-validation-for="ManufacturerUrl" class="text-danger"></span>
     </div>
-    <div class="form-group">
+    <div class="mb-3">
         <label asp-for="Cost" class="control-label"></label>
         <input asp-for="Cost" class="form-control" type="number" step="0.01" />
         <span asp-validation-for="Cost" class="text-danger"></span>
     </div>
-    <div class="form-group">
+    <div class="mb-3">
         <label asp-for="ServingsPerBottle" class="control-label"></label>
         <input asp-for="ServingsPerBottle" class="form-control" type="number" step="1" />
         <span asp-validation-for="ServingsPerBottle" class="text-danger"></span>
     </div>
-    <div class="form-group">
+    <div class="mb-3">
         <button type="submit" class="btn btn-primary" formaction="/Supplement/EditSave">Save</button>
-        <button type="submit" id="enrich-btn" class="btn btn-info"
+        <button type="submit" id="enrich-btn" class="btn btn-outline-primary"
                 formaction="/Supplement/Edit"
                 data-nutrient-count="@Model.NutrientCount">Enrich</button>
     </div>
 
-    <div id="enrich-spinner" class="text-center my-4" style="display:none">
+    <div id="enrich-spinner" class="text-center my-4" hidden>
         <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
         <p class="text-muted mt-2">Enriching with AI… this may take a moment.</p>
     </div>
@@ -65,7 +65,7 @@
 <h4>Nutrient Breakdown</h4>
 <p class="text-muted">This supplement has @Model.NutrientCount nutrient(s) recorded.</p>
 <p>
-    <a class="btn btn-sm btn-primary" asp-controller="Supplement" asp-action="EditNutrients" asp-route-id="@Model.Id">Edit Nutrient Breakdown</a>
+    <a class="btn btn-sm btn-outline-info" asp-controller="Supplement" asp-action="EditNutrients" asp-route-id="@Model.Id">Edit Nutrient Breakdown</a>
     <span class="text-muted ms-2">Group ingredients into blends there — or manage single nutrients below.</span>
 </p>
 <p>

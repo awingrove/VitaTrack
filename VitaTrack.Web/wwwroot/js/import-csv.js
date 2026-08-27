@@ -8,7 +8,7 @@
                 if (btn) btn.disabled = true;
 
                 var spinner = document.getElementById('import-spinner');
-                if (spinner) spinner.style.display = 'block';
+                if (spinner) spinner.hidden = false;
             });
         }
 
@@ -23,7 +23,7 @@
     document.body.addEventListener('htmx:afterSwap', function (evt) {
         if (evt.detail.target.id === 'import-report-container') {
             var spinner = document.getElementById('import-spinner');
-            if (spinner) spinner.style.display = 'none';
+            if (spinner) spinner.hidden = true;
 
             var form = document.querySelector('#importCsvModal form');
             if (form) {

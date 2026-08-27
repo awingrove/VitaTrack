@@ -103,17 +103,16 @@ test.describe('Prescribed Doses', () => {
     await expect(page.locator('h2')).toHaveText('Prescribed Doses');
     await screenshot(page, testInfo, 'doses-before-delete');
 
-    // Click Delete on the first row
-    const firstRow = page.locator('table tbody tr').first();
+    // Click Delete on the row and accept the confirm dialog
     const row = page.locator('table tbody tr:has-text("DeleteMe")').last();
-    await row.locator('a.btn-danger').click();
-
-    // Should be on the delete confirmation page
-    await expect(page.locator('text=Are you sure')).toBeVisible();
+    let deleteDialogMessage = '';
+    page.on('dialog', async dialog => {
+      deleteDialogMessage = dialog.message();
+      await dialog.accept();
+    });
+    await row.locator('form button:has-text("Delete")').click();
+    expect(deleteDialogMessage).toMatch(/delete this prescribed dose/i);
     await screenshot(page, testInfo, 'dose-delete-confirm');
-
-    // Confirm deletion
-    await page.click('input[type="submit"][value="Delete"]');
 
     // Should redirect to index and the deleted dose should be gone
     await expect(page.locator('h2')).toHaveText('Prescribed Doses');

@@ -70,14 +70,6 @@ public class PrescribedDoseController(
         return View(prescribedDose);
     }
 
-    // GET: /PrescribedDose/Delete/5
-    public async Task<IActionResult> Delete(int id)
-    {
-        var prescribedDose = await _prescribedDoseRepo.GetByIdAsync(id);
-        if (prescribedDose == null) return NotFound();
-        return View(prescribedDose);
-    }
-
     // POST: /PrescribedDose/Delete/5
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]

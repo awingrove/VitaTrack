@@ -34,8 +34,8 @@ test.describe('Nutrient Report', () => {
     await page.goto('/Reporting/NutrientReport');
     await expect(page.locator('h2')).toHaveText('Daily Nutrient Report');
 
-    // Either shows "No active prescribed doses" alert or nutrient tables
-    const noDosesAlert = page.locator('.alert-info');
+    // Either shows "No active prescribed doses" empty state or nutrient tables
+    const noDosesAlert = page.locator('p.text-muted');
     const grandTotalH3 = page.locator('h3:has-text("Grand Total")');
 
     const hasAlert = await noDosesAlert.count();

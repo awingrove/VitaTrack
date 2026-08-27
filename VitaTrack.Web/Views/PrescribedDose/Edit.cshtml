@@ -8,49 +8,49 @@
 <h2>Edit</h2>
 
 <form asp-action="Edit">
-    <div class="form-group">
+    <div class="mb-3">
         <input type="hidden" asp-for="Id" />
     </div>
-    <div class="form-group">
+    <div class="mb-3">
         <label asp-for="FamilyMemberId" class="control-label"></label>
         <select asp-for="FamilyMemberId" class="form-control" asp-items="ViewBag.FamilyMemberId">
             <option value="">-- Select Family Member --</option>
         </select>
         <span asp-validation-for="FamilyMemberId" class="text-danger"></span>
     </div>
-    <div class="form-group">
+    <div class="mb-3">
         <label asp-for="SupplementId" class="control-label"></label>
         <select asp-for="SupplementId" class="form-control" asp-items="ViewBag.SupplementId">
             <option value="">-- Select Supplement --</option>
         </select>
         <span asp-validation-for="SupplementId" class="text-danger"></span>
     </div>
-    <div class="form-group">
+    <div class="mb-3">
         <label asp-for="StartDate" class="control-label">Start Date (optional)</label>
         <input asp-for="StartDate" class="form-control" type="date" />
         <span asp-validation-for="StartDate" class="text-danger"></span>
     </div>
-    <div class="form-group">
+    <div class="mb-3">
         <label asp-for="EndDate" class="control-label">End Date (optional)</label>
         <input asp-for="EndDate" class="form-control" type="date" />
         <span asp-validation-for="EndDate" class="text-danger"></span>
     </div>
-    <div class="form-group">
+    <div class="mb-3">
         <label asp-for="Dosage" class="control-label"></label>
         <input asp-for="Dosage" class="form-control" />
         <span asp-validation-for="Dosage" class="text-danger"></span>
     </div>
-    <div class="form-group">
+    <div class="mb-3">
         <label asp-for="FrequencyPerDay" class="control-label">Times per day</label>
         <input asp-for="FrequencyPerDay" class="form-control" type="number" step="0.25" min="0.25" />
         <span asp-validation-for="FrequencyPerDay" class="text-danger"></span>
     </div>
-    <div class="form-group">
+    <div class="mb-3">
         <label asp-for="Instructions" class="control-label"></label>
         <input asp-for="Instructions" class="form-control" />
         <span asp-validation-for="Instructions" class="text-danger"></span>
     </div>
-    <div class="form-group">
+    <div class="mb-3">
         <input type="submit" value="Save" class="btn btn-primary" />
     </div>
 </form>

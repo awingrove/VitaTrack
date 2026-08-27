@@ -44,7 +44,7 @@ public class HtmlScraperService(
         {
             var parser = new HtmlParser();
             var document = parser.ParseDocument(html);
-            foreach (var element in document.QuerySelectorAll("script, style, nav, header, footer, aside, noscript, iframe"))
+            foreach (var element in document.QuerySelectorAll("script, style, nav, header, footer, aside, noscript, iframe, svg, picture"))
             {
                 element.Remove();
             }
@@ -54,13 +54,16 @@ public class HtmlScraperService(
                              ?? document.QuerySelector(".product-detail")
                              ?? document.QuerySelector(".product-info")
                              ?? document.QuerySelector("#product-details")
+                             ?? document.QuerySelector("[data-section*='product']")
+                             ?? document.QuerySelector("[data-section*='nutritional']")
+                             ?? document.QuerySelector("article")
                              ?? document.Body;
 
             var text = mainContent?.TextContent?.Trim() ?? string.Empty;
 
-            if (text.Length > 8000)
+            if (text.Length > 12000)
             {
-                text = text[..8000];
+                text = text[..12000];
             }
 
             return text;

@@ -103,7 +103,7 @@
         tr.dataset.parentKey = parentKey;
         tr.className = 'blend-child';
         tr.innerHTML =
-            '<td style="padding-left:2rem"><input name="nutrients[' + nutrientIndex + '].GenericName" class="form-control" placeholder="Sub-nutrient" /></td>' +
+            '<td class="ps-4"><input name="nutrients[' + nutrientIndex + '].GenericName" class="form-control" placeholder="Sub-nutrient" /></td>' +
             '<td><input name="nutrients[' + nutrientIndex + '].SpecificForm" class="form-control" /></td>' +
             '<td><input name="nutrients[' + nutrientIndex + '].Dosage" class="form-control" placeholder="optional" /></td>' +
             '<td><button type="button" class="btn btn-sm btn-danger remove-row">Remove</button></td>';
@@ -132,5 +132,11 @@
     if (addBlendBtn) addBlendBtn.addEventListener('click', addBlendRow);
 
     const saveBtn = document.querySelector('#nutrient-editor-form button[hx-post]');
-    if (saveBtn) saveBtn.addEventListener('click', function () { reindexNutrients(); }, true);
+    if (saveBtn) {
+        saveBtn.addEventListener('click', function () { reindexNutrients(); }, true);
+
+        // Disable while the HTMX save request is in flight; re-enable after.
+        saveBtn.addEventListener('htmx:beforeRequest', function () { saveBtn.disabled = true; });
+        saveBtn.addEventListener('htmx:afterRequest', function () { saveBtn.disabled = false; });
+    }
 })();

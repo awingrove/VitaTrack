@@ -56,7 +56,7 @@ test.describe('Supplement Nutrients', () => {
     await openNutrientsFor(page, suppName);
 
     // Fresh supplement starts empty
-    await expect(page.locator('.alert-info')).toContainText('No nutrients defined');
+    await expect(page.locator('p.text-muted', { hasText: 'No nutrients defined' })).toBeVisible();
 
     // Add two nutrients, then verify both display on the index
     const first = `DisplayOne${unique}`;
@@ -108,9 +108,8 @@ test.describe('Supplement Nutrients', () => {
     await screenshot(page, testInfo, 'nutrients-after-add');
 
     // Clean up: delete the nutrient we just created
-    await newRow.locator('a.btn-danger').click();
-    await expect(page.locator('text=Are you sure')).toBeVisible();
-    await page.click('input[type="submit"][value="Delete"]');
+    page.on('dialog', dialog => dialog.accept());
+    await newRow.locator('form button:has-text("Delete")').click();
     await expect(page.locator('h2')).toHaveText(/Nutrients for/);
   });
 
@@ -167,9 +166,8 @@ test.describe('Supplement Nutrients', () => {
     await screenshot(page, testInfo, 'blend-child-without-dosage');
 
     // Clean up: delete the nutrient we just created
-    await newRow.locator('a.btn-danger').click();
-    await expect(page.locator('text=Are you sure')).toBeVisible();
-    await page.click('input[type="submit"][value="Delete"]');
+    page.on('dialog', dialog => dialog.accept());
+    await newRow.locator('form button:has-text("Delete")').click();
     await expect(page.locator('h2')).toHaveText(/Nutrients for/);
   });
 
@@ -213,9 +211,8 @@ test.describe('Supplement Nutrients', () => {
     await screenshot(page, testInfo, 'nutrients-after-edit');
 
     // Clean up: delete the nutrient we just edited
-    await updatedRow.locator('text=Delete').click();
-    await expect(page.locator('text=Are you sure')).toBeVisible();
-    await page.click('input[type="submit"][value="Delete"]');
+    page.on('dialog', dialog => dialog.accept());
+    await updatedRow.locator('form button:has-text("Delete")').click();
     await expect(page.locator('h2')).toHaveText(/Nutrients for/);
   });
 
@@ -238,16 +235,16 @@ test.describe('Supplement Nutrients', () => {
     const beforeCount = await page.locator('table tbody tr').count();
     await screenshot(page, testInfo, 'nutrients-before-delete');
 
-    // Click Delete on the new nutrient
+    // Click Delete on the new nutrient and accept the confirm dialog
     const targetRow = page.locator(`table tbody tr:has-text("${nutrientName}")`);
-    await targetRow.locator('a.btn-danger').click();
-
-    // Should be on the delete confirmation page
-    await expect(page.locator('text=Are you sure')).toBeVisible();
+    let deleteDialogMessage = '';
+    page.on('dialog', async dialog => {
+      deleteDialogMessage = dialog.message();
+      await dialog.accept();
+    });
+    await targetRow.locator('form button:has-text("Delete")').click();
+    expect(deleteDialogMessage).toMatch(/delete this nutrient/i);
     await screenshot(page, testInfo, 'nutrient-delete-confirm');
-
-    // Confirm deletion
-    await page.click('input[type="submit"][value="Delete"]');
 
     // Should redirect back to index without the deleted nutrient
     await expect(page.locator('h2')).toHaveText(/Nutrients for/);
@@ -358,15 +355,18 @@ test.describe('Supplement Nutrients', () => {
     await page.click('input[type="submit"][value="Add Nutrient"]');
     await expect(page.locator(`table tbody tr:has-text("${childName}")`)).toBeVisible();
 
-    // Open the blend parent's delete confirmation page
+    // Delete the blend parent via its confirm dialog
     const parentRow = page.locator(`table tbody tr:has-text("${parentName}")`);
-    await parentRow.locator('a.btn-danger').click();
-    await expect(page.locator('text=Are you sure')).toBeVisible();
-    await expect(page.locator("text=/child nutrients will also be deleted/i")).toBeVisible();
+    let cascadeDialogMessage = '';
+    page.on('dialog', async dialog => {
+      cascadeDialogMessage = dialog.message();
+      await dialog.accept();
+    });
+    await parentRow.locator('form button:has-text("Delete")').click();
+    expect(cascadeDialogMessage).toMatch(/child nutrients of this blend will also be deleted/i);
     await screenshot(page, testInfo, 'blend-delete-cascade-warning');
 
     // Confirming deletes the blend AND its children
-    await page.click('input[type="submit"][value="Delete"]');
     await expect(page.locator('h2')).toHaveText(/Nutrients for/);
     await expect(page.locator(`table tbody tr:has-text("${parentName}")`)).toHaveCount(0);
     await expect(page.locator(`table tbody tr:has-text("${childName}")`)).toHaveCount(0);
@@ -396,8 +396,9 @@ test.describe('Supplement Nutrients', () => {
     await openNutrientsFor(page, suppName);
 
     // Should show the serving info in the text-muted paragraph
-    await expect(page.locator('p.text-muted')).toHaveText(/1 softgel/);
-    await expect(page.locator('p.text-muted')).toHaveText(new RegExp(`Kirkland${unique}`));
+    const servingInfo = page.locator('p.text-muted', { hasText: 'Serving:' });
+    await expect(servingInfo).toHaveText(/1 softgel/);
+    await expect(servingInfo).toHaveText(new RegExp(`Kirkland${unique}`));
     await screenshot(page, testInfo, 'fish-oil-serving-info');
   });
 });

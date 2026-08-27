@@ -30,7 +30,7 @@
 
 @if (grandTotalsDict.Count == 0)
 {
-    <div class="alert alert-info">No active prescribed doses found. Add a prescribed dose first.</div>
+    <p class="text-muted">No active prescribed doses found. Add a prescribed dose first.</p>
 }
 else
 {
@@ -117,6 +117,6 @@ else
 </table>
 
 <div class="mt-3">
-    <a asp-controller="PrescribedDose" asp-action="Index" class="btn btn-primary">Manage Prescribed Doses</a>
-    <a asp-controller="Supplement" asp-action="Index" class="btn btn-secondary">Browse Supplements</a>
+    <a asp-controller="PrescribedDose" asp-action="Index" class="btn btn-outline-info">Manage Prescribed Doses</a>
+    <a asp-controller="Supplement" asp-action="Index" class="btn btn-outline-secondary">Browse Supplements</a>
 </div>

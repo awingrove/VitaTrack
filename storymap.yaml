@@ -91,6 +91,7 @@ activities:
             tests:
               - e2e: supplement-llm-flow::should show nutrient editor inline when creating a supplement without a URL
               - e2e: supplement-llm-flow::should allow adding nutrients in the inline editor and saving
+              - e2e: enrich-without-url-roundtrip::inline editor saves nutrients that appear on the nutrient index
       - id: MS-3
         name: Edit a supplement
         entry_point: Supplements index row -> Edit button
@@ -126,6 +127,7 @@ activities:
               - unit: SupplementControllerTests.DeleteSelected_DeletesCheckedSupplementsAndRedirects
               - unit: SupplementRepositoryTests.DeleteMultiple_RemovesSupplementsWithNutrients
               - e2e: supplement-crud::should delete multiple supplements via checkboxes
+              - e2e: supplement-delete-cascade::deleting a supplement also removes its nutrients and prescribed doses
       - id: MS-5
         name: Import supplements from CSV
         entry_point: Supplements index -> Import CSV
@@ -158,6 +160,7 @@ activities:
             priority: high
             tests:
               - e2e: supplement-nutrient::should add a new nutrient
+              - e2e: nutrient-validation-surfaces::standalone Add Nutrient rejects empty GenericName without 500
           - title: Add a sub-nutrient under a blend without a dosage
             status: done
             priority: high
@@ -218,6 +221,7 @@ activities:
             priority: medium
             tests:
               - unit: SupplementNutrientRepositoryTests.Delete_ParentBlend_AlsoDeletesChildren
+              - e2e: blend-cascade-delete::deleting a blend parent removes its children
 
   - name: Track Prescribed Doses
     tasks:
@@ -270,6 +274,7 @@ activities:
             tests:
               - e2e: nutrient-report::should display nutrient report page
               - e2e: nutrient-report::should arrive via nav bar Report link
+              - e2e: daily-loop::member + supplement + nutrient + dose appears in report
           - title: View nutrient totals across all members
             status: done
             priority: medium

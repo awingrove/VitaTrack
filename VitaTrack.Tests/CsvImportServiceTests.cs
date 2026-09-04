@@ -206,4 +206,91 @@ public class CsvImportServiceTests
         Assert.AreEqual(1, result.Errors.Count);
         Assert.IsTrue(result.Errors[0].Message.Contains("ServingsPerBottle"));
     }
+
+    [TestMethod]
+    public async Task ParseAsync_NonPositiveCost_ReturnsError()
+    {
+        var csv = """
+            Name,Brand,DailyDose,ManufacturerUrl,Cost,ServingsPerBottle
+            Vitamin D3,NatureWise,2 capsules,,-5,
+            """;
+
+        var result = await _service.ParseAsync(ToStream(csv));
+
+        Assert.AreEqual(0, result.Rows.Count);
+        Assert.AreEqual(1, result.Errors.Count);
+        Assert.IsTrue(result.Errors[0].Message.Contains("Cost must be positive"));
+    }
+
+    [TestMethod]
+    public async Task ParseAsync_InvalidServingsValue_ReturnsError()
+    {
+        var csv = """
+            Name,Brand,DailyDose,ManufacturerUrl,Cost,ServingsPerBottle
+            Vitamin D3,NatureWise,2 capsules,,15.99,abc
+            """;
+
+        var result = await _service.ParseAsync(ToStream(csv));
+
+        Assert.AreEqual(0, result.Rows.Count);
+        Assert.AreEqual(1, result.Errors.Count);
+        Assert.IsTrue(result.Errors[0].Message.Contains("Invalid ServingsPerBottle"));
+    }
+
+    [TestMethod]
+    public async Task ParseAsync_NameExceedsMaxLength_ReturnsError()
+    {
+        var csv = "Name,Brand,DailyDose,ManufacturerUrl,Cost,ServingsPerBottle\n"
+            + new string('X', 201) + ",NatureWise,2 capsules,,,\n";
+
+        var result = await _service.ParseAsync(ToStream(csv));
+
+        Assert.AreEqual(0, result.Rows.Count);
+        Assert.AreEqual(1, result.Errors.Count);
+        Assert.IsTrue(result.Errors[0].Message.Contains("Name exceeds"));
+    }
+
+    [TestMethod]
+    public async Task ParseAsync_ManufacturerUrlExceedsMaxLength_ReturnsError()
+    {
+        var longUrl = "https://example.com/" + new string('a', 500);
+        var csv = $$"""
+            Name,Brand,DailyDose,ManufacturerUrl,Cost,ServingsPerBottle
+            Vitamin D3,NatureWise,2 capsules,{{longUrl}},
+            """;
+
+        var result = await _service.ParseAsync(ToStream(csv));
+
+        Assert.AreEqual(0, result.Rows.Count);
+        Assert.AreEqual(1, result.Errors.Count);
+        Assert.IsTrue(result.Errors[0].Message.Contains("ManufacturerUrl exceeds"));
+    }
+
+    [TestMethod]
+    public async Task ParseAsync_HeaderWrongColumnCount_Rejected()
+    {
+        var csv = """
+            Name,Brand,DailyDose
+            Vitamin D3,NatureWise,2 capsules
+            """;
+
+        var result = await _service.ParseAsync(ToStream(csv));
+
+        Assert.AreEqual(0, result.Rows.Count);
+        Assert.IsTrue(result.Errors.Any(e => e.Message.Contains("columns")));
+    }
+
+    [TestMethod]
+    public async Task ParseAsync_QuotedFieldWithEscapedQuote_ParsedCorrectly()
+    {
+        var csv = """
+            Name,Brand,DailyDose,ManufacturerUrl,Cost,ServingsPerBottle
+            "Mega ""Super"" Formula",NatureWise,2 capsules,,
+            """;
+
+        var result = await _service.ParseAsync(ToStream(csv));
+
+        Assert.AreEqual(1, result.Rows.Count);
+        Assert.AreEqual("Mega \"Super\" Formula", result.Rows[0].Name);
+    }
 }

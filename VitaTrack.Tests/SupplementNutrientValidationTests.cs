@@ -44,4 +44,37 @@ public class SupplementNutrientValidationTests
 
         Assert.IsTrue(results.Any(r => r.MemberNames.Contains(nameof(SupplementNutrient.Dosage))));
     }
+
+    [TestMethod]
+    public void EmptyGenericName_IsInvalid()
+    {
+        var nutrient = new SupplementNutrient
+        {
+            SupplementId = 1,
+            GenericName = "",
+            Dosage = "500mg",
+            SpecificForm = "Ascorbic Acid",
+        };
+
+        var (isValid, results) = Validate(nutrient);
+
+        Assert.IsFalse(isValid);
+        Assert.IsTrue(results.Any(r => r.MemberNames.Contains(nameof(SupplementNutrient.GenericName))));
+    }
+
+    [TestMethod]
+    public void Child_WithBlankGenericName_IsInvalid()
+    {
+        var nutrient = new SupplementNutrient
+        {
+            SupplementId = 1,
+            GenericName = "   ",
+            ParentNutrientId = 9001,
+        };
+
+        var (isValid, results) = Validate(nutrient);
+
+        Assert.IsFalse(isValid);
+        Assert.IsTrue(results.Any(r => r.MemberNames.Contains(nameof(SupplementNutrient.GenericName))));
+    }
 }

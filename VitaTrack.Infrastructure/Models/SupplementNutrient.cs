@@ -25,6 +25,11 @@ public class SupplementNutrient : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
+        if (string.IsNullOrWhiteSpace(GenericName))
+        {
+            yield return new ValidationResult("The GenericName field is required.", new[] { nameof(GenericName) });
+        }
+
         if (ParentNutrientId == null)
         {
             if (string.IsNullOrWhiteSpace(Dosage))

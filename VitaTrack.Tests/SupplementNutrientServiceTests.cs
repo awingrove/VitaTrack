@@ -116,6 +116,72 @@ public class SupplementNutrientServiceTests
         Assert.AreEqual(root.Id, magnesium.ParentNutrientId);
     }
 
+    [TestMethod]
+    public async Task AddAsync_PersistsRootsAndNestedChildren()
+    {
+        var repo = new MockRepo();
+        var svc = new SupplementNutrientService(repo, NullLogger);
+        var blend = new SupplementNutrientDto
+        {
+            GenericName = "Proprietary Blend",
+            SpecificForm = "Blend",
+            Dosage = "500mg",
+            Children = [new SupplementNutrientDto { GenericName = "Zinc", SpecificForm = "Picolinate" }]
+        };
+
+        var result = await svc.AddAsync(1, [blend]);
+
+        Assert.AreEqual(0, result.Failures.Count);
+        Assert.AreEqual(2, result.Saved.Count);
+        Assert.IsTrue(repo.Added.Single(n => n.GenericName == "Zinc").ParentNutrientId > 0);
+    }
+
+    [TestMethod]
+    public async Task ReplaceAsync_ChildWithItsOwnChildren_FlattensGrandchildrenUnderSameParent()
+    {
+        var repo = new MockRepo();
+        var svc = new SupplementNutrientService(repo, NullLogger);
+
+        List<SupplementNutrientDto> flat =
+        [
+            new SupplementNutrientDto { GenericName = "Proprietary Blend", SpecificForm = "Blend", Dosage = "500mg" },
+            new SupplementNutrientDto
+            {
+                GenericName = "Inner Blend",
+                SpecificForm = "Blend",
+                ParentNutrientId = 0,
+                Children =
+                [
+                    new SupplementNutrientDto { GenericName = "Sub A", SpecificForm = "N/A" },
+                    new SupplementNutrientDto { GenericName = "Sub B", SpecificForm = "N/A" }
+                ]
+            }
+        ];
+
+        var result = await svc.ReplaceAsync(1, flat);
+
+        Assert.AreEqual(0, result.Failures.Count);
+        var root = repo.Added.Single(n => n.GenericName == "Proprietary Blend");
+        var inner = repo.Added.Single(n => n.GenericName == "Inner Blend");
+        var subA = repo.Added.Single(n => n.GenericName == "Sub A");
+        var subB = repo.Added.Single(n => n.GenericName == "Sub B");
+        Assert.AreEqual(root.Id, inner.ParentNutrientId);
+        Assert.AreEqual(root.Id, subA.ParentNutrientId);
+        Assert.AreEqual(root.Id, subB.ParentNutrientId);
+    }
+
+    [TestMethod]
+    public async Task PersistHierarchy_TopLevelRepoThrow_Recorded()
+    {
+        var repo = new MockRepo { ThrowFor = { "Proprietary Blend" } };
+        var svc = new SupplementNutrientService(repo, NullLogger);
+        var result = await svc.PersistHierarchyAsync(
+            1, [new SupplementNutrientDto { GenericName = "Proprietary Blend", SpecificForm = "Blend", Dosage = "500mg" }]);
+
+        Assert.IsTrue(result.Failures.Any(f => f.GenericName == "Proprietary Blend"));
+        Assert.AreEqual(0, result.Saved.Count);
+    }
+
     private sealed class MockRepo : ISupplementNutrientRepository
     {
         private int _nextId = 1;

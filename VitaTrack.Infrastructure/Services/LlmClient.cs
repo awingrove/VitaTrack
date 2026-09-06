@@ -7,14 +7,27 @@ using VitaTrack.Infrastructure;
 
 namespace VitaTrack.Infrastructure.Services;
 
-public class LlmClient(
-    IHttpClientFactory httpClientFactory,
-    IOptions<VitaTrackOptions> options,
-    ILogger<LlmClient> logger) : ILlmClient
+public class LlmClient : ILlmClient
 {
-    private readonly HttpClient _http = httpClientFactory.CreateClient("llm");
-    private readonly VitaTrackOptions _options = options.Value;
-    private readonly ILogger<LlmClient> _logger = logger;
+    private readonly HttpClient _http;
+    private readonly VitaTrackOptions _options;
+    private readonly ILogger<LlmClient> _logger;
+    private readonly string _sessionId = Guid.NewGuid().ToString();
+
+    public LlmClient(
+        IHttpClientFactory httpClientFactory,
+        IOptions<VitaTrackOptions> options,
+        ILogger<LlmClient> logger)
+    {
+        _http = httpClientFactory.CreateClient("llm")!; // IHttpClientFactory.CreateClient returns a configured client for a registered named client
+        _options = options.Value;
+        _logger = logger;
+        if (_http is not null)
+        {
+            _http.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "VitaTrack/1.0 (+https://github.com/awingrove/VitaTrack)");
+            _http.DefaultRequestHeaders.TryAddWithoutValidation("x-opencode-session", _sessionId);
+        }
+    }
 
     public async Task<LlmCompletion> PostChatAsync(string systemPrompt, string userPrompt)
     {

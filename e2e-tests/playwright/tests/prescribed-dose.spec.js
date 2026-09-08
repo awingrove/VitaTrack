@@ -55,6 +55,24 @@ test.describe('Prescribed Doses', () => {
     await screenshot(page, testInfo, 'doses-after-create');
   });
 
+  test('should create a prescribed dose without instructions', async ({ page }, testInfo) => {
+    await page.goto('/PrescribedDose/Create');
+    await expect(page.locator('h2')).toHaveText('Create');
+
+    await page.selectOption('select#FamilyMemberId', { index: 1 });
+    await page.selectOption('select#SupplementId', { index: 1 });
+    await page.fill('input#Dosage', '375mg-no-instructions');
+    await page.fill('input#FrequencyPerDay', '1');
+
+    // Instructions intentionally left blank
+    await page.click('input[type="submit"][value="Create"]');
+
+    // Should redirect to index without a validation error
+    await expect(page.locator('h2')).toHaveText('Prescribed Doses');
+    await expect(page.locator('table tbody tr').last()).toContainText('375mg-no-instructions');
+    await screenshot(page, testInfo, 'dose-create-no-instructions');
+  });
+
   test('should edit a prescribed dose', async ({ page }, testInfo) => {
     const unique = Date.now();
     const origDosage = `EditMe${unique}`;

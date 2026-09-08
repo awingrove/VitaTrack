@@ -19,8 +19,8 @@ public class PrescribedDose
     [StringLength(200)]
     public string Dosage { get; set; } = string.Empty;
 
-    [Required]
     [StringLength(500)]
+    [DisplayFormat(ConvertEmptyStringToNull = false)]
     public string Instructions { get; set; } = string.Empty;
 
     [Range(0.1, 50)]

@@ -4,6 +4,14 @@ This document defines the coding standards, architectural guidelines, testing ph
 
 **AI Agents:** Read and adhere to these rules strictly before generating, refactoring, or modifying code in this repository. Per-project `AGENTS.md` files (under `VitaTrack.Web/`, `VitaTrack.Infrastructure/`, `VitaTrack.Tests/`) **supplement** this root; any contradiction is a defect to report, not a license to pick one.
 
+## 💬 Response Style
+*   **Smart caveman:** Cut all filler, keep technical substance.
+*   Drop articles (`a`, `an`, `the`), filler (`just`, `really`, `basically`, `actually`).
+*   Drop pleasantries (`sure`, `certainly`, `happy to`).
+*   No hedging. Fragments fine. Short synonyms.
+*   Technical terms stay exact. Code blocks unchanged.
+*   Pattern: `[thing] [action] [reason]. [next step].`
+
 ## 🏗️ Architecture & Project Structure
 *   **Paradigm:** Pragmatic ASP.NET MVC. Avoid over-engineering and strict Clean Architecture dogmas.
 *   **Structure:** 3-project solution (`VitaTrack.Web → VitaTrack.Infrastructure`; `VitaTrack.Tests` refs both). Inter-project direction is enforced by csproj. Web layer handles HTTP, views, and thin mapping; business logic lives in `Infrastructure/Services` and `Infrastructure/Data` (Dapper repositories).

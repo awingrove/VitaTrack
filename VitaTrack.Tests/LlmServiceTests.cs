@@ -37,22 +37,12 @@ public class LlmServiceTests
         HttpMessageHandler? llmHandler = null)
     {
         var factoryMock = new Mock<IHttpClientFactory>();
-
-        if (scraperHandler != null)
+        factoryMock.Setup(f => f.CreateClient("scraper")).Returns(new HttpClient(scraperHandler ?? new HttpClientHandler()));
+        var llmClient = new HttpClient(llmHandler ?? new HttpClientHandler())
         {
-            var client = new HttpClient(scraperHandler);
-            factoryMock.Setup(f => f.CreateClient("scraper")).Returns(client);
-        }
-
-        if (llmHandler != null)
-        {
-            var client = new HttpClient(llmHandler)
-            {
-                BaseAddress = new System.Uri("https://dummy.example.com/v1")
-            };
-            factoryMock.Setup(f => f.CreateClient("llm")).Returns(client);
-        }
-
+            BaseAddress = new System.Uri("https://dummy.example.com/v1")
+        };
+        factoryMock.Setup(f => f.CreateClient("llm")).Returns(llmClient);
         return factoryMock.Object;
     }
 

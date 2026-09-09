@@ -105,15 +105,13 @@ test.describe('Family Members', () => {
     await page.goto('/PrescribedDose/Create');
     await page.selectOption('select#FamilyMemberId', { label: `Owner${unique}` });
     await page.selectOption('select#SupplementId', { index: 1 });
-    await page.fill('input#Dosage', `TestDose${unique}`);
-    await page.fill('input#FrequencyPerDay', '1');
-    await page.fill('input#Instructions', 'Take with food');
+    await page.fill('input#Multiplier', '2.5');
+    await page.fill('input#Instructions', `DoseInstr${unique}`);
     await page.click('input[type="submit"][value="Create"]');
     await expect(page.locator('h2')).toHaveText('Prescribed Doses');
 
     // Verify the prescribed dose exists
-    await expect(page.locator(`table tbody tr:has-text("TestDose${unique}")`)).toBeVisible();
-
+    await expect(page.locator(`table tbody tr:has-text("DoseInstr${unique}")`)).toBeVisible();
     // Go to family page and delete the member
     await page.goto('/Family');
     const row = page.locator(`table tbody tr:has-text("DoseOwner${unique}")`).first();

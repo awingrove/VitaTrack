@@ -17,10 +17,18 @@
     </div>
     <div class="mb-3">
         <label asp-for="SupplementId" class="control-label"></label>
-        <select asp-for="SupplementId" class="form-control" asp-items="ViewBag.SupplementId">
+        <select asp-for="SupplementId" class="form-control">
             <option value="">-- Select Supplement --</option>
+            @foreach (var s in (IEnumerable<Supplement>)ViewData["Supplements"]!)
+            {
+                <option value="@s.Id" data-serving="@s.DailyDose">@s.Name</option>
+            }
         </select>
         <span asp-validation-for="SupplementId" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label class="control-label">Serving size</label>
+        <input id="ServingSize" class="form-control" readonly />
     </div>
     <div class="mb-3">
         <label asp-for="StartDate" class="control-label">Start Date (optional)</label>
@@ -33,14 +41,9 @@
         <span asp-validation-for="EndDate" class="text-danger"></span>
     </div>
     <div class="mb-3">
-        <label asp-for="Dosage" class="control-label"></label>
-        <input asp-for="Dosage" class="form-control" />
-        <span asp-validation-for="Dosage" class="text-danger"></span>
-    </div>
-    <div class="mb-3">
-        <label asp-for="FrequencyPerDay" class="control-label">Times per day</label>
-        <input asp-for="FrequencyPerDay" class="form-control" type="number" step="0.25" min="0.25" />
-        <span asp-validation-for="FrequencyPerDay" class="text-danger"></span>
+        <label asp-for="Multiplier" class="control-label">Multiplier (× serving)</label>
+        <input asp-for="Multiplier" class="form-control" type="number" step="any" min="0.01" />
+        <span asp-validation-for="Multiplier" class="text-danger"></span>
     </div>
     <div class="mb-3">
         <label asp-for="Instructions" class="control-label"></label>
@@ -55,3 +58,5 @@
 <div>
     <a asp-action="Index">Back to List</a>
 </div>
+
+<script src="~/js/prescribed-dose-serving.js"></script>

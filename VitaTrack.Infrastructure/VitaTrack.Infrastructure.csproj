@@ -16,4 +16,7 @@
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.11" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="VitaTrack.Tests" />
+  </ItemGroup>
 </Project>

@@ -38,13 +38,7 @@ public class SupplementNutrientRepositoryTests : SqliteTestBase
     {
         var supplementId = await SeedSupplementAsync();
 
-        var nutrient = new SupplementNutrient
-        {
-            SupplementId = supplementId,
-            GenericName = "Zinc",
-            SpecificForm = "Zinc Picolinate",
-            Dosage = "5mg"
-        };
+        var nutrient = new SupplementNutrient { SupplementId = supplementId, GenericName = "Zinc", SpecificForm = "Zinc Picolinate", Dosage = "5mg" };
 
         // Act – Add
         var id = await _nutrientRepo.AddAsync(nutrient);
@@ -89,20 +83,8 @@ public class SupplementNutrientRepositoryTests : SqliteTestBase
         var sup1Id = await SeedSupplementAsync();
         var sup2Id = await SeedSupplementAsync();
 
-        await _nutrientRepo.AddAsync(new SupplementNutrient
-        {
-            SupplementId = sup1Id,
-            GenericName = "Zinc",
-            SpecificForm = "Zinc Picolinate",
-            Dosage = "5mg"
-        });
-        await _nutrientRepo.AddAsync(new SupplementNutrient
-        {
-            SupplementId = sup2Id,
-            GenericName = "Vitamin C",
-            SpecificForm = "Ascorbic Acid",
-            Dosage = "500mg"
-        });
+        await _nutrientRepo.AddAsync(new SupplementNutrient { SupplementId = sup1Id, GenericName = "Zinc", SpecificForm = "Zinc Picolinate", Dosage = "5mg" });
+        await _nutrientRepo.AddAsync(new SupplementNutrient { SupplementId = sup2Id, GenericName = "Vitamin C", SpecificForm = "Ascorbic Acid", Dosage = "500mg" });
 
         var sup1Nutrients = await _nutrientRepo.GetBySupplementIdAsync(sup1Id);
         var sup2Nutrients = await _nutrientRepo.GetBySupplementIdAsync(sup2Id);
@@ -118,13 +100,7 @@ public class SupplementNutrientRepositoryTests : SqliteTestBase
     {
         var supplementId = await SeedSupplementAsync();
 
-        var nutrient = new SupplementNutrient
-        {
-            SupplementId = supplementId,
-            GenericName = "Iron",
-            SpecificForm = "Ferrous Sulfate",
-            Dosage = "18mg"
-        };
+        var nutrient = new SupplementNutrient { SupplementId = supplementId, GenericName = "Iron", SpecificForm = "Ferrous Sulfate", Dosage = "18mg" };
         var id = await _nutrientRepo.AddAsync(nutrient);
         Assert.IsTrue(id > 0);
 
@@ -147,14 +123,7 @@ public class SupplementNutrientRepositoryTests : SqliteTestBase
 
         for (int i = 0; i < 3; i++)
         {
-            var id = await _nutrientRepo.AddAsync(new SupplementNutrient
-            {
-                SupplementId = supplementId,
-                GenericName = $"Nutrient{i}",
-                SpecificForm = "Form",
-                Dosage = "10mg"
-            });
-            ids.Add(id);
+            ids.Add(await _nutrientRepo.AddAsync(new SupplementNutrient { SupplementId = supplementId, GenericName = $"Nutrient{i}", SpecificForm = "Form", Dosage = "10mg" }));
         }
 
         await _nutrientRepo.DeleteAsync([ids[0], ids[2]]);
@@ -177,7 +146,8 @@ public class SupplementNutrientRepositoryTests : SqliteTestBase
         await _nutrientRepo.AddAsync(child2);
 
         // Act
-        await _nutrientRepo.DeleteAsync(parentId);
+        var affected = await _nutrientRepo.DeleteAsync(parentId);
+        Assert.AreEqual(3, affected); // parent + 2 children
 
         // Assert – parent and all children gone
         Assert.IsNull(await _nutrientRepo.GetByIdAsync(parentId));
@@ -218,7 +188,8 @@ public class SupplementNutrientRepositoryTests : SqliteTestBase
         var standaloneId = await _nutrientRepo.AddAsync(standalone);
 
         // Act – delete blend A and the standalone nutrient
-        await _nutrientRepo.DeleteAsync(new List<int> { blendAId, standaloneId });
+        var affected = await _nutrientRepo.DeleteAsync(new List<int> { blendAId, standaloneId });
+        Assert.AreEqual(3, affected); // blend A + its child + standalone
 
         // Assert – only nothing remains; child of blend A cascaded away
         Assert.AreEqual(0, (await _nutrientRepo.GetBySupplementIdAsync(supplementId)).Count);
@@ -243,17 +214,80 @@ public class SupplementNutrientRepositoryTests : SqliteTestBase
     public async Task DeleteMultiple_EmptyListDeletesNothing()
     {
         var supplementId = await SeedSupplementAsync();
-        await _nutrientRepo.AddAsync(new SupplementNutrient
-        {
-            SupplementId = supplementId,
-            GenericName = "Keep",
-            SpecificForm = "Form",
-            Dosage = "10mg"
-        });
+        await _nutrientRepo.AddAsync(new SupplementNutrient { SupplementId = supplementId, GenericName = "Keep", SpecificForm = "Form", Dosage = "10mg" });
 
-        await _nutrientRepo.DeleteAsync(new List<int>());
+        var affected = await _nutrientRepo.DeleteAsync(new List<int>());
+        Assert.AreEqual(0, affected);
 
         var all = await _nutrientRepo.GetBySupplementIdAsync(supplementId);
         Assert.AreEqual(1, all.Count);
+    }
+
+    [TestMethod]
+    public async Task GetByParentId_ReturnsOnlyChildrenOfThatParent()
+    {
+        var supplementId = await SeedSupplementAsync();
+        var parentId = await _nutrientRepo.AddAsync(new SupplementNutrient { SupplementId = supplementId, GenericName = "Proprietary Blend", SpecificForm = "Blend", Dosage = "500mg" });
+        await _nutrientRepo.AddAsync(new SupplementNutrient { SupplementId = supplementId, GenericName = "Zinc", SpecificForm = "Picolinate", Dosage = string.Empty, ParentNutrientId = parentId });
+        await _nutrientRepo.AddAsync(new SupplementNutrient { SupplementId = supplementId, GenericName = "Magnesium", SpecificForm = "Glycinate", Dosage = string.Empty, ParentNutrientId = parentId });
+        await _nutrientRepo.AddAsync(new SupplementNutrient { SupplementId = supplementId, GenericName = "Standalone", SpecificForm = "Cholecalciferol", Dosage = "1000IU" });
+
+        // Act
+        var children = await _nutrientRepo.GetByParentIdAsync(parentId);
+
+        // Assert – only the two children, not the standalone nutrient or the parent
+        Assert.AreEqual(2, children.Count);
+        CollectionAssert.AreEquivalent(new[] { "Zinc", "Magnesium" }, children.Select(c => c.GenericName).ToList());
+    }
+
+    [TestMethod]
+    public async Task GetCountsBySupplementIds_EmptyAndMixedInput()
+    {
+        var sup1Id = await SeedSupplementAsync();
+        var sup2Id = await SeedSupplementAsync();
+        var sup3Id = await SeedSupplementAsync();
+        await _nutrientRepo.AddAsync(new SupplementNutrient { SupplementId = sup1Id, GenericName = "Zinc", SpecificForm = "Picolinate", Dosage = "5mg" });
+        await _nutrientRepo.AddAsync(new SupplementNutrient { SupplementId = sup1Id, GenericName = "Iron", SpecificForm = "Bisglycinate", Dosage = "18mg" });
+        await _nutrientRepo.AddAsync(new SupplementNutrient { SupplementId = sup2Id, GenericName = "Vitamin C", SpecificForm = "Ascorbic Acid", Dosage = "500mg" });
+
+        // Act – empty input returns an empty dictionary even though rows exist
+        var empty = await _nutrientRepo.GetCountsBySupplementIdsAsync(new List<int>());
+        Assert.AreEqual(0, empty.Count);
+
+        // Act – mixed input: per-supplement counts only for supplements with rows
+        var counts = await _nutrientRepo.GetCountsBySupplementIdsAsync(new List<int> { sup1Id, sup2Id, sup3Id });
+
+        Assert.AreEqual(2, counts.Count);
+        Assert.AreEqual(2, counts[sup1Id]);
+        Assert.AreEqual(1, counts[sup2Id]);
+        Assert.IsFalse(counts.ContainsKey(sup3Id));
+    }
+
+    [TestMethod]
+    public async Task Update_PersistsParentNutrientIdChange()
+    {
+        var supplementId = await SeedSupplementAsync();
+        var blendAId = await _nutrientRepo.AddAsync(new SupplementNutrient { SupplementId = supplementId, GenericName = "Blend A", SpecificForm = "Blend", Dosage = "500mg" });
+        var blendBId = await _nutrientRepo.AddAsync(new SupplementNutrient { SupplementId = supplementId, GenericName = "Blend B", SpecificForm = "Blend", Dosage = "300mg" });
+        var childId = await _nutrientRepo.AddAsync(new SupplementNutrient { SupplementId = supplementId, GenericName = "Zinc", SpecificForm = "Picolinate", Dosage = string.Empty, ParentNutrientId = blendAId });
+
+        // Act – move the child from blend A to blend B and change its fields
+        var child = await _nutrientRepo.GetByIdAsync(childId);
+        Assert.IsNotNull(child);
+        child!.GenericName = "Zinc Chelate";
+        child.SpecificForm = "Bisglycinate";
+        child.Dosage = "15mg";
+        child.ParentNutrientId = blendBId;
+        await _nutrientRepo.UpdateAsync(child);
+
+        // Assert – all fields persisted, child now under blend B
+        var updated = await _nutrientRepo.GetByIdAsync(childId);
+        Assert.IsNotNull(updated);
+        Assert.AreEqual("Zinc Chelate", updated!.GenericName);
+        Assert.AreEqual("Bisglycinate", updated.SpecificForm);
+        Assert.AreEqual("15mg", updated.Dosage);
+        Assert.AreEqual(blendBId, updated.ParentNutrientId);
+        Assert.AreEqual(0, (await _nutrientRepo.GetByParentIdAsync(blendAId)).Count);
+        Assert.AreEqual(1, (await _nutrientRepo.GetByParentIdAsync(blendBId)).Count);
     }
 }

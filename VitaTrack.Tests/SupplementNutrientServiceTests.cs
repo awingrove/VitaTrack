@@ -116,6 +116,84 @@ public class SupplementNutrientServiceTests
         Assert.AreEqual(root.Id, magnesium.ParentNutrientId);
     }
 
+    [TestMethod]
+    public async Task ReplaceAsync_ParentIndexOutOfRange_TreatedAsRoot()
+    {
+        var repo = new MockRepo();
+        var svc = new SupplementNutrientService(repo, NullLogger);
+
+        var result = await svc.ReplaceAsync(1,
+            [new SupplementNutrientDto { GenericName = "Blend", Dosage = "500mg", ParentNutrientId = 99 }]);
+
+        Assert.IsNull(result.Saved.Single().ParentNutrientId);
+    }
+
+    [TestMethod]
+    public async Task PersistHierarchy_InvalidRoots_SkippedOrFailedWithoutRepoCalls()
+    {
+        var repo = new MockRepo();
+        var svc = new SupplementNutrientService(repo, NullLogger);
+
+        var result = await svc.PersistHierarchyAsync(1,
+        [
+            new SupplementNutrientDto { GenericName = "   ", Dosage = "500mg" },
+            new SupplementNutrientDto { GenericName = "Vit C", SpecificForm = "Ascorbic", Dosage = "   " },
+            new SupplementNutrientDto { GenericName = "Zinc", SpecificForm = "Picolinate", Dosage = "15mg" }
+        ]);
+
+        Assert.AreEqual("Zinc", result.Saved.Single().GenericName);
+        Assert.IsTrue(result.Failures.Any(f => f.GenericName == "Vit C" && f.Error.Contains("dosage")));
+        Assert.AreEqual(1, repo.Added.Count);
+    }
+
+    [TestMethod]
+    public async Task PersistHierarchy_MissingSpecificForm_DefaultsBlendForRootAndNAForChild()
+    {
+        var repo = new MockRepo();
+        var svc = new SupplementNutrientService(repo, NullLogger);
+
+        var result = await svc.PersistHierarchyAsync(1,
+        [
+            new SupplementNutrientDto
+            {
+                GenericName = "Proprietary Blend", Dosage = "500mg",
+                Children = [new SupplementNutrientDto { GenericName = "Zinc" }]
+            }
+        ]);
+
+        Assert.AreEqual("Blend", repo.Added.Single(n => n.GenericName == "Proprietary Blend").SpecificForm);
+        Assert.AreEqual("N/A", repo.Added.Single(n => n.GenericName == "Zinc").SpecificForm);
+        Assert.AreEqual(string.Empty, repo.Added.Single(n => n.GenericName == "Zinc").Dosage);
+    }
+
+    [TestMethod]
+    public async Task PersistHierarchy_RootRepoThrow_RecordedAndOtherRootsPersisted()
+    {
+        var repo = new MockRepo { ThrowFor = { "Bad" } };
+        var svc = new SupplementNutrientService(repo, NullLogger);
+
+        var result = await svc.PersistHierarchyAsync(1,
+            [new SupplementNutrientDto { GenericName = "Bad", Dosage = "10mg" }, new SupplementNutrientDto { GenericName = "Good", Dosage = "20mg" }]);
+
+        Assert.AreEqual("simulated failure for Bad", result.Failures.Single().Error);
+        Assert.AreEqual("Good", result.Saved.Single().GenericName);
+    }
+
+    [TestMethod]
+    public async Task ReplaceAsync_DeletesEveryExistingRowBeforePersisting()
+    {
+        var repo = new MockRepo();
+        var svc = new SupplementNutrientService(repo, NullLogger);
+        var old1 = await repo.AddAsync(new SupplementNutrient { SupplementId = 1, GenericName = "Old1", SpecificForm = "x", Dosage = "1mg" });
+        var old2 = await repo.AddAsync(new SupplementNutrient { SupplementId = 1, GenericName = "Old2", SpecificForm = "x", Dosage = "1mg" });
+
+        var result = await svc.ReplaceAsync(1,
+            [new SupplementNutrientDto { GenericName = "Zinc", SpecificForm = "Picolinate", Dosage = "15mg" }]);
+
+        CollectionAssert.AreEquivalent(new[] { old1, old2 }, repo.DeletedIds);
+        Assert.AreEqual(1, result.Saved.Count);
+    }
+
     private sealed class MockRepo : ISupplementNutrientRepository
     {
         private int _nextId = 1;
@@ -124,6 +202,7 @@ public class SupplementNutrientServiceTests
         private readonly Dictionary<int, List<SupplementNutrient>> _byParent = new();
 
         public List<SupplementNutrient> Added { get; } = new();
+        public List<int> DeletedIds { get; } = new();
 
         public Task<IReadOnlyList<SupplementNutrient>> GetBySupplementIdAsync(int supplementId)
         {
@@ -192,6 +271,7 @@ public class SupplementNutrientServiceTests
 
         public Task<int> DeleteAsync(int id)
         {
+            DeletedIds.Add(id);
             if (_byId.Remove(id, out var n))
             {
                 if (_bySupplement.TryGetValue(n.SupplementId, out var s))

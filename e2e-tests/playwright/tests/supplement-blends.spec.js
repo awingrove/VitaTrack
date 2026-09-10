@@ -25,7 +25,10 @@ async function readSupplementId(page) {
 test.describe('Supplement Nutrient Blends', () => {
 
   test('should display a seeded blend with child nutrients', async ({ page }, testInfo) => {
-    await page.goto('/Supplement/EditNutrients/3');
+    // Arrive via in-app links: supplements list -> Multivitamin row -> Nutrients -> Edit Breakdown
+    await page.goto('/Supplement');
+    await page.locator('tbody tr:has-text("Multivitamin")').first().locator('a.btn-outline-info').click();
+    await page.locator('a.btn-outline-primary:has-text("Edit Breakdown")').click();
     await expect(page.locator('h4')).toContainText('Nutrients for Multivitamin');
 
     // The seeded "Proprietary Blend" parent row is rendered (value lives in an input).

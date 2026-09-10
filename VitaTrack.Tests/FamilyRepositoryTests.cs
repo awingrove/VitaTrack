@@ -102,9 +102,8 @@ public class FamilyRepositoryTests : SqliteTestBase
         {
             FamilyMemberId = memberId,
             SupplementId = suppId,
-            Dosage = "500mg",
             Instructions = "Take daily",
-            FrequencyPerDay = 1
+            Multiplier = 1
         });
 
         // Act – Delete the family member

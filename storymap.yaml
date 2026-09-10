@@ -239,6 +239,11 @@ activities:
             priority: high
             tests:
               - e2e: prescribed-dose::should create a new prescribed dose
+          - title: Create a dose without instructions (instructions are optional)
+            status: done
+            priority: high
+            tests:
+              - e2e: prescribed-dose::should create a prescribed dose without instructions
       - id: PD-3
         name: Edit a prescribed dose
         entry_point: Doses index row -> Edit button

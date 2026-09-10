@@ -16,8 +16,7 @@
             <th>Supplement</th>
             <th>Start Date</th>
             <th>End Date</th>
-            <th>Dosage</th>
-            <th>Frequency/Day</th>
+            <th>Multiplier</th>
             <th>Instructions</th>
             <th>Actions</th>
         </tr>
@@ -30,8 +29,7 @@
             <td>@(pd.SupplementName ?? pd.SupplementId.ToString())</td>
             <td>@(pd.StartDate?.ToShortDateString() ?? "—")</td>
             <td>@(pd.EndDate?.ToShortDateString() ?? "Ongoing")</td>
-            <td>@pd.Dosage</td>
-            <td>@pd.FrequencyPerDay</td>
+            <td>@($"{pd.Multiplier} ×")</td>
             <td>@pd.Instructions</td>
             <td>
                 <a class="btn btn-sm btn-primary" asp-action="Edit" asp-route-id="@pd.Id">Edit</a>

@@ -36,7 +36,7 @@ public class ReportingService(
                 nutrientCache[pd.SupplementId] = [.. list];
             }
 
-            var dailyFrequency = GetDailyFrequency(pd);
+            var dailyFrequency = GetMultiplier(pd);
             memberTotals.TryAdd(pd.FamilyMemberId, []);
 
             foreach (var n in nutrientCache[pd.SupplementId])
@@ -99,7 +99,7 @@ public class ReportingService(
             var supplement = await GetCachedAsync(supplementCache, pd.SupplementId, _supplementRepo.GetByIdAsync);
             if (supplement == null || !supplement.Cost.HasValue || supplement.ServingsPerBottle is not > 0) continue;
 
-            var dailyFrequency = GetDailyFrequency(pd);
+            var dailyFrequency = GetMultiplier(pd);
             var monthlyCost = GetMonthlyCost(supplement, dailyFrequency);
 
             supplementCosts[pd.SupplementId] = supplementCosts.TryGetValue(pd.SupplementId, out var existing)
@@ -123,7 +123,7 @@ public class ReportingService(
             GrandTotal: grandTotal);
     }
 
-    private static decimal GetDailyFrequency(PrescribedDose pd) => pd.FrequencyPerDay > 0 ? pd.FrequencyPerDay : 1;
+    private static decimal GetMultiplier(PrescribedDose pd) => pd.Multiplier > 0 ? pd.Multiplier : 1;
 
     private static bool HasServings(Supplement supplement) => supplement.ServingsPerBottle is > 0;
 

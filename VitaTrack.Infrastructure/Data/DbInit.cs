@@ -48,21 +48,36 @@ public static class DbInit
                 SupplementId INTEGER NOT NULL,
                 StartDate TEXT NULL,
                 EndDate TEXT NULL,
-                Dosage TEXT NOT NULL,
+                Multiplier REAL NOT NULL,
                 Instructions TEXT NOT NULL,
                 FOREIGN KEY (FamilyMemberId) REFERENCES FamilyMembers(Id),
                 FOREIGN KEY (SupplementId) REFERENCES Supplements(Id)
             );");
-
-        // Add FrequencyPerDay column if it doesn't exist
-        var columnExists = db.QuerySingle<int>(@"
-                SELECT COUNT(*) FROM pragma_table_info('PrescribedDoses') WHERE name = 'FrequencyPerDay';
-            ");
-        if (columnExists == 0)
+        // Migrate PrescribedDoses: Dosage (TEXT) -> Multiplier (REAL), drop FrequencyPerDay.
+        // Runs only for databases created with the old schema; fresh databases already have Multiplier.
+        var freqCol = db.QuerySingle<int>(
+            "SELECT COUNT(*) FROM pragma_table_info('PrescribedDoses') WHERE name = 'FrequencyPerDay';");
+        var dosageType = db.QuerySingle<string>(
+            "SELECT COALESCE((SELECT type FROM pragma_table_info('PrescribedDoses') WHERE name = 'Dosage'), '');");
+        if (freqCol > 0 || dosageType == "TEXT")
         {
             db.Execute(@"
-                    ALTER TABLE PrescribedDoses ADD COLUMN FrequencyPerDay REAL NOT NULL DEFAULT 1.0;
-                ");
+                CREATE TABLE PrescribedDoses_new (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    FamilyMemberId INTEGER NOT NULL,
+                    SupplementId INTEGER NOT NULL,
+                    StartDate TEXT NULL,
+                    EndDate TEXT NULL,
+                    Multiplier REAL NOT NULL DEFAULT 1.0,
+                    Instructions TEXT NOT NULL,
+                    FOREIGN KEY (FamilyMemberId) REFERENCES FamilyMembers(Id),
+                    FOREIGN KEY (SupplementId) REFERENCES Supplements(Id)
+                );");
+            db.Execute(@"
+                INSERT INTO PrescribedDoses_new (Id, FamilyMemberId, SupplementId, StartDate, EndDate, Multiplier, Instructions)
+                SELECT Id, FamilyMemberId, SupplementId, StartDate, EndDate, 1.0, Instructions FROM PrescribedDoses;");
+            db.Execute("DROP TABLE PrescribedDoses;");
+            db.Execute("ALTER TABLE PrescribedDoses_new RENAME TO PrescribedDoses;");
         }
 
         // Add ParentNutrientId column if it doesn't exist (self-reference for nutrient blends)
@@ -122,22 +137,21 @@ public static class DbInit
                     ");
 
                 db.Execute(@"
-                        INSERT INTO SupplementNutrients (Id, SupplementId, GenericName, SpecificForm, Dosage, ParentNutrientId) VALUES 
+                        INSERT INTO PrescribedDoses (FamilyMemberId, SupplementId, StartDate, EndDate, Multiplier, Instructions) VALUES
+                        (1, 1, NULL, NULL, 1.0, 'Take with breakfast'),
+                        (1, 2, NULL, NULL, 1.0, 'Take with dinner'),
+                        (2, 3, NULL, NULL, 1.0, 'Take in the morning')
+                    ");
+                db.Execute(@"
+                        INSERT INTO SupplementNutrients (Id, SupplementId, GenericName, SpecificForm, Dosage, ParentNutrientId) VALUES
                         (9001, 3, 'Proprietary Blend', 'Blend', '500mg', NULL)
                     ");
-
                 db.Execute(@"
                         INSERT INTO SupplementNutrients (SupplementId, GenericName, SpecificForm, Dosage, ParentNutrientId) VALUES 
                         (3, 'Pectin', 'Citrus', '200mg', 9001),
                         (3, 'Botanical Extract', 'Proprietary', '', 9001)
                     ");
 
-                db.Execute(@"
-                        INSERT INTO PrescribedDoses (FamilyMemberId, SupplementId, Dosage, Instructions, FrequencyPerDay) VALUES 
-                        (1, 1, '500mg', 'Take with breakfast', 1.0),
-                        (1, 2, '1 softgel', 'Take with dinner', 1.0),
-                        (2, 3, '1 tablet', 'Take in the morning', 1.0)
-                    ");
             }
         }
     }

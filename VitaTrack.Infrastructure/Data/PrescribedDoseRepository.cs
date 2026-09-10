@@ -15,7 +15,7 @@ public class PrescribedDoseRepository(IDbConnection db) : IPrescribedDoseReposit
     {
         const string sql = @"
                 SELECT pd.Id, pd.FamilyMemberId, pd.SupplementId, pd.StartDate, pd.EndDate, 
-                       pd.Dosage, pd.Instructions, pd.FrequencyPerDay,
+                       pd.Multiplier, pd.Instructions,
                        fm.DisplayName as FamilyMemberName,
                        s.Name as SupplementName
                 FROM PrescribedDoses pd
@@ -28,7 +28,7 @@ public class PrescribedDoseRepository(IDbConnection db) : IPrescribedDoseReposit
     {
         const string sql = @"
                 SELECT pd.Id, pd.FamilyMemberId, pd.SupplementId, pd.StartDate, pd.EndDate, 
-                       pd.Dosage, pd.Instructions, pd.FrequencyPerDay,
+                       pd.Multiplier, pd.Instructions,
                        fm.DisplayName as FamilyMemberName,
                        s.Name as SupplementName
                 FROM PrescribedDoses pd
@@ -41,8 +41,8 @@ public class PrescribedDoseRepository(IDbConnection db) : IPrescribedDoseReposit
     public async Task<int> AddAsync(PrescribedDose prescribedDose)
     {
         const string sql = @"
-                INSERT INTO PrescribedDoses (FamilyMemberId, SupplementId, StartDate, EndDate, Dosage, Instructions, FrequencyPerDay)
-                VALUES (@FamilyMemberId, @SupplementId, @StartDate, @EndDate, @Dosage, @Instructions, @FrequencyPerDay);
+                INSERT INTO PrescribedDoses (FamilyMemberId, SupplementId, StartDate, EndDate, Multiplier, Instructions)
+                VALUES (@FamilyMemberId, @SupplementId, @StartDate, @EndDate, @Multiplier, @Instructions);
                 SELECT last_insert_rowid();";
         return await _db.ExecuteScalarAsync<int>(sql, prescribedDose);
     }
@@ -55,9 +55,8 @@ public class PrescribedDoseRepository(IDbConnection db) : IPrescribedDoseReposit
                     SupplementId = @SupplementId,
                     StartDate = @StartDate,
                     EndDate = @EndDate,
-                    Dosage = @Dosage,
-                    Instructions = @Instructions,
-                    FrequencyPerDay = @FrequencyPerDay
+                    Multiplier = @Multiplier,
+                    Instructions = @Instructions
                 WHERE Id = @Id";
         await _db.ExecuteAsync(sql, prescribedDose);
     }

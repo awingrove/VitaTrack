@@ -86,5 +86,6 @@ public class PrescribedDoseController(
 
         ViewData["FamilyMemberId"] = new SelectList(familyMembers, "Id", "DisplayName", selectedFamilyMemberId);
         ViewData["SupplementId"] = new SelectList(supplements, "Id", "Name", selectedSupplementId);
+        ViewData["Supplements"] = supplements;
     }
 }

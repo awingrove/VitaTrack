@@ -29,13 +29,13 @@ public class ReportingServiceTests : SqliteTestBase
             new { Name = name });
     }
 
-    private int InsertDose(int memberId, int supplementId, decimal frequencyPerDay,
+    private int InsertDose(int memberId, int supplementId, decimal multiplier,
         DateTime? start = null, DateTime? end = null)
     {
         return Connection.ExecuteScalar<int>(
-            @"INSERT INTO PrescribedDoses (FamilyMemberId, SupplementId, StartDate, EndDate, Dosage, Instructions, FrequencyPerDay)
-              VALUES (@Member, @Supplement, @Start, @End, '1 tablet', '', @Freq); SELECT last_insert_rowid();",
-            new { Member = memberId, Supplement = supplementId, Start = start, End = end, Freq = frequencyPerDay });
+            @"INSERT INTO PrescribedDoses (FamilyMemberId, SupplementId, StartDate, EndDate, Multiplier, Instructions)
+              VALUES (@Member, @Supplement, @Start, @End, @Multiplier, ''); SELECT last_insert_rowid();",
+            new { Member = memberId, Supplement = supplementId, Start = start, End = end, Multiplier = multiplier });
     }
 
     private void InsertNutrient(int supplementId, string genericName, string dosage)
@@ -50,7 +50,7 @@ public class ReportingServiceTests : SqliteTestBase
     {
         var memberId = InsertMember("Alice");
         var supplementId = InsertSupplement("Vitamin C", cost: 30.00m, servingsPerBottle: 60);
-        InsertDose(memberId, supplementId, frequencyPerDay: 2);
+        InsertDose(memberId, supplementId, multiplier: 2);
 
         var data = await CreateService().GetCostReportDataAsync();
 
@@ -66,8 +66,8 @@ public class ReportingServiceTests : SqliteTestBase
         var memberId = InsertMember("Alice");
         var noServings = InsertSupplement("No Servings", cost: 10m, servingsPerBottle: null);
         var noCost = InsertSupplement("No Cost", cost: null, servingsPerBottle: 60);
-        InsertDose(memberId, noServings, frequencyPerDay: 1);
-        InsertDose(memberId, noCost, frequencyPerDay: 1);
+        InsertDose(memberId, noServings, multiplier: 1);
+        InsertDose(memberId, noCost, multiplier: 1);
 
         var data = await CreateService().GetCostReportDataAsync();
 
@@ -81,7 +81,7 @@ public class ReportingServiceTests : SqliteTestBase
         var memberId = InsertMember("Alice");
         var supplementId = InsertSupplement("Vitamin C", cost: 12.00m, servingsPerBottle: 60);
         InsertNutrient(supplementId, "Vitamin C", "500mg");
-        InsertDose(memberId, supplementId, frequencyPerDay: 2);
+        InsertDose(memberId, supplementId, multiplier: 2);
 
         var data = await CreateService().GetNutrientReportDataAsync();
 
@@ -89,12 +89,12 @@ public class ReportingServiceTests : SqliteTestBase
     }
 
     [TestMethod]
-    public async Task NutrientReport_NutrientDailyTotals_ClampNonPositiveFrequency()
+    public async Task NutrientReport_NutrientDailyTotals_ClampNonPositiveMultiplier()
     {
         var memberId = InsertMember("Alice");
         var supplementId = InsertSupplement("Vitamin C", cost: 12.00m, servingsPerBottle: 60);
         InsertNutrient(supplementId, "Vitamin C", "500mg");
-        InsertDose(memberId, supplementId, frequencyPerDay: 0);
+        InsertDose(memberId, supplementId, multiplier: 0);
 
         var data = await CreateService().GetNutrientReportDataAsync();
 
@@ -107,7 +107,7 @@ public class ReportingServiceTests : SqliteTestBase
         var memberId = InsertMember("Alice");
         var supplementId = InsertSupplement("Vitamin C", cost: 12.00m, servingsPerBottle: 60);
         InsertNutrient(supplementId, "Vitamin C", "500mg");
-        InsertDose(memberId, supplementId, frequencyPerDay: 1,
+        InsertDose(memberId, supplementId, multiplier: 1,
             start: DateTime.Today.AddDays(-30), end: DateTime.Today.AddDays(-1));
 
         var service = CreateService();

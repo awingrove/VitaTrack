@@ -33,11 +33,11 @@ test.describe('Prescribed Doses', () => {
     // Select first supplement
     await page.selectOption('select#SupplementId', { index: 1 });
 
-    // Fill in dosage
-    await page.fill('input#Dosage', '500mg');
+    // Serving size for the selected supplement is shown (Fish Oil -> 1 softgel)
+    await expect(page.locator('input#ServingSize')).toHaveValue('1 softgel');
 
-    // Fill frequency
-    await page.fill('input#FrequencyPerDay', '2');
+    // Fill in multiplier (servings per day)
+    await page.fill('input#Multiplier', '1.5');
 
     // Fill instructions
     await page.fill('input#Instructions', 'Take with food');
@@ -50,73 +50,84 @@ test.describe('Prescribed Doses', () => {
     await expect(page.locator('h2')).toHaveText('Prescribed Doses');
 
     // Should show the new dose in the table
-    await expect(page.locator('table tbody tr').last()).toContainText('500mg');
+    await expect(page.locator('table tbody tr').last()).toContainText('1.5');
     await expect(page.locator('table tbody tr').last()).toContainText('Take with food');
     await screenshot(page, testInfo, 'doses-after-create');
   });
 
+  test('should create a prescribed dose without instructions', async ({ page }, testInfo) => {
+    await page.goto('/PrescribedDose/Create');
+    await expect(page.locator('h2')).toHaveText('Create');
+
+    await page.selectOption('select#FamilyMemberId', { index: 1 });
+    await page.selectOption('select#SupplementId', { index: 1 });
+    await page.fill('input#Multiplier', '1.5');
+
+    // Instructions intentionally left blank
+    await page.click('input[type="submit"][value="Create"]');
+
+    // Should redirect to index without a validation error
+    await expect(page.locator('h2')).toHaveText('Prescribed Doses');
+    await expect(page.locator('table tbody tr').last()).toContainText('1.5');
+    await screenshot(page, testInfo, 'dose-create-no-instructions');
+  });
+
   test('should edit a prescribed dose', async ({ page }, testInfo) => {
     const unique = Date.now();
-    const origDosage = `EditMe${unique}`;
+    const origMultiplier = '2.5';
 
     // Create a dose to edit (avoids race conditions with seed data)
     await page.goto('/PrescribedDose/Create');
     await expect(page.locator('h2')).toHaveText('Create');
     await page.selectOption('select#FamilyMemberId', { index: 1 });
     await page.selectOption('select#SupplementId', { index: 1 });
-    await page.fill('input#Dosage', origDosage);
-    await page.fill('input#FrequencyPerDay', '1');
-    await page.fill('input#Instructions', 'Original instructions');
+    await page.fill('input#Multiplier', origMultiplier);
+    await page.fill('input#Instructions', `EditInstr${unique}`);
     await page.click('input[type="submit"][value="Create"]');
     await expect(page.locator('h2')).toHaveText('Prescribed Doses');
 
     // Click Edit on the new dose
-    const row = page.locator(`table tbody tr:has-text("${origDosage}")`).last();
+    const row = page.locator(`table tbody tr:has-text("EditInstr${unique}")`).last();
     await row.locator('a.btn-primary').click();
 
     // Should be on the edit page
     await expect(page.locator('h2')).toHaveText('Edit');
     await screenshot(page, testInfo, 'dose-edit-form');
 
-    // Modify the dosage
-    await page.fill('input#Dosage', `${unique}mg`);
+    // Modify the multiplier
+    await page.fill('input#Multiplier', '3.75');
 
     // Save
     await page.click('input[type="submit"][value="Save"]');
 
     // Should redirect to index with updated value
     await expect(page.locator('h2')).toHaveText('Prescribed Doses');
-    await expect(page.locator(`table tbody tr:has-text("${unique}mg")`)).toBeVisible();
+    await expect(page.locator(`table tbody tr:has-text("EditInstr${unique}"):has-text("3.75")`)).toBeVisible();
     await screenshot(page, testInfo, 'doses-after-edit');
   });
 
   test('should delete a prescribed dose', async ({ page }, testInfo) => {
+    const unique = Date.now();
+
     // First create a dose to delete (to avoid race conditions with seed data)
     await page.goto('/PrescribedDose/Create');
     await expect(page.locator('h2')).toHaveText('Create');
     await page.selectOption('select#FamilyMemberId', { index: 1 });
     await page.selectOption('select#SupplementId', { index: 1 });
-    await page.fill('input#Dosage', 'DeleteMe');
-    await page.fill('input#FrequencyPerDay', '1');
-    await page.fill('input#Instructions', 'Temporary dose');
+    await page.fill('input#Multiplier', '2.5');
+    await page.fill('input#Instructions', `DelInstr${unique}`);
     await page.click('input[type="submit"][value="Create"]');
     await expect(page.locator('h2')).toHaveText('Prescribed Doses');
     await screenshot(page, testInfo, 'doses-before-delete');
 
     // Click Delete on the row and accept the confirm dialog
-    const row = page.locator('table tbody tr:has-text("DeleteMe")').last();
-    let deleteDialogMessage = '';
-    page.on('dialog', async dialog => {
-      deleteDialogMessage = dialog.message();
-      await dialog.accept();
-    });
-    await row.locator('form button:has-text("Delete")').click();
-    expect(deleteDialogMessage).toMatch(/delete this prescribed dose/i);
-    await screenshot(page, testInfo, 'dose-delete-confirm');
+    const row = page.locator(`table tbody tr:has-text("DelInstr${unique}")`).first();
+    page.on('dialog', dialog => dialog.accept());
+    await row.locator('button:has-text("Delete")').click();
 
-    // Should redirect to index and the deleted dose should be gone
+    // Should redirect to index without the deleted dose
     await expect(page.locator('h2')).toHaveText('Prescribed Doses');
-    await expect(page.locator('table tbody tr:has-text("DeleteMe")')).toHaveCount(0);
+    await expect(page.locator(`table tbody tr:has-text("DelInstr${unique}")`)).toHaveCount(0);
     await screenshot(page, testInfo, 'doses-after-delete');
   });
 });

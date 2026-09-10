@@ -177,9 +177,8 @@ public class SupplementRepositoryTests : SqliteTestBase
         {
             FamilyMemberId = familyId,
             SupplementId = supp1Id,
-            Dosage = "500mg",
             Instructions = "Take daily",
-            FrequencyPerDay = 1
+            Multiplier = 1
         });
 
         // Act – delete all three (including the two with nutrients and one with prescribed dose)

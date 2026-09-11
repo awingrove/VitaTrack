@@ -9,7 +9,6 @@ namespace VitaTrack.ArchitectureTests;
 public class ControllerHygieneTests
 {
     [TestMethod]
-    [Ignore("Until §2.5 fix — controllers need catch (Exception) for CSV import row-level error handling")]
     public void Controllers_DoNotCatchException()
     {
         var solutionRoot = FindSolutionRoot();
@@ -29,7 +28,8 @@ public class ControllerHygieneTests
         }
 
         Assert.AreEqual(0, violations.Count,
-            $"Controllers still use `catch (Exception)` — AGENTS.md mandates Result<T> over exception swallowing (see §2.5):\n  "
+            "Controllers must not `catch (Exception)` — per-row failures return failure-carrying result records; "
+            + "exceptional system failures propagate to the global error handler (AGENTS.md §2.5):\n  "
             + string.Join("\n  ", violations));
     }
 

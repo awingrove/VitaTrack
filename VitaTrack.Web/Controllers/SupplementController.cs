@@ -201,42 +201,35 @@ public partial class SupplementController(
 
         foreach (var row in parseResult.Rows)
         {
-            try
+            var supplement = new Supplement
             {
-                var supplement = new Supplement
-                {
-                    Name = row.Name,
-                    Brand = row.Brand,
-                    DailyDose = row.DailyDose,
-                    ManufacturerUrl = row.ManufacturerUrl,
-                    Cost = row.Cost,
-                    ServingsPerBottle = row.ServingsPerBottle
-                };
+                Name = row.Name,
+                Brand = row.Brand,
+                DailyDose = row.DailyDose,
+                ManufacturerUrl = row.ManufacturerUrl,
+                Cost = row.Cost,
+                ServingsPerBottle = row.ServingsPerBottle
+            };
 
-                var nutrientCount = 0;
-                if (!string.IsNullOrWhiteSpace(row.ManufacturerUrl))
-                {
-                    var llmResult = await _llmService.EnrichSupplementAsync(supplement);
-                    ApplyEnrichment(supplement, llmResult);
-
-                    var newId = await _suppRepo.AddAsync(supplement);
-                    if (llmResult.Nutrients.Count > 0)
-                    {
-                        var persistResult = await _nutrientService.AddAsync(newId, llmResult.Nutrients);
-                        nutrientCount = persistResult.Saved.Count;
-                    }
-                }
-                else
-                {
-                    await _suppRepo.AddAsync(supplement);
-                }
-
-                successes.Add(new CsvImportSuccess(row.Name, row.Brand, nutrientCount));
-            }
-            catch (Exception ex)
+            var nutrientCount = 0;
+            if (!string.IsNullOrWhiteSpace(row.ManufacturerUrl))
             {
-                failuresList.Add(new CsvImportFailure(row.RowNumber, row.Name, ex.Message));
+                var llmResult = await _llmService.EnrichSupplementAsync(supplement);
+                ApplyEnrichment(supplement, llmResult);
+
+                var newId = await _suppRepo.AddAsync(supplement);
+                if (llmResult.Nutrients.Count > 0)
+                {
+                    var persistResult = await _nutrientService.AddAsync(newId, llmResult.Nutrients);
+                    nutrientCount = persistResult.Saved.Count;
+                }
             }
+            else
+            {
+                await _suppRepo.AddAsync(supplement);
+            }
+
+            successes.Add(new CsvImportSuccess(row.Name, row.Brand, nutrientCount));
         }
 
         foreach (var error in parseResult.Errors)

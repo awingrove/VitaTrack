@@ -67,10 +67,23 @@ public class UrlSafetyValidatorTests
     }
 
     [TestMethod]
-    public void IsUrlSafe_BlocksUnresolvableHost()
+    public void IsUrlSafe_BlocksHost_WhenResolutionFails()
     {
-        // RFC 6761: the .invalid TLD is guaranteed never to resolve.
-        Assert.IsFalse(UrlSafetyValidator.IsUrlSafe("https://no-such-host.invalid/page"));
+        // Inject a failing resolver — the DNS-failure branch must block without network I/O.
+        Assert.IsFalse(UrlSafetyValidator.IsUrlSafe(
+            "https://unresolvable.example/page",
+            _ => throw new System.Net.Sockets.SocketException()));
+    }
+
+    [TestMethod]
+    public void IsUrlSafe_ResolverSeam_HonoursResolvedAddresses()
+    {
+        Assert.IsFalse(UrlSafetyValidator.IsUrlSafe(
+            "https://internal-host",
+            _ => [System.Net.IPAddress.Parse("10.1.2.3")]));
+        Assert.IsTrue(UrlSafetyValidator.IsUrlSafe(
+            "https://public-host",
+            _ => [System.Net.IPAddress.Parse("8.8.4.4")]));
     }
 
     [TestMethod]

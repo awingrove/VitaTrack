@@ -73,6 +73,7 @@ public class SupplementNutrientServiceHierarchyTests
 
     private sealed class FakeNutrientRepo : ISupplementNutrientRepository
     {
+        private int _nextId = 1;
         private readonly Dictionary<int, SupplementNutrient> _byId = new();
 
         public List<SupplementNutrient> Added { get; } = [];
@@ -98,7 +99,7 @@ public class SupplementNutrientServiceHierarchyTests
 
         public Task<int> AddAsync(SupplementNutrient nutrient)
         {
-            nutrient.Id = _byId.Count + 1 + DeletedIds.Count;
+            nutrient.Id = _nextId++;
             _byId[nutrient.Id] = nutrient;
             Added.Add(nutrient);
             return Task.FromResult(nutrient.Id);

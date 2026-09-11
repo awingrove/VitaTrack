@@ -44,4 +44,21 @@ public class SupplementNutrientValidationTests
 
         Assert.IsTrue(results.Any(r => r.MemberNames.Contains(nameof(SupplementNutrient.Dosage))));
     }
+
+    [TestMethod]
+    public void TopLevel_WithBlankSpecificForm_IsInvalid()
+    {
+        var nutrient = new SupplementNutrient
+        {
+            GenericName = "Zinc",
+            Dosage = "15mg",
+            SpecificForm = "   ",
+            ParentNutrientId = null,
+        };
+
+        var (isValid, results) = Validate(nutrient);
+
+        Assert.IsFalse(isValid);
+        Assert.IsTrue(results.Any(r => r.MemberNames.Contains(nameof(SupplementNutrient.SpecificForm))));
+    }
 }

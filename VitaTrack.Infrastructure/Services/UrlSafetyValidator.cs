@@ -4,7 +4,7 @@ namespace VitaTrack.Infrastructure.Services;
 
 internal static class UrlSafetyValidator
 {
-    public static bool IsUrlSafe(string url)
+    public static bool IsUrlSafe(string url, Func<string, IPAddress[]>? resolveAddresses = null)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
             return false;
@@ -13,10 +13,12 @@ internal static class UrlSafetyValidator
         if (uri.Scheme != Uri.UriSchemeHttps)
             return false;
 
-        // Resolve the hostname to IP addresses and check each one
+        // Resolve the hostname to IP addresses and check each one.
+        // resolveAddresses is a test seam: inject a stub to exercise
+        // resolution-failure handling without touching the network.
         try
         {
-            var addresses = Dns.GetHostAddresses(uri.Host);
+            var addresses = (resolveAddresses ?? Dns.GetHostAddresses)(uri.Host);
             foreach (var addr in addresses)
             {
                 if (IPAddress.IsLoopback(addr) || IsPrivateOrReserved(addr))

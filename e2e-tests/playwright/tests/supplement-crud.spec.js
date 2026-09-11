@@ -278,7 +278,8 @@ test.describe('Supplement CRUD', () => {
       await dialog.accept();
     });
 
-    await page.goto('/Supplement/Edit/1');
+    await page.goto('/Supplement');
+    await page.locator('tbody tr:has-text("NatureMade")').first().locator('a.btn-primary').click();
     await expect(page.locator('h2')).toHaveText('Edit Supplement');
     await expect(page.locator('#enrich-btn')).toBeVisible();
 
@@ -295,9 +296,10 @@ test.describe('Supplement CRUD', () => {
     await expect(page.locator('h2')).toHaveText('Review Supplement');
     await screenshot(page, testInfo, 'edit-enrich-warning');
   });
-
   test('should show a wait spinner while enriching', async ({ page }, testInfo) => {
-    await page.goto('/Supplement/Edit/1');
+    await page.goto('/Supplement');
+    await page.locator('tbody tr:has-text("NatureMade")').first().locator('a.btn-primary').click();
+    await expect(page.locator('h2')).toHaveText('Edit Supplement');
     await expect(page.locator('#enrich-spinner')).toHaveCount(1);
     await expect(page.locator('#enrich-spinner')).toBeHidden();
 
@@ -340,7 +342,8 @@ test.describe('Supplement CRUD', () => {
   });
 
   test('should save without enrichment on Edit navigates to list', async ({ page }, testInfo) => {
-    await page.goto('/Supplement/Edit/1');
+    await page.goto('/Supplement');
+    await page.locator('tbody tr:has-text("NatureMade")').first().locator('a.btn-primary').click();
     await expect(page.locator('h2')).toHaveText('Edit Supplement');
 
     await page.click('button[formaction="/Supplement/EditSave"]');

@@ -106,7 +106,7 @@ public class LlmServiceTests
             Name = "Test",
             Brand = "Brand",
             DailyDose = "1 tablet",
-            ManufacturerUrl = "https://example.com/product"
+            ManufacturerUrl = "https://8.8.8.8/product"
         };
 
         var result = await service.EnrichSupplementAsync(supplement);
@@ -130,7 +130,7 @@ public class LlmServiceTests
             Name = "Test",
             Brand = "Brand",
             DailyDose = "1 tablet",
-            ManufacturerUrl = "https://example.com/notfound"
+            ManufacturerUrl = "https://8.8.8.8/notfound"
         };
 
         var result = await service.EnrichSupplementAsync(supplement);
@@ -172,7 +172,7 @@ public class LlmServiceTests
             Name = "Super Multivitamin",
             Brand = "TestBrand",
             DailyDose = "1 tablet",
-            ManufacturerUrl = "https://example.com/product"
+            ManufacturerUrl = "https://8.8.8.8/product"
         };
 
         // Act
@@ -230,7 +230,7 @@ public class LlmServiceTests
             Name = "Test",
             Brand = "Brand",
             DailyDose = "1 tablet",
-            ManufacturerUrl = "https://example.com/product"
+            ManufacturerUrl = "https://8.8.8.8/product"
         };
 
         // Act
@@ -258,7 +258,7 @@ public class LlmServiceTests
             Name = "Test",
             Brand = "Brand",
             DailyDose = "1 tablet",
-            ManufacturerUrl = "https://example.com/empty-page"
+            ManufacturerUrl = "https://8.8.8.8/empty-page"
         };
 
         // Act
@@ -269,5 +269,26 @@ public class LlmServiceTests
         Assert.AreEqual(0, result.Nutrients.Count);
         Assert.IsNotNull(result.ExtractionError);
         Assert.IsTrue(result.ExtractionError.Contains("No content found"));
+    }
+
+    [TestMethod]
+    public async Task EnrichSupplementAsync_ReturnsError_WhenScraperThrows()
+    {
+        var scraper = new Mock<IHtmlScraperService>();
+        scraper.Setup(s => s.FetchCleanHtmlAsync(It.IsAny<string>()))
+            .ThrowsAsync(new HttpRequestException("network down"));
+        var service = new LlmService(
+            CreateOptions(), scraper.Object, Mock.Of<ISupplementLabelParser>(), NullLogger<LlmService>.Instance);
+
+        var result = await service.EnrichSupplementAsync(new Supplement
+        {
+            Name = "Zinc",
+            Brand = "NOW",
+            ManufacturerUrl = "https://example.com/product"
+        });
+
+        Assert.AreEqual("An error occurred while processing the supplement page.", result.ExtractionError);
+        Assert.AreEqual(0, result.Nutrients.Count);
+        Assert.IsTrue(string.IsNullOrEmpty(result.NutritionJson));
     }
 }

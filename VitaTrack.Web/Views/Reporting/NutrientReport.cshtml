@@ -6,10 +6,10 @@
 @model IEnumerable<Supplement>
 
 @{
-    var grandTotals = ViewData["GrandTotals"] as string;
-    var grandTotalsDict = new Dictionary<string, decimal>();
-    if (grandTotals != null)
-        grandTotalsDict = JsonSerializer.Deserialize<Dictionary<string, decimal>>(grandTotals) ?? new Dictionary<string, decimal>();
+    var units = ViewData["Units"] as string;
+    var unitsDict = new Dictionary<string, string>();
+    if (units != null)
+        unitsDict = JsonSerializer.Deserialize<Dictionary<string, string>>(units) ?? new Dictionary<string, string>();
 
     var memberNames = ViewData["MemberNames"] as string;
     var memberNamesList = new List<string>();
@@ -28,29 +28,12 @@
 <h2>@ViewData["Title"]</h2>
 <p class="text-muted">Report date: @reportDate</p>
 
-@if (grandTotalsDict.Count == 0)
+@if (!Model.Any())
 {
     <p class="text-muted">No active prescribed doses found. Add a prescribed dose first.</p>
 }
 else
 {
-    <!-- Grand Totals -->
-    <h3>Grand Total (All Members)</h3>
-    <table class="table">
-        <thead>
-            <tr><th>Nutrient</th><th>Daily Total</th></tr>
-        </thead>
-        <tbody>
-        @foreach (var kvp in grandTotalsDict.OrderBy(k => k.Key))
-        {
-            <tr>
-                <td>@kvp.Key</td>
-                <td>@kvp.Value.ToString("F2")</td>
-            </tr>
-        }
-        </tbody>
-    </table>
-
     <!-- Per-Family-Member Breakdown -->
     <h3>Per Family Member</h3>
     @if (memberNamesList.Count > 0)
@@ -80,11 +63,14 @@ else
             <tbody>
             @foreach (var nutrient in allNutrients)
             {
+                var unitSuffix = unitsDict.TryGetValue(nutrient, out var nu) && !string.IsNullOrEmpty(nu)
+                    ? $" {nu}"
+                    : string.Empty;
                 <tr>
                     <td>@nutrient</td>
                     @foreach (var md in memberDataList)
                     {
-                        <td>@(md.TryGetValue(nutrient, out var val) ? val : "0.00")</td>
+                        <td>@(md.TryGetValue(nutrient, out var val) ? val : "0.00")@unitSuffix</td>
                     }
                 </tr>
             }

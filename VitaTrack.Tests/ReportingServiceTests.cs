@@ -98,7 +98,7 @@ public class ReportingServiceTests : SqliteTestBase
 
         var data = await CreateService().GetNutrientReportDataAsync();
 
-        Assert.AreEqual(500m, data.GrandTotals["Vitamin C"]);
+        Assert.AreEqual("500.00", data.MemberData.Single()["Vitamin C"]);
     }
 
     [TestMethod]
@@ -115,6 +115,36 @@ public class ReportingServiceTests : SqliteTestBase
         var nutrientData = await service.GetNutrientReportDataAsync();
 
         Assert.AreEqual(0m, costData.GrandTotal);
-        Assert.AreEqual(0, nutrientData.GrandTotals.Count);
+        Assert.AreEqual(0, nutrientData.MemberData.Count);
+    }
+
+    [TestMethod]
+    public async Task NutrientReport_Units_AreExtractedPerNutrient()
+    {
+        var memberId = InsertMember("Alice");
+        var supplementId = InsertSupplement("Vitamin C", cost: 12.00m, servingsPerBottle: 60);
+        InsertNutrient(supplementId, "Vitamin C", "500mg");
+        InsertDose(memberId, supplementId, multiplier: 1);
+
+        var data = await CreateService().GetNutrientReportDataAsync();
+
+        Assert.IsTrue(data.Units.TryGetValue("Vitamin C", out var unit));
+        Assert.AreEqual("mg", unit);
+    }
+
+    [TestMethod]
+    public async Task NutrientReport_Units_MergeConflictingUnitsAcrossSupplements()
+    {
+        var memberId = InsertMember("Alice");
+        var suppA = InsertSupplement("Fish Oil", cost: 12.00m, servingsPerBottle: 60);
+        var suppB = InsertSupplement("Multivitamin", cost: 12.00m, servingsPerBottle: 60);
+        InsertNutrient(suppA, "Vitamin D", "200IU");
+        InsertNutrient(suppB, "Vitamin D", "20µg");
+        InsertDose(memberId, suppA, multiplier: 1);
+        InsertDose(memberId, suppB, multiplier: 1);
+        var data = await CreateService().GetNutrientReportDataAsync();
+
+        Assert.IsTrue(data.Units.TryGetValue("Vitamin D", out var unit));
+        Assert.AreEqual("IU, µg", unit);
     }
 }

@@ -21,7 +21,7 @@ public class ReportingService(
         var familyCache = new Dictionary<int, FamilyMember?>();
         var nutrientCache = new Dictionary<int, List<SupplementNutrient>>();
         var memberTotals = new Dictionary<int, Dictionary<string, decimal>>();
-        var grandTotals = new Dictionary<string, decimal>();
+        var nutrientUnits = new Dictionary<string, HashSet<string>>();
         var supplementMonthlyCosts = new Dictionary<int, decimal>();
         decimal totalCost = 0;
 
@@ -41,12 +41,22 @@ public class ReportingService(
 
             foreach (var n in nutrientCache[pd.SupplementId])
             {
+                var unit = DosageParser.ParseUnit(n.Dosage);
+                if (!string.IsNullOrEmpty(unit))
+                {
+                    if (!nutrientUnits.TryGetValue(n.GenericName, out var units))
+                    {
+                        units = [];
+                        nutrientUnits[n.GenericName] = units;
+                    }
+                    units.Add(unit);
+                }
+
                 var nutrientValue = DosageParser.ParseAmount(n.Dosage);
                 var dailyAmount = nutrientValue * dailyFrequency;
 
                 memberTotals[pd.FamilyMemberId][n.GenericName] =
                     memberTotals[pd.FamilyMemberId].GetValueOrDefault(n.GenericName) + dailyAmount;
-                grandTotals[n.GenericName] = grandTotals.GetValueOrDefault(n.GenericName) + dailyAmount;
             }
 
             var monthlyCost = GetMonthlyCost(supplement, dailyFrequency);
@@ -74,9 +84,11 @@ public class ReportingService(
                 supplements.Add(supp);
         }
 
+        var reportUnits = nutrientUnits.ToDictionary(k => k.Key, k => string.Join(", ", k.Value.OrderBy(u => u)));
+
         return new NutrientReportData(
             ReportDate: today,
-            GrandTotals: grandTotals,
+            Units: reportUnits,
             TotalCost: totalCost,
             MemberNames: memberNames,
             MemberData: memberData,

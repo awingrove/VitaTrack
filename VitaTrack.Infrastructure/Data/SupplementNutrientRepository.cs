@@ -54,6 +54,7 @@ public class SupplementNutrientRepository(IDbConnection db) : ISupplementNutrien
 
     public async Task<int> AddAsync(SupplementNutrient nutrient)
     {
+        nutrient.Dosage = DosageParser.NormalizeDosage(nutrient.Dosage);
         const string sql = @"
                 INSERT INTO SupplementNutrients (SupplementId, GenericName, SpecificForm, Dosage, ParentNutrientId)
                 VALUES (@SupplementId, @GenericName, @SpecificForm, @Dosage, @ParentNutrientId);
@@ -63,6 +64,7 @@ public class SupplementNutrientRepository(IDbConnection db) : ISupplementNutrien
 
     public async Task UpdateAsync(SupplementNutrient nutrient)
     {
+        nutrient.Dosage = DosageParser.NormalizeDosage(nutrient.Dosage);
         const string sql = @"
                 UPDATE SupplementNutrients
                 SET GenericName = @GenericName,

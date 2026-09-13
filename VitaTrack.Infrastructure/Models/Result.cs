@@ -11,7 +11,7 @@ public record MemberCostRow(string Name, decimal MonthlyCost);
 
 public record NutrientReportData(
     DateTime ReportDate,
-    IReadOnlyDictionary<string, decimal> GrandTotals,
+    IReadOnlyDictionary<string, string> Units,
     decimal TotalCost,
     IReadOnlyList<string> MemberNames,
     IReadOnlyList<Dictionary<string, string>> MemberData,

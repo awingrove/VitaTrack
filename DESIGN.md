@@ -180,6 +180,10 @@ Content sits in `main.container` beneath a fixed dark navbar (defined once in
 `_Layout.cshtml`). Pages compose vertically: title → toolbar → content.
 
 - Vertical rhythm between major blocks: `mb-3`/`mb-4` (`{spacing.xs}`–`{spacing.md}`).
+- **Page-bottom whitespace comes from the layout, not the page.** `main.container`
+  in `_Layout.cshtml` carries `pb-5`; views must never rely on the last block's
+  margin to keep content off the viewport edge (a trailing `mt-3` div provides
+  zero space below it).
 - **Form fields and action rows are wrapped in `<div class="mb-3">`.** The
   Bootstrap 4 `form-group` class has no effect in Bootstrap 5 — never use it;
   without `mb-3` blocks collapse together (e.g. buttons touching the last

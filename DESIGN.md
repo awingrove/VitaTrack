@@ -132,6 +132,10 @@ editing UI:
   attributes.
 - All interactivity follows the repo's CSP rules: no inline scripts, no inline
   event handlers; JS lives under `wwwroot/js`.
+- **This document is part of every UI change.** If a change introduces or alters
+  a pattern, interaction, or component that isn't covered here, the author must
+  raise it with the user and — on agreement — amend this document in the same
+  change. A shipped UI pattern that this document doesn't describe is a defect.
 
 ## Colors
 

@@ -21,6 +21,12 @@
     if (memberData != null)
         memberDataList = JsonSerializer.Deserialize<List<Dictionary<string, string>>>(memberData) ?? new List<Dictionary<string, string>>();
 
+    var memberContributions = ViewData["MemberContributions"] as string;
+    var memberContributionsList = new List<Dictionary<string, List<NutrientContributionRow>>>();
+    if (memberContributions != null)
+        memberContributionsList = JsonSerializer.Deserialize<List<Dictionary<string, List<NutrientContributionRow>>>>(memberContributions)
+            ?? new List<Dictionary<string, List<NutrientContributionRow>>>();
+
     var totalCost = ViewData["TotalCost"] as string;
     var reportDate = ViewData["ReportDate"] as string;
 }
@@ -61,6 +67,7 @@ else
                 </tr>
             </thead>
             <tbody>
+            @{ var nutrientRow = 0; }
             @foreach (var nutrient in allNutrients)
             {
                 var unitSuffix = unitsDict.TryGetValue(nutrient, out var nu) && !string.IsNullOrEmpty(nu)
@@ -68,11 +75,59 @@ else
                     : string.Empty;
                 <tr>
                     <td>@nutrient</td>
-                    @foreach (var md in memberDataList)
+                    @for (var m = 0; m < memberDataList.Count; m++)
                     {
-                        <td>@(md.TryGetValue(nutrient, out var val) ? val : "0.00")@unitSuffix</td>
+                        var total = memberDataList[m].TryGetValue(nutrient, out var val) ? val : "0.00";
+                        var contribs = m < memberContributionsList.Count
+                            && memberContributionsList[m].TryGetValue(nutrient, out var cell)
+                            ? cell
+                            : null;
+                        var expandable = decimal.TryParse(total, out var totalValue)
+                            && totalValue != 0m
+                            && contribs is { Count: > 0 };
+                        <td>
+                            @if (expandable)
+                            {
+                                <button type="button" class="btn btn-link p-0"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#bd-@(nutrientRow)-@(m)"
+                                        aria-expanded="false"
+                                        aria-controls="bd-@(nutrientRow)-@(m)">@total@unitSuffix</button>
+                            }
+                            else
+                            {
+                                @total@unitSuffix
+                            }
+                        </td>
                     }
                 </tr>
+                @for (var m = 0; m < memberDataList.Count; m++)
+                {
+                    var total = memberDataList[m].TryGetValue(nutrient, out var val) ? val : "0.00";
+                    var contribs = m < memberContributionsList.Count
+                        && memberContributionsList[m].TryGetValue(nutrient, out var cell)
+                        ? cell
+                        : null;
+                    if (decimal.TryParse(total, out var totalValue) && totalValue != 0m && contribs is { Count: > 0 })
+                    {
+                        <tr class="collapse" id="bd-@(nutrientRow)-@(m)">
+                            <td colspan="@(memberDataList.Count + 1)">
+                                @foreach (var row in contribs)
+                                {
+                                    <div>
+                                        <a asp-controller="Supplement" asp-action="Edit" asp-route-id="@row.SupplementId">@row.SupplementName (@row.Brand)</a>
+                                        <text> — @row.Amount.ToString("F2")@unitSuffix</text>
+                                        @if (row.Multiplier is > 1)
+                                        {
+                                            <text> (×@(row.Multiplier))</text>
+                                        }
+                                    </div>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                nutrientRow += 1;
             }
             </tbody>
         </table>

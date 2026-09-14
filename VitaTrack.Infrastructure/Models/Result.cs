@@ -6,8 +6,14 @@ public record ReplaceNutrientsResult(
     IReadOnlyList<SupplementNutrient> Saved,
     IReadOnlyList<NutrientFailure> Failures);
 
-public record SupplementCostRow(string Name, string Brand, decimal UnitCost, decimal MonthlyCost);
 public record MemberCostRow(string Name, decimal MonthlyCost);
+public record SupplementCostRow(string Name, string Brand, decimal UnitCost, decimal MonthlyCost);
+public record NutrientContributionRow(
+    int SupplementId,
+    string SupplementName,
+    string Brand,
+    decimal Amount,
+    decimal? Multiplier);
 
 public record NutrientReportData(
     DateTime ReportDate,
@@ -15,6 +21,7 @@ public record NutrientReportData(
     decimal TotalCost,
     IReadOnlyList<string> MemberNames,
     IReadOnlyList<Dictionary<string, string>> MemberData,
+    IReadOnlyList<Dictionary<string, List<NutrientContributionRow>>> MemberContributions,
     IReadOnlyList<Supplement> Supplements,
     IReadOnlyDictionary<int, decimal> SupplementMonthlyCosts);
 

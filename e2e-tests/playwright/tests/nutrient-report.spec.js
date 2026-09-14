@@ -63,4 +63,25 @@ test.describe('Nutrient Report', () => {
     await expect(page.locator('td:has-text("500.00 mg")').first()).toBeVisible();
     await screenshot(page, testInfo, 'nutrient-report-with-units');
   });
+
+  test('should expand a member total into contributing supplements and link to edit', async ({ page }, testInfo) => {
+    await page.goto('/Reporting/NutrientReport');
+    await expect(page.locator('h2')).toHaveText('Daily Nutrient Report');
+
+    // Seed: Alice's Vitamin C total (500.00 mg) comes from the "Vitamin C" supplement.
+    const vitCRow = page.locator('tbody tr').filter({
+      has: page.locator('td:text-is("Vitamin C")'),
+    }).first();
+    await vitCRow.getByRole('button', { name: '500.00 mg' }).click();
+
+    const detailRow = page.locator('tr.collapse.show').filter({ hasText: 'Vitamin C (NatureMade)' });
+    await expect(detailRow).toBeVisible();
+    await expect(detailRow).toContainText('500.00 mg');
+
+    // Supplement name jumps straight to the edit page.
+    await detailRow.locator('a').first().click();
+    await expect(page).toHaveURL(/\/Supplement\/Edit\/\d+/);
+    await expect(page.locator('h2')).toHaveText('Edit Supplement');
+    await screenshot(page, testInfo, 'nutrient-breakdown-edit-jump');
+  });
 });

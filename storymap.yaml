@@ -277,6 +277,7 @@ activities:
               - e2e: nutrient-report::should arrive via nav bar Report link
               - e2e: nutrient-report::should show supplements in report table
               - e2e: nutrient-report::should show units for per-family-member nutrient totals
+              - e2e: nutrient-report::should expand a member total into contributing supplements and link to edit
           - title: See monthly cost estimate from bottle price and servings
             status: done
             priority: medium

@@ -21,6 +21,7 @@ public class ReportingService(
         var familyCache = new Dictionary<int, FamilyMember?>();
         var nutrientCache = new Dictionary<int, List<SupplementNutrient>>();
         var memberTotals = new Dictionary<int, Dictionary<string, decimal>>();
+        var memberContributions = new Dictionary<int, Dictionary<string, Dictionary<int, (decimal Amount, decimal? Multiplier)>>>();
         var nutrientUnits = new Dictionary<string, HashSet<string>>();
         var supplementMonthlyCosts = new Dictionary<int, decimal>();
         decimal totalCost = 0;
@@ -57,6 +58,31 @@ public class ReportingService(
 
                 memberTotals[pd.FamilyMemberId][n.GenericName] =
                     memberTotals[pd.FamilyMemberId].GetValueOrDefault(n.GenericName) + dailyAmount;
+
+                if (dailyAmount != 0m)
+                {
+                    if (!memberContributions.TryGetValue(pd.FamilyMemberId, out var byNutrient))
+                    {
+                        byNutrient = [];
+                        memberContributions[pd.FamilyMemberId] = byNutrient;
+                    }
+
+                    if (!byNutrient.TryGetValue(n.GenericName, out var bySupplement))
+                    {
+                        bySupplement = [];
+                        byNutrient[n.GenericName] = bySupplement;
+                    }
+
+                    if (bySupplement.TryGetValue(pd.SupplementId, out var bucket))
+                    {
+                        bySupplement[pd.SupplementId] = (bucket.Amount + dailyAmount,
+                            bucket.Multiplier == dailyFrequency ? dailyFrequency : null);
+                    }
+                    else
+                    {
+                        bySupplement[pd.SupplementId] = (dailyAmount, dailyFrequency);
+                    }
+                }
             }
 
             var monthlyCost = GetMonthlyCost(supplement, dailyFrequency);
@@ -70,11 +96,32 @@ public class ReportingService(
 
         var memberNames = new List<string>();
         var memberData = new List<Dictionary<string, string>>();
+        var memberContributionRows = new List<Dictionary<string, List<NutrientContributionRow>>>();
         foreach (var kvp in memberTotals)
         {
             var member = await GetCachedAsync(familyCache, kvp.Key, _familyRepo.GetByIdAsync);
             memberNames.Add(member?.DisplayName ?? $"Member #{kvp.Key}");
             memberData.Add(kvp.Value.ToDictionary(n => n.Key, n => n.Value.ToString("F2")));
+
+            var rows = new Dictionary<string, List<NutrientContributionRow>>();
+            if (memberContributions.TryGetValue(kvp.Key, out var byNutrient))
+            {
+                foreach (var (nutrient, bySupplement) in byNutrient)
+                {
+                    rows[nutrient] = bySupplement
+                        .Select(b =>
+                        {
+                            // Contributions are only recorded after the null-supplement guard,
+                            // so the cache entry exists and is non-null here.
+                            var supp = supplementCache[b.Key]!;
+                            return new NutrientContributionRow(
+                                b.Key, supp.Name, supp.Brand, b.Value.Amount, b.Value.Multiplier);
+                        })
+                        .OrderBy(r => r.SupplementName, StringComparer.Ordinal)
+                        .ToList();
+                }
+            }
+            memberContributionRows.Add(rows);
         }
 
         var supplements = new List<Supplement>();
@@ -92,6 +139,7 @@ public class ReportingService(
             TotalCost: totalCost,
             MemberNames: memberNames,
             MemberData: memberData,
+            MemberContributions: memberContributionRows,
             Supplements: supplements,
             SupplementMonthlyCosts: supplementMonthlyCosts);
     }

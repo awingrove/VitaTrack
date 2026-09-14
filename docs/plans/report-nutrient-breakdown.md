@@ -80,20 +80,20 @@ today (`table-sort.js` untouched).
 
 ## Tasks
 
-- [ ] **Service:** track contributions per (member, nutrient) during the dose
+- [x] **Service:** track contributions per (member, nutrient) during the dose
       loop; aggregate per supplementId; drop zero-amount entries; emit in
       `NutrientReportData`.
-- [ ] **Model + controller:** `ContributionRow`-shaped data on
+- [x] **Model + controller:** `ContributionRow`-shaped data on
       `NutrientReportData`; serialize as `ViewData["MemberContributions"]`.
-- [ ] **View:** clickable totals (`btn btn-link p-0` + collapse attributes)
+- [x] **View:** clickable totals (`btn btn-link p-0` + collapse attributes)
       for non-zero cells; hidden detail `<tr>` per nutrient row; supplement
       anchors to Edit.
-- [ ] **Unit tests:** contributions sum to the displayed total; multiplier
+- [x] **Unit tests:** contributions sum to the displayed total; multiplier
       applied and surfaced; same-supplement doses aggregate; expired doses
       excluded from contributions.
-- [ ] **E2E:** click a total → detail row appears listing supplement line;
+- [x] **E2E:** click a total → detail row appears listing supplement line;
       click supplement name → lands on Edit page for that supplement (arrive
       by click, resolve ids via DOM — no hardcoded ids).
-- [ ] **Storymap:** add story under RP-1 referencing the new e2e test.
-- [ ] **Verify:** `dotnet build`, full `dotnet test`, `format-check.sh`,
+- [x] **Storymap:** add story under RP-1 referencing the new e2e test.
+- [x] **Verify:** `dotnet build`, full `dotnet test`, `format-check.sh`,
       browser smoke of expand/collapse and the Edit jump.

@@ -10,7 +10,7 @@
 meta:
   project: VitaTrack
   description: Vitamin and Supplement Tracking Application
-  last_updated: 2026-08-23
+  last_updated: 2026-09-14
 
 activities:
   - name: Manage Family Members
@@ -277,6 +277,11 @@ activities:
               - e2e: nutrient-report::should arrive via nav bar Report link
               - e2e: nutrient-report::should show supplements in report table
               - e2e: nutrient-report::should show units for per-family-member nutrient totals
+              - e2e: nutrient-report::should expand a member total into contributing supplements and link to edit
+          - title: Trace a member total back to the supplement and review its nutrients
+            status: done
+            priority: medium
+            tests:
               - e2e: nutrient-report::should expand a member total into contributing supplements and link to edit
           - title: See monthly cost estimate from bottle price and servings
             status: done

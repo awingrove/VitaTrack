@@ -82,6 +82,11 @@ test.describe('Nutrient Report', () => {
     await detailRow.locator('a').first().click();
     await expect(page).toHaveURL(/\/Supplement\/Edit\/\d+/);
     await expect(page.locator('h2')).toHaveText('Edit Supplement');
-    await screenshot(page, testInfo, 'nutrient-breakdown-edit-jump');
+
+    // Review step: nutrient amounts live one hop further on the nutrient editor.
+    await page.click('text=Edit Nutrient Breakdown');
+    await expect(page).toHaveTitle(/Edit Nutrients/);
+    await expect(page.locator('input[name*=".Dosage"][value="500mg"]')).toBeVisible();
+    await screenshot(page, testInfo, 'nutrient-breakdown-review-dosage');
   });
 });

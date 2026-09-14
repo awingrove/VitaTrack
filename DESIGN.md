@@ -229,6 +229,14 @@ select (`select-all` + `row-checkbox` wired to a shared delete form), sortable
 headers via `data-sort-key`, actions column last. Row checkboxes belong to the
 bulk-delete form via the `form` attribute.
 
+Expandable detail rows use Bootstrap collapse on `<tr>` targets: a
+`btn btn-link p-0` trigger with `data-bs-toggle="collapse"` /
+`data-bs-target="#row-id"`, and the hidden row marked
+`<tr class="collapse" id="row-id">` with a full-width `colspan` cell
+(reference: `Views/Reporting/NutrientReport.cshtml`). `.collapse:not(.show)`
+hides via `display: none`, so the `<tr>` reverts to its natural `table-row`
+display when shown — never JS show/hide.
+
 ### Forms
 
 - Inputs: `form-control` / `form-select`, validation feedback via

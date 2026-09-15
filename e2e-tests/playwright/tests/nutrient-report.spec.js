@@ -34,15 +34,15 @@ test.describe('Nutrient Report', () => {
     await page.goto('/Reporting/NutrientReport');
     await expect(page.locator('h2')).toHaveText('Daily Nutrient Report');
 
-    // Either shows "No active prescribed doses" empty state or nutrient tables
+    // Either shows "No active prescribed doses" empty state or the per-member breakdown
     const noDosesAlert = page.locator('p.text-muted');
-    const grandTotalH3 = page.locator('h3:has-text("Grand Total")');
+    const perMemberH3 = page.locator('h3:has-text("Per Family Member")');
 
     const hasAlert = await noDosesAlert.count();
-    const hasGrandTotal = await grandTotalH3.count();
+    const hasPerMember = await perMemberH3.count();
 
     // One of these should be visible
-    expect(hasAlert + hasGrandTotal).toBeGreaterThan(0);
+    expect(hasAlert + hasPerMember).toBeGreaterThan(0);
     await screenshot(page, testInfo, 'nutrient-report-data-or-empty');
   });
 
@@ -54,5 +54,39 @@ test.describe('Nutrient Report', () => {
     await page.click('text=Manage Prescribed Doses');
     await expect(page.locator('h2')).toHaveText('Prescribed Doses');
     await screenshot(page, testInfo, 'navigated-to-doses');
+  });
+  test('should show units for per-family-member nutrient totals', async ({ page }, testInfo) => {
+    await page.goto('/Reporting/NutrientReport');
+    await expect(page.locator('h2')).toHaveText('Daily Nutrient Report');
+
+    // Seed data: Alice takes Vitamin C dosed at 500mg; unit must travel with the number.
+    await expect(page.locator('td:has-text("500.00 mg")').first()).toBeVisible();
+    await screenshot(page, testInfo, 'nutrient-report-with-units');
+  });
+
+  test('should expand a member total into contributing supplements and link to edit', async ({ page }, testInfo) => {
+    await page.goto('/Reporting/NutrientReport');
+    await expect(page.locator('h2')).toHaveText('Daily Nutrient Report');
+
+    // Seed: Alice's Vitamin C total (500.00 mg) comes from the "Vitamin C" supplement.
+    const vitCRow = page.locator('tbody tr').filter({
+      has: page.locator('td:text-is("Vitamin C")'),
+    }).first();
+    await vitCRow.getByRole('button', { name: '500.00 mg' }).click();
+
+    const detailRow = page.locator('tr.collapse.show').filter({ hasText: 'Vitamin C (NatureMade)' });
+    await expect(detailRow).toBeVisible();
+    await expect(detailRow).toContainText('500.00 mg');
+
+    // Supplement name jumps straight to the edit page.
+    await detailRow.locator('a').first().click();
+    await expect(page).toHaveURL(/\/Supplement\/Edit\/\d+/);
+    await expect(page.locator('h2')).toHaveText('Edit Supplement');
+
+    // Review step: nutrient amounts live one hop further on the nutrient editor.
+    await page.click('text=Edit Nutrient Breakdown');
+    await expect(page).toHaveTitle(/Edit Nutrients/);
+    await expect(page.locator('input[name*=".Dosage"][value="500mg"]')).toBeVisible();
+    await screenshot(page, testInfo, 'nutrient-breakdown-review-dosage');
   });
 });

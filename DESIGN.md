@@ -132,6 +132,10 @@ editing UI:
   attributes.
 - All interactivity follows the repo's CSP rules: no inline scripts, no inline
   event handlers; JS lives under `wwwroot/js`.
+- **This document is part of every UI change.** If a change introduces or alters
+  a pattern, interaction, or component that isn't covered here, the author must
+  raise it with the user and — on agreement — amend this document in the same
+  change. A shipped UI pattern that this document doesn't describe is a defect.
 
 ## Colors
 
@@ -180,6 +184,10 @@ Content sits in `main.container` beneath a fixed dark navbar (defined once in
 `_Layout.cshtml`). Pages compose vertically: title → toolbar → content.
 
 - Vertical rhythm between major blocks: `mb-3`/`mb-4` (`{spacing.xs}`–`{spacing.md}`).
+- **Page-bottom whitespace comes from the layout, not the page.** `main.container`
+  in `_Layout.cshtml` carries `pb-5`; views must never rely on the last block's
+  margin to keep content off the viewport edge (a trailing `mt-3` div provides
+  zero space below it).
 - **Form fields and action rows are wrapped in `<div class="mb-3">`.** The
   Bootstrap 4 `form-group` class has no effect in Bootstrap 5 — never use it;
   without `mb-3` blocks collapse together (e.g. buttons touching the last
@@ -224,6 +232,14 @@ Standard pattern per `Views/Supplement/Index.cshtml`: checkbox column for bulk
 select (`select-all` + `row-checkbox` wired to a shared delete form), sortable
 headers via `data-sort-key`, actions column last. Row checkboxes belong to the
 bulk-delete form via the `form` attribute.
+
+Expandable detail rows use Bootstrap collapse on `<tr>` targets: a
+`btn btn-link p-0` trigger with `data-bs-toggle="collapse"` /
+`data-bs-target="#row-id"`, and the hidden row marked
+`<tr class="collapse" id="row-id">` with a full-width `colspan` cell
+(reference: `Views/Reporting/NutrientReport.cshtml`). `.collapse:not(.show)`
+hides via `display: none`, so the `<tr>` reverts to its natural `table-row`
+display when shown — never JS show/hide.
 
 ### Forms
 

@@ -83,6 +83,26 @@ public class DbInitTests
     }
 
     [TestMethod]
+    public void EnsureCreated_NormalizesLegacyDosageUnits()
+    {
+        using var conn = OpenConnection();
+        DbInit.EnsureCreated(conn, seedData: false);
+        conn.Execute(@"
+            INSERT INTO Supplements (Name, Brand, DailyDose) VALUES ('S', 'B', '1 tablet');
+            INSERT INTO SupplementNutrients (SupplementId, GenericName, SpecificForm, Dosage) VALUES
+                (1, 'Vitamin A', 'Form', '900mcg'),
+                (1, 'Vitamin D', 'Form', '5 ug'),
+                (1, 'Vitamin E', 'Form', '100iu'),
+                (1, 'Vitamin C', 'Form', '500mg'),
+                (1, 'Blend', 'Blend', '200μg');");
+
+        DbInit.EnsureCreated(conn);
+
+        var dosages = conn.Query<string>("SELECT Dosage FROM SupplementNutrients ORDER BY Id;").ToList();
+        CollectionAssert.AreEqual(new[] { "900µg", "5 µg", "100IU", "500mg", "200µg" }, dosages);
+    }
+
+    [TestMethod]
     public void EnsureCreated_MigratesLegacyPrescribedDoses()
     {
         using var conn = OpenConnection();

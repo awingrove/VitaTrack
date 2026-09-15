@@ -104,7 +104,7 @@ test.describe('Supplement Nutrients', () => {
     // Check the new row
     const newRow = page.locator(`table tbody tr:has-text("${nutrientName}")`);
     await expect(newRow).toBeVisible();
-    await expect(newRow).toContainText('55mcg');
+    await expect(newRow).toContainText('55µg');
     await screenshot(page, testInfo, 'nutrients-after-add');
 
     // Clean up: delete the nutrient we just created

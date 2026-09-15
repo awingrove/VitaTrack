@@ -94,6 +94,18 @@ public static class DbInit
             db.Execute("ALTER TABLE Supplements ADD COLUMN ServingsPerBottle REAL NULL;");
         }
 
+        // Normalize legacy dosage units (mcg/ug/μg -> µg, iu -> IU) so every unit of
+        // measure has one designation in the database. Idempotent; runs each startup.
+        foreach (var row in db.Query("SELECT Id, Dosage FROM SupplementNutrients WHERE Dosage IS NOT NULL AND Dosage <> '';"))
+        {
+            var normalized = DosageParser.NormalizeDosage((string)row.Dosage);
+            if (normalized != (string)row.Dosage)
+            {
+                db.Execute("UPDATE SupplementNutrients SET Dosage = @Dosage WHERE Id = @Id;",
+                    new { Id = (long)row.Id, Dosage = normalized });
+            }
+        }
+
         // Insert sample data only if ALL tables are empty (fresh database)
         if (seedData)
         {
@@ -129,9 +141,9 @@ public static class DbInit
                         (1, 'Iron', 'Ferrous Sulfate', '0mg'),
                         (2, 'Omega-3', 'Fish Oil', '1000mg'),
                         (2, 'Vitamin D', 'Cholecalciferol', '200IU'),
-                        (3, 'Vitamin A', 'Retinyl Acetate', '900mcg'),
+                        (3, 'Vitamin A', 'Retinyl Acetate', '900µg'),
                         (3, 'Vitamin C', 'Ascorbic Acid', '90mg'),
-                        (3, 'Vitamin D', 'Cholecalciferol', '20mcg'),
+                        (3, 'Vitamin D', 'Cholecalciferol', '20µg'),
                         (3, 'Iron', 'Ferrous Fumarate', '18mg'),
                         (3, 'Calcium', 'Calcium Carbonate', '200mg')
                     ");

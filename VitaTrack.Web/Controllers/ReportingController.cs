@@ -12,7 +12,8 @@ public class ReportingController(IReportingService reportingService) : Controlle
     {
         var data = await _reportingService.GetNutrientReportDataAsync();
 
-        ViewData["GrandTotals"] = JsonSerializer.Serialize(data.GrandTotals);
+        ViewData["Units"] = JsonSerializer.Serialize(data.Units);
+        ViewData["MemberContributions"] = JsonSerializer.Serialize(data.MemberContributions);
         ViewData["TotalCost"] = data.TotalCost.ToString("F2");
         ViewData["ReportDate"] = data.ReportDate.ToString("yyyy-MM-dd");
         ViewData["MemberNames"] = JsonSerializer.Serialize(data.MemberNames);

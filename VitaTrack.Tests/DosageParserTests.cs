@@ -42,4 +42,42 @@ public class DosageParserTests
     {
         Assert.AreEqual(0m, DosageParser.ParseAmount("one tablet"));
     }
+
+    [TestMethod]
+    public void NormalizeDosage_MicrogramAliases_AllBecomeMicroSign()
+    {
+        Assert.AreEqual("500µg", DosageParser.NormalizeDosage("500mcg"));
+        Assert.AreEqual("1.5 µg", DosageParser.NormalizeDosage("1.5 ug"));
+        Assert.AreEqual("900µg", DosageParser.NormalizeDosage("900μg"));
+        Assert.AreEqual("20µg", DosageParser.NormalizeDosage("20µg"));
+    }
+
+    [TestMethod]
+    public void NormalizeDosage_CaseInsensitive()
+    {
+        Assert.AreEqual("200IU", DosageParser.NormalizeDosage("200iu"));
+        Assert.AreEqual("500mg", DosageParser.NormalizeDosage("500MG"));
+    }
+
+    [TestMethod]
+    public void NormalizeDosage_PreservesSpacingStyle()
+    {
+        Assert.AreEqual("500µg", DosageParser.NormalizeDosage("500mcg"));
+        Assert.AreEqual("1.5 µg", DosageParser.NormalizeDosage("1.5 ug"));
+    }
+
+    [TestMethod]
+    public void NormalizeDosage_UnknownOrFreeText_LeftUnchanged()
+    {
+        Assert.AreEqual("one tablet", DosageParser.NormalizeDosage("one tablet"));
+        Assert.AreEqual("500 mg with food", DosageParser.NormalizeDosage("500 mg with food"));
+        Assert.AreEqual("3 tablets", DosageParser.NormalizeDosage("3 tablets"));
+    }
+
+    [TestMethod]
+    public void NormalizeDosage_Blank_ReturnsEmpty()
+    {
+        Assert.AreEqual(string.Empty, DosageParser.NormalizeDosage(""));
+        Assert.AreEqual(string.Empty, DosageParser.NormalizeDosage(null));
+    }
 }

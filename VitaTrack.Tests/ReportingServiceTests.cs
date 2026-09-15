@@ -98,7 +98,7 @@ public class ReportingServiceTests : SqliteTestBase
 
         var data = await CreateService().GetNutrientReportDataAsync();
 
-        Assert.AreEqual(500m, data.GrandTotals["Vitamin C"]);
+        Assert.AreEqual("500.00", data.MemberData.Single()["Vitamin C"]);
     }
 
     [TestMethod]
@@ -115,6 +115,124 @@ public class ReportingServiceTests : SqliteTestBase
         var nutrientData = await service.GetNutrientReportDataAsync();
 
         Assert.AreEqual(0m, costData.GrandTotal);
-        Assert.AreEqual(0, nutrientData.GrandTotals.Count);
+        Assert.AreEqual(0, nutrientData.MemberData.Count);
+    }
+
+    [TestMethod]
+    public async Task NutrientReport_Units_AreExtractedPerNutrient()
+    {
+        var memberId = InsertMember("Alice");
+        var supplementId = InsertSupplement("Vitamin C", cost: 12.00m, servingsPerBottle: 60);
+        InsertNutrient(supplementId, "Vitamin C", "500mg");
+        InsertDose(memberId, supplementId, multiplier: 1);
+
+        var data = await CreateService().GetNutrientReportDataAsync();
+
+        Assert.IsTrue(data.Units.TryGetValue("Vitamin C", out var unit));
+        Assert.AreEqual("mg", unit);
+    }
+
+    [TestMethod]
+    public async Task NutrientReport_Units_MergeConflictingUnitsAcrossSupplements()
+    {
+        var memberId = InsertMember("Alice");
+        var suppA = InsertSupplement("Fish Oil", cost: 12.00m, servingsPerBottle: 60);
+        var suppB = InsertSupplement("Multivitamin", cost: 12.00m, servingsPerBottle: 60);
+        InsertNutrient(suppA, "Vitamin D", "200IU");
+        InsertNutrient(suppB, "Vitamin D", "20µg");
+        InsertDose(memberId, suppA, multiplier: 1);
+        InsertDose(memberId, suppB, multiplier: 1);
+        var data = await CreateService().GetNutrientReportDataAsync();
+
+        Assert.IsTrue(data.Units.TryGetValue("Vitamin D", out var unit));
+        Assert.AreEqual("IU, µg", unit);
+    }
+
+    [TestMethod]
+    public async Task NutrientReport_Contributions_ListSupplementsBehindMemberTotals()
+    {
+        var memberId = InsertMember("Alice");
+        var alpha = InsertSupplement("Alpha Vit", cost: 12.00m, servingsPerBottle: 60);
+        var beta = InsertSupplement("Beta Vit", cost: 12.00m, servingsPerBottle: 60);
+        InsertNutrient(alpha, "Vitamin C", "500mg");
+        InsertNutrient(beta, "Vitamin C", "90mg");
+        InsertDose(memberId, alpha, multiplier: 1);
+        InsertDose(memberId, beta, multiplier: 1);
+
+        var data = await CreateService().GetNutrientReportDataAsync();
+
+        var contribs = data.MemberContributions.Single()["Vitamin C"];
+        Assert.AreEqual(2, contribs.Count);
+        Assert.AreEqual("Alpha Vit", contribs[0].SupplementName);
+        Assert.AreEqual(500m, contribs[0].Amount);
+        Assert.AreEqual(90m, contribs[1].Amount);
+        Assert.AreEqual(590m, contribs.Sum(c => c.Amount),
+            "Contributions must sum to the displayed member total");
+    }
+
+    [TestMethod]
+    public async Task NutrientReport_Contributions_ApplyMultiplierPerDose()
+    {
+        var memberId = InsertMember("Alice");
+        var suppId = InsertSupplement("Solo Vit", cost: 12.00m, servingsPerBottle: 60);
+        InsertNutrient(suppId, "Vitamin D", "500IU");
+        InsertDose(memberId, suppId, multiplier: 2);
+
+        var data = await CreateService().GetNutrientReportDataAsync();
+
+        var contribs = data.MemberContributions.Single()["Vitamin D"];
+        Assert.AreEqual(1, contribs.Count);
+        Assert.AreEqual(1000m, contribs[0].Amount);
+        Assert.AreEqual(2m, contribs[0].Multiplier);
+    }
+
+    [TestMethod]
+    public async Task NutrientReport_Contributions_AggregateSameSupplementDoses()
+    {
+        var memberId = InsertMember("Alice");
+        var suppId = InsertSupplement("Solo Vit", cost: 12.00m, servingsPerBottle: 60);
+        InsertNutrient(suppId, "Vitamin D", "500IU");
+        InsertDose(memberId, suppId, multiplier: 2);
+        InsertDose(memberId, suppId, multiplier: 2);
+
+        var data = await CreateService().GetNutrientReportDataAsync();
+
+        var contribs = data.MemberContributions.Single()["Vitamin D"];
+        Assert.AreEqual(1, contribs.Count);
+        Assert.AreEqual(2000m, contribs[0].Amount);
+        Assert.AreEqual(2m, contribs[0].Multiplier);
+    }
+
+    [TestMethod]
+    public async Task NutrientReport_Contributions_HideMultiplierWhenDosesDisagree()
+    {
+        var memberId = InsertMember("Alice");
+        var suppId = InsertSupplement("Solo Vit", cost: 12.00m, servingsPerBottle: 60);
+        InsertNutrient(suppId, "Vitamin D", "500IU");
+        InsertDose(memberId, suppId, multiplier: 2);
+        InsertDose(memberId, suppId, multiplier: 3);
+
+        var data = await CreateService().GetNutrientReportDataAsync();
+
+        var contribs = data.MemberContributions.Single()["Vitamin D"];
+        Assert.AreEqual(1, contribs.Count);
+        Assert.AreEqual(2500m, contribs[0].Amount);
+        Assert.IsNull(contribs[0].Multiplier);
+    }
+
+    [TestMethod]
+    public async Task NutrientReport_Contributions_SkipZeroDosageNutrients()
+    {
+        var memberId = InsertMember("Alice");
+        var suppId = InsertSupplement("Blend Supp", cost: 12.00m, servingsPerBottle: 60);
+        InsertNutrient(suppId, "Vitamin C", "500mg");
+        InsertNutrient(suppId, "Blend Child", "");
+        InsertDose(memberId, suppId, multiplier: 1);
+
+        var data = await CreateService().GetNutrientReportDataAsync();
+
+        var memberRows = data.MemberContributions.Single();
+        Assert.IsTrue(memberRows.ContainsKey("Vitamin C"));
+        Assert.IsFalse(memberRows.ContainsKey("Blend Child"));
     }
 }

@@ -14,23 +14,39 @@ public class PrescribedDoseRepository(IDbConnection db) : IPrescribedDoseReposit
     public async Task<IReadOnlyList<PrescribedDose>> GetAllAsync()
     {
         const string sql = @"
-                SELECT pd.Id, pd.FamilyMemberId, pd.SupplementId, pd.StartDate, pd.EndDate, 
+                SELECT pd.Id, pd.FamilyMemberId, pd.SupplementId, pd.StartDate, pd.EndDate,
                        pd.Multiplier, pd.Instructions,
                        fm.DisplayName as FamilyMemberName,
-                       s.Name as SupplementName
+                       s.Name as SupplementName,
+                       s.Brand as SupplementBrand
                 FROM PrescribedDoses pd
                 LEFT JOIN FamilyMembers fm ON pd.FamilyMemberId = fm.Id
                 LEFT JOIN Supplements s ON pd.SupplementId = s.Id";
         return (await _db.QueryAsync<PrescribedDose>(sql)).ToList();
     }
 
+    public async Task<IReadOnlyList<PrescribedDose>> GetByFamilyMemberIdAsync(int familyMemberId)
+    {
+        const string sql = @"
+                SELECT pd.Id, pd.FamilyMemberId, pd.SupplementId, pd.StartDate, pd.EndDate,
+                       pd.Multiplier, pd.Instructions,
+                       fm.DisplayName as FamilyMemberName,
+                       s.Name as SupplementName,
+                       s.Brand as SupplementBrand
+                FROM PrescribedDoses pd
+                LEFT JOIN FamilyMembers fm ON pd.FamilyMemberId = fm.Id
+                LEFT JOIN Supplements s ON pd.SupplementId = s.Id
+                WHERE pd.FamilyMemberId = @FamilyMemberId";
+        return (await _db.QueryAsync<PrescribedDose>(sql, new { FamilyMemberId = familyMemberId })).ToList();
+    }
     public async Task<PrescribedDose?> GetByIdAsync(int id)
     {
         const string sql = @"
-                SELECT pd.Id, pd.FamilyMemberId, pd.SupplementId, pd.StartDate, pd.EndDate, 
+                SELECT pd.Id, pd.FamilyMemberId, pd.SupplementId, pd.StartDate, pd.EndDate,
                        pd.Multiplier, pd.Instructions,
                        fm.DisplayName as FamilyMemberName,
-                       s.Name as SupplementName
+                       s.Name as SupplementName,
+                       s.Brand as SupplementBrand
                 FROM PrescribedDoses pd
                 LEFT JOIN FamilyMembers fm ON pd.FamilyMemberId = fm.Id
                 LEFT JOIN Supplements s ON pd.SupplementId = s.Id

@@ -7,13 +7,47 @@
 
 <h2>@ViewData["Title"]</h2>
 
-<p><a class="btn btn-success" asp-action="Create">Add New Prescribed Dose</a></p>
+<div class="row mb-3">
+    <div class="col-md-6">
+        <form method="get" asp-action="Index" class="d-flex gap-2 align-items-end">
+            <div>
+                <label class="control-label" for="familyMemberFilter">Family member</label>
+                <select id="familyMemberFilter" name="familyMemberId" class="form-select">
+                    <option value="">All members</option>
+                    @foreach (var member in (IEnumerable<FamilyMember>)ViewData["FamilyMembers"]!)
+                    {
+                        @if (ViewData["SelectedFamilyMemberId"] is int selected && selected == member.Id)
+                        {
+                            <option value="@member.Id" selected>@member.DisplayName</option>
+                        }
+                        else
+                        {
+                            <option value="@member.Id">@member.DisplayName</option>
+                        }
+                    }
+                </select>
+            </div>
+            <button type="submit" class="btn btn-outline-secondary">Apply</button>
+        </form>
+    </div>
+    <div class="col-md-6 text-end">
+        @if (ViewData["SelectedFamilyMemberId"] is int createMemberId)
+        {
+            <a class="btn btn-success" asp-action="Create" asp-route-familyMemberId="@createMemberId">Add New Prescribed Dose</a>
+        }
+        else
+        {
+            <a class="btn btn-success" asp-action="Create">Add New Prescribed Dose</a>
+        }
+    </div>
+</div>
 
 <table class="table">
     <thead>
         <tr>
             <th>Family Member</th>
             <th>Supplement</th>
+            <th>Manufacturer</th>
             <th>Start Date</th>
             <th>End Date</th>
             <th>Multiplier</th>
@@ -27,6 +61,7 @@
         <tr>
             <td>@(pd.FamilyMemberName ?? pd.FamilyMemberId.ToString())</td>
             <td>@(pd.SupplementName ?? pd.SupplementId.ToString())</td>
+            <td>@pd.SupplementBrand</td>
             <td>@(pd.StartDate?.ToShortDateString() ?? "—")</td>
             <td>@(pd.EndDate?.ToShortDateString() ?? "Ongoing")</td>
             <td>@($"{pd.Multiplier} ×")</td>

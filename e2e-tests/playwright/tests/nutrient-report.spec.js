@@ -60,7 +60,9 @@ test.describe('Nutrient Report', () => {
     await expect(page.locator('h2')).toHaveText('Daily Nutrient Report');
 
     // Seed data: Alice takes Vitamin C dosed at 500mg; unit must travel with the number.
-    await expect(page.locator('td:has-text("500.00 mg")').first()).toBeVisible();
+    // Whole totals render without trailing decimals ("500 mg", not "500.00 mg").
+    await expect(page.locator('td:has-text("500 mg")').first()).toBeVisible();
+    await expect(page.locator('td:has-text("500.00")')).toHaveCount(0);
     await screenshot(page, testInfo, 'nutrient-report-with-units');
   });
 
@@ -68,15 +70,19 @@ test.describe('Nutrient Report', () => {
     await page.goto('/Reporting/NutrientReport');
     await expect(page.locator('h2')).toHaveText('Daily Nutrient Report');
 
-    // Seed: Alice's Vitamin C total (500.00 mg) comes from the "Vitamin C" supplement.
+    // Seed: Alice's Vitamin C total (500 mg) comes from the "Vitamin C" supplement.
     const vitCRow = page.locator('tbody tr').filter({
       has: page.locator('td:text-is("Vitamin C")'),
     }).first();
-    await vitCRow.getByRole('button', { name: '500.00 mg' }).click();
+    await vitCRow.getByRole('button', { name: '500 mg' }).click();
+
+    // Supplement-count pill sits next to the amount.
+    await expect(vitCRow.locator('span.badge.rounded-pill').first()).toBeVisible();
+    await expect(vitCRow.locator('span.badge.rounded-pill').first()).toHaveText(/^\d+$/);
 
     const detailRow = page.locator('tr.collapse.show').filter({ hasText: 'Vitamin C (NatureMade)' });
     await expect(detailRow).toBeVisible();
-    await expect(detailRow).toContainText('500.00 mg');
+    await expect(detailRow).toContainText('500 mg');
 
     // Supplement name jumps straight to the edit page.
     await detailRow.locator('a').first().click();

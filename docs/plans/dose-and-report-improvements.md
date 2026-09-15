@@ -47,14 +47,8 @@ Three surfaces: `PrescribedDose` Index/Create, `NutrientReport`.
 
 ## 8. Bookkeeping (same change)
 
-- storymap.yaml: add new e2e refs / update existing.
-- Views unchanged reachability (filter form is additive; no new GET pages).
-- `dotnet format`, `dotnet test`, `./test-e2e.sh` before push.
-
-## Test checklist
-
-- [ ] Unit: ReportingService formatting (`"0.##"` totals, integer → no decimals)
-- [ ] Unit: PrescribedDoseRepository GetByFamilyMemberIdAsync + SupplementBrand join (SqliteTestBase)
-- [ ] E2E: dose index filter narrows rows; create link preselects member
-- [ ] E2E: create page brand in dropdown; multiplier default 1, ± buttons step 0.25; free entry 1.3 accepted
-- [ ] E2E: report pill count + trimmed decimals
+- [x] Unit: ReportingService totals format (`"0.##"` totals, integer → no decimals)
+- [x] Unit: PrescribedDoseRepository GetByFamilyMemberIdAsync + SupplementBrand join (SqliteTestBase)
+- [x] E2E: dose index filter narrows rows; create link preselects member
+- [x] E2E: create page brand in dropdown; multiplier default 1, ± buttons step 0.25; free entry 1.3 accepted
+- [x] E2E: report pill count + trimmed decimals

@@ -33,8 +33,8 @@ test.describe('Prescribed Doses', () => {
     // Select first supplement
     await page.selectOption('select#SupplementId', { index: 1 });
 
-    // Serving size for the selected supplement is shown (Fish Oil -> 1 softgel)
-    await expect(page.locator('input#ServingSize')).toHaveValue('1 softgel');
+    // Serving size for the selected supplement is shown read-only (Fish Oil -> 1 softgel)
+    await expect(page.locator('p#ServingSize')).toHaveText('1 softgel');
 
     // Fill in multiplier (servings per day)
     await page.fill('input#Multiplier', '1.5');
@@ -92,6 +92,9 @@ test.describe('Prescribed Doses', () => {
 
     // Should be on the edit page
     await expect(page.locator('h2')).toHaveText('Edit');
+
+    // Stepper buttons are present on Edit too
+    await expect(page.locator('.multiplier-stepper [data-stepper="increment"]')).toBeVisible();
     await screenshot(page, testInfo, 'dose-edit-form');
 
     // Modify the multiplier
@@ -129,5 +132,85 @@ test.describe('Prescribed Doses', () => {
     await expect(page.locator('h2')).toHaveText('Prescribed Doses');
     await expect(page.locator(`table tbody tr:has-text("DelInstr${unique}")`)).toHaveCount(0);
     await screenshot(page, testInfo, 'doses-after-delete');
+  });
+
+
+  test('should filter doses by family member', async ({ page }, testInfo) => {
+    const unique = Date.now();
+    const memberCell = 'table tbody tr:has-text("FilterInstr") td:first-child';
+
+    // Create a dose for the first member so we know the member name
+    await page.goto('/PrescribedDose/Create');
+    await page.selectOption('select#FamilyMemberId', { index: 1 });
+    const memberName = await page.locator('select#FamilyMemberId option:checked').textContent();
+    await page.selectOption('select#SupplementId', { index: 1 });
+    await page.fill('input#Multiplier', '1');
+    await page.fill('input#Instructions', `FilterInstr${unique}`);
+    await page.click('input[type="submit"][value="Create"]');
+    await expect(page.locator('h2')).toHaveText('Prescribed Doses');
+    const memberCellText = (await page.locator(memberCell).first().textContent()).trim();
+
+    // Apply the filter for that member
+    await page.selectOption('select#familyMemberFilter', { label: memberName.trim() });
+    await page.click('button:has-text("Apply")');
+    await expect(page.locator('h2')).toHaveText('Prescribed Doses');
+
+    // Our dose is visible and every row belongs to that member
+    await expect(page.locator(`table tbody tr:has-text("FilterInstr${unique}")`)).toBeVisible();
+    const memberCells = await page.locator('table tbody tr td:first-child').allTextContents();
+    memberCells.forEach(cell => expect(cell.trim()).toBe(memberCellText));
+    await screenshot(page, testInfo, 'doses-filtered');
+  });
+
+  test('should preselect filtered member when creating a dose', async ({ page }, testInfo) => {
+    await page.goto('/PrescribedDose/Create');
+    const memberName = (await page.locator('select#FamilyMemberId option:nth-child(2)').textContent()).trim();
+
+    await page.goto('/PrescribedDose');
+    await page.selectOption('select#familyMemberFilter', { label: memberName });
+    await page.click('button:has-text("Apply")');
+
+    // Add button now carries the filter through to the create form
+    await page.click('text=Add New Prescribed Dose');
+    await expect(page.locator('h2')).toHaveText('Create');
+    const selected = (await page.locator('select#FamilyMemberId option:checked').textContent()).trim();
+    expect(selected).toBe(memberName);
+    await screenshot(page, testInfo, 'dose-create-preselected-member');
+  });
+
+  test('should show manufacturer column and brand in supplement dropdown', async ({ page }, testInfo) => {
+    await page.goto('/PrescribedDose');
+    await expect(page.locator('th:has-text("Manufacturer")')).toBeVisible();
+
+    await page.click('text=Add New Prescribed Dose');
+    await expect(page.locator('h2')).toHaveText('Create');
+    // Seed supplements carry brands, rendered in brackets after the name
+    await expect(page.locator('select#SupplementId')).toContainText('(');
+    await screenshot(page, testInfo, 'dose-create-brand-dropdown');
+  });
+
+  test('should default multiplier to 1 and step by 0.25 with stepper buttons', async ({ page }, testInfo) => {
+    await page.goto('/PrescribedDose/Create');
+    await expect(page.locator('h2')).toHaveText('Create');
+
+    const multiplier = page.locator('input#Multiplier');
+    await expect(multiplier).toHaveValue('1');
+
+    await page.click('.multiplier-stepper [data-stepper="increment"]');
+    await expect(multiplier).toHaveValue('1.25');
+
+    await page.click('.multiplier-stepper [data-stepper="decrement"]');
+    await page.click('.multiplier-stepper [data-stepper="decrement"]');
+    await expect(multiplier).toHaveValue('0.75');
+
+    // Any numeric value can still be typed and submitted
+    await page.selectOption('select#FamilyMemberId', { index: 1 });
+    await page.selectOption('select#SupplementId', { index: 1 });
+    await page.fill('input#Multiplier', '1.3');
+    await page.fill('input#Instructions', `StepInstr${Date.now()}`);
+    await page.click('input[type="submit"][value="Create"]');
+    await expect(page.locator('h2')).toHaveText('Prescribed Doses');
+    await expect(page.locator('table tbody tr').last()).toContainText('1.3');
+    await screenshot(page, testInfo, 'dose-create-stepper');
   });
 });

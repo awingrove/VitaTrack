@@ -98,7 +98,7 @@ public class ReportingServiceTests : SqliteTestBase
 
         var data = await CreateService().GetNutrientReportDataAsync();
 
-        Assert.AreEqual("500.00", data.MemberData.Single()["Vitamin C"]);
+        Assert.AreEqual("500", data.MemberData.Single()["Vitamin C"]);
     }
 
     [TestMethod]
@@ -234,5 +234,23 @@ public class ReportingServiceTests : SqliteTestBase
         var memberRows = data.MemberContributions.Single();
         Assert.IsTrue(memberRows.ContainsKey("Vitamin C"));
         Assert.IsFalse(memberRows.ContainsKey("Blend Child"));
+    }
+
+    [TestMethod]
+    public async Task NutrientReport_Totals_ShowDecimalsOnlyWhenNeeded()
+    {
+        var memberId = InsertMember("Alice");
+        var whole = InsertSupplement("Whole Vit", cost: 12.00m, servingsPerBottle: 60);
+        var fractional = InsertSupplement("Frac Vit", cost: 12.00m, servingsPerBottle: 60);
+        InsertNutrient(whole, "Vitamin C", "500mg");
+        InsertNutrient(fractional, "Vitamin D", "1.5µg");
+        InsertDose(memberId, whole, multiplier: 1);
+        InsertDose(memberId, fractional, multiplier: 1);
+
+        var data = await CreateService().GetNutrientReportDataAsync();
+
+        var totals = data.MemberData.Single();
+        Assert.AreEqual("500", totals["Vitamin C"], "Whole numbers render without decimals");
+        Assert.AreEqual("1.5", totals["Vitamin D"], "Fractional amounts keep one decimal");
     }
 }

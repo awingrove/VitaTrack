@@ -14,18 +14,24 @@ public class PrescribedDoseController(
     private readonly IFamilyRepository _familyRepo = familyRepo;
     private readonly ISupplementRepository _supplementRepo = supplementRepo;
 
-    // GET: /PrescribedDose
-    public async Task<IActionResult> Index()
+    // GET: /PrescribedDose?familyMemberId=5
+    public async Task<IActionResult> Index(int? familyMemberId)
     {
-        var prescribedDoses = await _prescribedDoseRepo.GetAllAsync();
+        var prescribedDoses = familyMemberId.HasValue
+            ? await _prescribedDoseRepo.GetByFamilyMemberIdAsync(familyMemberId.Value)
+            : await _prescribedDoseRepo.GetAllAsync();
+
+        ViewData["FamilyMembers"] = await _familyRepo.GetAllAsync();
+        ViewData["SelectedFamilyMemberId"] = familyMemberId;
         return View(prescribedDoses);
     }
 
     // GET: /PrescribedDose/Create
-    public async Task<IActionResult> Create()
+    public async Task<IActionResult> Create(int? familyMemberId)
     {
-        await PopulateDropdowns();
-        return View();
+        await PopulateDropdowns(familyMemberId);
+        // New model renders the Multiplier default (1) into the form
+        return View(new PrescribedDose());
     }
 
     // POST: /PrescribedDose/Create

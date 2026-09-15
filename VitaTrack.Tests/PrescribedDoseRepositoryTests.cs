@@ -102,8 +102,10 @@ public class PrescribedDoseRepositoryTests : SqliteTestBase
         var bobDose = all.Single(d => d.Id == bobDoseId);
         Assert.AreEqual("Alice", aliceDose.FamilyMemberName);
         Assert.AreEqual("Vitamin D", aliceDose.SupplementName);
+        Assert.AreEqual("Brand", aliceDose.SupplementBrand);
         Assert.AreEqual("Bob", bobDose.FamilyMemberName);
         Assert.AreEqual("Omega 3", bobDose.SupplementName);
+        Assert.AreEqual("Brand", bobDose.SupplementBrand);
     }
 
     [TestMethod]
@@ -152,5 +154,25 @@ public class PrescribedDoseRepositoryTests : SqliteTestBase
 
         // Act & Assert – deleting a missing id affects no rows
         Assert.AreEqual(0, await _doseRepo.DeleteAsync(id));
+    }
+
+    [TestMethod]
+    public async Task GetByFamilyMemberIdAsync_ReturnsOnlyThatMembersDoses()
+    {
+        var aliceId = await SeedMemberAsync("Alice");
+        var bobId = await SeedMemberAsync("Bob");
+        var vitaminDId = await SeedSupplementAsync("Vitamin D");
+        var omegaId = await SeedSupplementAsync("Omega 3");
+        var aliceDoseId = await AddDoseAsync(aliceId, vitaminDId);
+        await AddDoseAsync(bobId, omegaId);
+
+        var doses = await _doseRepo.GetByFamilyMemberIdAsync(aliceId);
+
+        var dose = doses.Single();
+        Assert.AreEqual(aliceDoseId, dose.Id);
+        Assert.AreEqual(aliceId, dose.FamilyMemberId);
+        Assert.AreEqual("Alice", dose.FamilyMemberName);
+        Assert.AreEqual("Vitamin D", dose.SupplementName);
+        Assert.AreEqual("Brand", dose.SupplementBrand);
     }
 }

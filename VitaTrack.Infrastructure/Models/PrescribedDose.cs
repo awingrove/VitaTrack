@@ -23,4 +23,5 @@ public class PrescribedDose
     public string Instructions { get; set; } = string.Empty;
     public string? FamilyMemberName { get; set; }
     public string? SupplementName { get; set; }
+    public string? SupplementBrand { get; set; }
 }

@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const update = () => {
         const option = select.options[select.selectedIndex];
-        serving.value = option && option.dataset.serving ? option.dataset.serving : '';
+        serving.textContent = option && option.dataset.serving ? option.dataset.serving : '—';
     };
 
     select.addEventListener('change', update);

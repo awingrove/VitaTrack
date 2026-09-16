@@ -21,7 +21,7 @@ public class ReportingService(
         var familyCache = new Dictionary<int, FamilyMember?>();
         var nutrientCache = new Dictionary<int, List<SupplementNutrient>>();
         var memberTotals = new Dictionary<int, Dictionary<string, decimal>>();
-        var memberContributions = new Dictionary<int, Dictionary<string, Dictionary<int, (decimal Amount, decimal? Multiplier)>>>();
+        var memberContributions = new Dictionary<int, Dictionary<string, Dictionary<int, ContributionBucket>>>();
         var nutrientUnits = new Dictionary<string, HashSet<string>>();
         var supplementMonthlyCosts = new Dictionary<int, decimal>();
         decimal totalCost = 0;
@@ -75,12 +75,18 @@ public class ReportingService(
 
                     if (bySupplement.TryGetValue(pd.SupplementId, out var bucket))
                     {
-                        bySupplement[pd.SupplementId] = (bucket.Amount + dailyAmount,
-                            bucket.Multiplier == dailyFrequency ? dailyFrequency : null);
+                        bucket.Amount += dailyAmount;
+                        bucket.Multiplier = bucket.Multiplier == dailyFrequency ? dailyFrequency : null;
+                        bucket.NutrientIds.Add(n.Id);
                     }
                     else
                     {
-                        bySupplement[pd.SupplementId] = (dailyAmount, dailyFrequency);
+                        bySupplement[pd.SupplementId] = new ContributionBucket
+                        {
+                            Amount = dailyAmount,
+                            Multiplier = dailyFrequency,
+                            NutrientIds = [n.Id]
+                        };
                     }
                 }
             }
@@ -114,8 +120,10 @@ public class ReportingService(
                             // Contributions are only recorded after the null-supplement guard,
                             // so the cache entry exists and is non-null here.
                             var supp = supplementCache[b.Key]!;
+                            var bucket = b.Value;
+                            var nutrientId = bucket.NutrientIds.Count == 1 ? (int?)bucket.NutrientIds.First() : null;
                             return new NutrientContributionRow(
-                                b.Key, supp.Name, supp.Brand, b.Value.Amount, b.Value.Multiplier);
+                                b.Key, supp.Name, supp.Brand, bucket.Amount, bucket.Multiplier, nutrientId);
                         })
                         .OrderBy(r => r.SupplementName, StringComparer.Ordinal)
                         .ToList();
@@ -184,6 +192,16 @@ public class ReportingService(
     }
 
     private static decimal GetMultiplier(PrescribedDose pd) => pd.Multiplier > 0 ? pd.Multiplier : 1;
+
+    // Mutable aggregation holder for one (member, nutrient, supplement) cell:
+    // summed daily amount, merged dose multiplier, and the SupplementNutrient
+    // row ids that produced the amount (single id → amount links to its editor).
+    private sealed class ContributionBucket
+    {
+        public decimal Amount { get; set; }
+        public decimal? Multiplier { get; set; }
+        public HashSet<int> NutrientIds { get; init; } = [];
+    }
 
     private static bool HasServings(Supplement supplement) => supplement.ServingsPerBottle is > 0;
 

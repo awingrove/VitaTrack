@@ -84,8 +84,20 @@ test.describe('Nutrient Report', () => {
     await expect(detailRow).toBeVisible();
     await expect(detailRow).toContainText('500 mg');
 
+    // The nutrient amount links straight to that nutrient row's editor.
+    const amountLink = detailRow.locator('a[href*="/SupplementNutrient/Edit/"]').first();
+    await expect(amountLink).toBeVisible();
+    await amountLink.click();
+    await expect(page.locator('h2')).toHaveText(/Edit Nutrient for/);
+    await page.goBack();
+
+    // Report re-renders with rows collapsed; expand again before the name click.
+    await vitCRow.getByRole('button', { name: '500 mg' }).click();
+    const detailRowAgain = page.locator('tr.collapse.show').filter({ hasText: 'Vitamin C (NatureMade)' });
+    await expect(detailRowAgain).toBeVisible();
+
     // Supplement name jumps straight to the edit page.
-    await detailRow.locator('a').first().click();
+    await detailRowAgain.locator('a').first().click();
     await expect(page).toHaveURL(/\/Supplement\/Edit\/\d+/);
     await expect(page.locator('h2')).toHaveText('Edit Supplement');
 

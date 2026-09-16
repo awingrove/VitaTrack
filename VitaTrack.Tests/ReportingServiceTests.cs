@@ -237,6 +237,38 @@ public class ReportingServiceTests : SqliteTestBase
     }
 
     [TestMethod]
+    public async Task NutrientReport_Contributions_CarryNutrientRowId()
+    {
+        var memberId = InsertMember("Alice");
+        var suppId = InsertSupplement("Solo Vit", cost: 12.00m, servingsPerBottle: 60);
+        InsertNutrient(suppId, "Vitamin D", "500IU");
+        InsertDose(memberId, suppId, multiplier: 2);
+
+        var data = await CreateService().GetNutrientReportDataAsync();
+
+        var rowId = Connection.QuerySingle<int>(
+            "SELECT Id FROM SupplementNutrients WHERE SupplementId = @id AND GenericName = 'Vitamin D'",
+            new { id = suppId });
+        var contribs = data.MemberContributions.Single()["Vitamin D"];
+        Assert.AreEqual(rowId, contribs.Single().SupplementNutrientId);
+    }
+
+    [TestMethod]
+    public async Task NutrientReport_Contributions_LoseNutrientLinkWhenRowsShareName()
+    {
+        var memberId = InsertMember("Alice");
+        var suppId = InsertSupplement("Dup Vit", cost: 12.00m, servingsPerBottle: 60);
+        InsertNutrient(suppId, "Vitamin C", "250mg");
+        InsertNutrient(suppId, "Vitamin C", "300mg");
+        InsertDose(memberId, suppId, multiplier: 1);
+
+        var data = await CreateService().GetNutrientReportDataAsync();
+
+        var contribs = data.MemberContributions.Single()["Vitamin C"];
+        Assert.IsNull(contribs.Single().SupplementNutrientId, "Aggregated rows share one amount and cannot link to one editor");
+    }
+
+    [TestMethod]
     public async Task NutrientReport_Totals_ShowDecimalsOnlyWhenNeeded()
     {
         var memberId = InsertMember("Alice");

@@ -118,7 +118,15 @@ else
                                 {
                                     <div>
                                         <a asp-controller="Supplement" asp-action="Edit" asp-route-id="@row.SupplementId">@row.SupplementName (@row.Brand)</a>
-                                        <text> — @row.Amount.ToString("0.##")@unitSuffix</text>
+                                        <text> — </text>
+                                        @if (row.SupplementNutrientId is int nutrientId)
+                                        {
+                                            <a asp-controller="SupplementNutrient" asp-action="Edit" asp-route-id="@nutrientId">@row.Amount.ToString("0.##")@unitSuffix</a>
+                                        }
+                                        else
+                                        {
+                                            <text>@row.Amount.ToString("0.##")@unitSuffix</text>
+                                        }
                                         @if (row.Multiplier is > 1)
                                         {
                                             <text> (×@(row.Multiplier))</text>

@@ -13,7 +13,10 @@ public record NutrientContributionRow(
     string SupplementName,
     string Brand,
     decimal Amount,
-    decimal? Multiplier);
+    decimal? Multiplier,
+    // Id of the SupplementNutrient row behind the amount; null when the amount
+    // aggregates several distinct nutrient rows, which cannot link to one editor.
+    int? SupplementNutrientId);
 
 public record NutrientReportData(
     DateTime ReportDate,

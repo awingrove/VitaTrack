@@ -77,7 +77,7 @@ else
                     <td>@nutrient</td>
                     @for (var m = 0; m < memberDataList.Count; m++)
                     {
-                        var total = memberDataList[m].TryGetValue(nutrient, out var val) ? val : "0.00";
+                        var total = memberDataList[m].TryGetValue(nutrient, out var val) ? val : "0";
                         var contribs = m < memberContributionsList.Count
                             && memberContributionsList[m].TryGetValue(nutrient, out var cell)
                             ? cell
@@ -93,6 +93,8 @@ else
                                         data-bs-target="#bd-@(nutrientRow)-@(m)"
                                         aria-expanded="false"
                                         aria-controls="bd-@(nutrientRow)-@(m)">@total@unitSuffix</button>
+                                @* `!` safe: expandable proves contribs is non-null with Count > 0 *@
+                                <span class="badge rounded-pill bg-secondary" title="@contribs!.Count supplement(s)">@contribs!.Count</span>
                             }
                             else
                             {
@@ -103,7 +105,7 @@ else
                 </tr>
                 @for (var m = 0; m < memberDataList.Count; m++)
                 {
-                    var total = memberDataList[m].TryGetValue(nutrient, out var val) ? val : "0.00";
+                    var total = memberDataList[m].TryGetValue(nutrient, out var val) ? val : "0";
                     var contribs = m < memberContributionsList.Count
                         && memberContributionsList[m].TryGetValue(nutrient, out var cell)
                         ? cell
@@ -116,7 +118,7 @@ else
                                 {
                                     <div>
                                         <a asp-controller="Supplement" asp-action="Edit" asp-route-id="@row.SupplementId">@row.SupplementName (@row.Brand)</a>
-                                        <text> — @row.Amount.ToString("F2")@unitSuffix</text>
+                                        <text> — @row.Amount.ToString("0.##")@unitSuffix</text>
                                         @if (row.Multiplier is > 1)
                                         {
                                             <text> (×@(row.Multiplier))</text>

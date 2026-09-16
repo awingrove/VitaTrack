@@ -244,6 +244,16 @@ activities:
             priority: high
             tests:
               - e2e: prescribed-dose::should create a prescribed dose without instructions
+          - title: Default the family member to the active index filter when adding a dose
+            status: done
+            priority: medium
+            tests:
+              - e2e: prescribed-dose::should preselect filtered member when creating a dose
+          - title: Set multiplier by 0.25 stepper buttons while allowing any typed value
+            status: done
+            priority: medium
+            tests:
+              - e2e: prescribed-dose::should default multiplier to 1 and step by 0.25 with stepper buttons
       - id: PD-3
         name: Edit a prescribed dose
         entry_point: Doses index row -> Edit button
@@ -262,6 +272,20 @@ activities:
             priority: high
             tests:
               - e2e: prescribed-dose::should delete a prescribed dose
+      - id: PD-5
+        name: Filter doses and show manufacturers
+        entry_point: Doses index -> Family member filter
+        stories:
+          - title: Show only the selected member's doses
+            status: done
+            priority: medium
+            tests:
+              - e2e: prescribed-dose::should filter doses by family member
+          - title: See manufacturer (brand) per dose and in the supplement dropdown
+            status: done
+            priority: medium
+            tests:
+              - e2e: prescribed-dose::should show manufacturer column and brand in supplement dropdown
 
   - name: View Reports
     tasks:
@@ -277,6 +301,10 @@ activities:
               - e2e: nutrient-report::should arrive via nav bar Report link
               - e2e: nutrient-report::should show supplements in report table
               - e2e: nutrient-report::should show units for per-family-member nutrient totals
+          - title: See concise amounts (decimals only when needed) with a supplement-count pill
+            status: done
+            priority: medium
+            tests:
               - e2e: nutrient-report::should expand a member total into contributing supplements and link to edit
           - title: Trace a member total back to the supplement and review its nutrients
             status: done

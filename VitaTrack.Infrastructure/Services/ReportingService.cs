@@ -101,7 +101,7 @@ public class ReportingService(
         {
             var member = await GetCachedAsync(familyCache, kvp.Key, _familyRepo.GetByIdAsync);
             memberNames.Add(member?.DisplayName ?? $"Member #{kvp.Key}");
-            memberData.Add(kvp.Value.ToDictionary(n => n.Key, n => n.Value.ToString("F2")));
+            memberData.Add(kvp.Value.ToDictionary(n => n.Key, n => n.Value.ToString("0.##")));
 
             var rows = new Dictionary<string, List<NutrientContributionRow>>();
             if (memberContributions.TryGetValue(kvp.Key, out var byNutrient))

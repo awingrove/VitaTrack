@@ -77,12 +77,31 @@ test.describe('Nutrient Report', () => {
     await vitCRow.getByRole('button', { name: '500 mg' }).click();
 
     // Supplement-count pill sits next to the amount.
-    await expect(vitCRow.locator('span.badge.rounded-pill').first()).toBeVisible();
-    await expect(vitCRow.locator('span.badge.rounded-pill').first()).toHaveText(/^\d+$/);
+    const pill = vitCRow.locator('span.badge.rounded-pill').first();
+    await expect(pill).toBeVisible();
+    await expect(pill).toHaveText(/^\d+$/);
 
-    const detailRow = page.locator('tr.collapse.show').filter({ hasText: 'Vitamin C (NatureMade)' });
+    // Chevron flips right -> down when the row expands, and back on collapse.
+    const toggle = vitCRow.getByRole('button', { name: '500 mg' });
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(toggle.locator('[data-chevron="collapsed"]')).toBeHidden();
+    await expect(toggle.locator('[data-chevron="expanded"]')).toBeVisible();
+
+    const detailRow = page.locator('tr.collapse').filter({ hasText: 'Vitamin C (NatureMade)' });
     await expect(detailRow).toBeVisible();
     await expect(detailRow).toContainText('500 mg');
+
+    // Collapse flips the chevron back; wait for the collapse animation to
+    // fully finish (the 'collapsing' class clears on transitionend) before
+    // toggling again — clicking mid-transition makes Bootstrap swallow it.
+    await toggle.click();
+    await expect(toggle.locator('[data-chevron="collapsed"]')).toBeVisible();
+    await expect(detailRow).not.toHaveClass(/\bcollapsing\b/);
+    await expect(detailRow).toBeHidden();
+    await toggle.click();
+    await expect(detailRow).not.toHaveClass(/\bcollapsing\b/);
+    await expect(detailRow).toBeVisible();
+    await expect(toggle.locator('[data-chevron="expanded"]')).toBeVisible();
 
     // The nutrient amount links straight to that nutrient row's editor.
     const amountLink = detailRow.locator('a[href*="/SupplementNutrient/Edit/"]').first();

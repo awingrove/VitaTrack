@@ -41,7 +41,10 @@ feature. Read it before adding or extracting a slice.
    order in `AGENTS.md`).
 3. **Value objects, not primitives.** Wrap amounts/units/money in value objects
    (`DoseMultiplier`, `DosePeriod`, `Unit`). A bare `decimal`/`string` for a domain
-   amount is a defect.
+   amount is a defect. Value objects **fail loudly on invalid combinations** — `Money +`
+   throws on mixed currency rather than silently picking a side (defect DL-001) — and the
+   unit tests must cover the error edges, not just the happy path. Same-agent tests are
+   biased toward the bug: call out invariant edges explicitly for review.
 4. **Request DTOs + handlers.** One request record per write (`CreateXRequest`,
    `EditXRequest`), one handler per business rule (`PrescribeXHandler`,
    `AmendXHandler`). Handlers return a result record (`XCommandResult`); no exceptions for

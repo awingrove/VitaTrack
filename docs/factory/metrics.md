@@ -27,6 +27,10 @@ Canonical ledger: `docs/factory/shard-metrics.yaml`. One block per shipped shard
 `ShardMetricsLedgerTests` enforces its integrity: ids resolve to real shards in
 `shards.yaml`, ids are unique, and every entry carries the required fields.
 
+`guardrail_failures` and `fix_commits` should be **derived from CI/git history**, not
+self-reported — hand-entered numbers drift and flatter. Until tooling derives them,
+the agent records them from the branch's actual commit/test history.
+
 ## Gate
 
 - **Warn-only until three shards** have entries. Warn = reviewer checks the entry exists

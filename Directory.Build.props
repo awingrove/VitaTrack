@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <!-- Warnings are defects: the factory claims "warnings-as-errors in CI" (FACTORY.md)
+         and this is what makes the claim true. SDK (Roslyn) analyzers run by default;
+         this promotes their warnings to build failures across all projects. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>

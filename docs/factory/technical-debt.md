@@ -49,4 +49,13 @@ them, per the post-mortem rule in `AGENTS.md`.
 Escaped defects are recorded here with **injection stage** + **root cause**, feeding the
 post-mortem rule (a systemic gap updates `AGENTS.md`/ADR in the same change).
 
-- (none recorded yet — seed as defects are found)
+- **DL-001 — `Money +` silently kept the left operand's currency** (found Sep 2026 in branch
+  review; fixed same day, "fix: Money mixed-currency addition throws").
+  - **Injection stage:** value-object design (Phase 6 rollout) — mixed-currency semantics
+    left unresolved and papered over with a "caller guarantees same currency" comment.
+  - **Detection stage:** human code review. Unit tests and CI **both passed** the defective
+    semantics — the tests were written by the same agent that wrote the defect, so they
+    encoded the bug as expected behavior. Evidence for keeping review mandatory.
+  - **Systemic gap:** the value-object recipe had no rule about invalid-combination
+    semantics. Closed in `new-shard.md` (value objects fail loudly on invalid
+    combinations; test the error edges, not just the happy path).

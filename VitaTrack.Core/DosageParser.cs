@@ -25,6 +25,8 @@ public static class DosageParser
 
     // Canonical unit designations: every microgram value is stored as "µg" (U+00B5),
     // international units as "IU". Unknown units pass through untouched.
+    public static string CanonicalizeUnit(string unit) => CanonicalUnit(unit);
+
     private static string CanonicalUnit(string unit) => unit.ToLowerInvariant() switch
     {
         "mg" => "mg",

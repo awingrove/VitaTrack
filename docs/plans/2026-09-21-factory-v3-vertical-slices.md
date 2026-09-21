@@ -178,6 +178,16 @@ machine with no instruments, and guardrails check conformance but not design cor
 - [ ] Split `Result.cs` (6 concepts: `NutrientFailure`, `ReplaceNutrientsResult`, `MemberCostRow`,
       `SupplementCostRow`, `NutrientContributionRow`, report data records) — one file per concept.
 
+## Progress log
+
+- **Unit value object shipped** (`VitaTrack.Core/Primitives/Unit.cs`): canonical, alias-safe
+  measurement unit (mcg/ug/μg→µg, iu→IU). Adopted in `ReportingService` nutrient-unit
+  grouping (replaces `HashSet<string>`). `shards.yaml` allowlists the shared `Primitives/**`
+  kernel. Verified: 12 arch + 184 unit + 12 report e2e green.
+- **Money deferred**: `Supplement.Cost` is `decimal?` with no currency column. Introducing
+  `Money` needs a currency source (schema change) → triggers the Phase 7 human design-review
+  gate. Park until currency is decided.
+
 ## Risks / Guardrails
 
 - Rename is broad but mechanical; one commit + full green gate contains it.

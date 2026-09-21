@@ -1,6 +1,7 @@
 using VitaTrack.Core.Data;
 using VitaTrack.Core.Features.Dosing;
 using VitaTrack.Core.Models;
+using VitaTrack.Core.Primitives;
 
 namespace VitaTrack.Core.Services;
 
@@ -23,7 +24,7 @@ public class ReportingService(
         var nutrientCache = new Dictionary<int, List<SupplementNutrient>>();
         var memberTotals = new Dictionary<int, Dictionary<string, decimal>>();
         var memberContributions = new Dictionary<int, Dictionary<string, Dictionary<int, (decimal Amount, decimal? Multiplier)>>>();
-        var nutrientUnits = new Dictionary<string, HashSet<string>>();
+        var nutrientUnits = new Dictionary<string, HashSet<Unit>>();
         var supplementMonthlyCosts = new Dictionary<int, decimal>();
         decimal totalCost = 0;
 
@@ -43,8 +44,8 @@ public class ReportingService(
 
             foreach (var n in nutrientCache[pd.SupplementId])
             {
-                var unit = DosageParser.ParseUnit(n.Dosage);
-                if (!string.IsNullOrEmpty(unit))
+                var unit = Unit.Parse(n.Dosage);
+                if (unit.IsDefined)
                 {
                     if (!nutrientUnits.TryGetValue(n.GenericName, out var units))
                     {
@@ -132,7 +133,7 @@ public class ReportingService(
                 supplements.Add(supp);
         }
 
-        var reportUnits = nutrientUnits.ToDictionary(k => k.Key, k => string.Join(", ", k.Value.OrderBy(u => u)));
+        var reportUnits = nutrientUnits.ToDictionary(k => k.Key, k => string.Join(", ", k.Value.OrderBy(u => u.Symbol)));
 
         return new NutrientReportData(
             ReportDate: today,

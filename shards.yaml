@@ -167,6 +167,7 @@ allowlist:
   - VitaTrack.Core/DosageParser.cs
   - VitaTrack.Core/ServiceCollectionExtensions.cs
   - VitaTrack.Core/VitaTrackOptions.cs
+  - VitaTrack.Core/Primitives/**
   - VitaTrack.Web/wwwroot/js/table-sort.js
   - VitaTrack.Web/wwwroot/js/delete-confirm.js
   - VitaTrack.Web/wwwroot/js/delete-selected.js
@@ -174,3 +175,4 @@ allowlist:
   - VitaTrack.Tests/ServiceCollectionExtensionsTests.cs
   - VitaTrack.Tests/DbInitTests.cs
   - VitaTrack.Tests/DosageParserTests.cs
+  - VitaTrack.Tests/Primitives/**

@@ -1,18 +1,22 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using VitaTrack.Infrastructure.Data;
-using VitaTrack.Infrastructure.Models;
+using VitaTrack.Core.Data;
+using VitaTrack.Core.Features.Dosing;
 
 namespace VitaTrack.Web.Controllers;
 
 public class PrescribedDoseController(
     IPrescribedDoseRepository prescribedDoseRepo,
     IFamilyRepository familyRepo,
-    ISupplementRepository supplementRepo) : Controller
+    ISupplementRepository supplementRepo,
+    PrescribeDoseHandler prescribeHandler,
+    AmendDoseHandler amendHandler) : Controller
 {
     private readonly IPrescribedDoseRepository _prescribedDoseRepo = prescribedDoseRepo;
     private readonly IFamilyRepository _familyRepo = familyRepo;
     private readonly ISupplementRepository _supplementRepo = supplementRepo;
+    private readonly PrescribeDoseHandler _prescribeHandler = prescribeHandler;
+    private readonly AmendDoseHandler _amendHandler = amendHandler;
 
     // GET: /PrescribedDose?familyMemberId=5
     public async Task<IActionResult> Index(int? familyMemberId)
@@ -30,50 +34,70 @@ public class PrescribedDoseController(
     public async Task<IActionResult> Create(int? familyMemberId)
     {
         await PopulateDropdowns(familyMemberId);
-        // New model renders the Multiplier default (1) into the form
-        return View(new PrescribedDose());
+        return View(new CreateDoseRequest { FamilyMemberId = familyMemberId ?? 0 });
     }
 
     // POST: /PrescribedDose/Create
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(PrescribedDose prescribedDose)
+    public async Task<IActionResult> Create(CreateDoseRequest request)
     {
-        if (ModelState.IsValid)
+        if (!ModelState.IsValid)
         {
-            await _prescribedDoseRepo.AddAsync(prescribedDose);
-            return RedirectToAction(nameof(Index));
+            await PopulateDropdowns(request.FamilyMemberId, request.SupplementId);
+            return View(request);
         }
 
-        await PopulateDropdowns(prescribedDose.FamilyMemberId, prescribedDose.SupplementId);
-        return View(prescribedDose);
+        var result = await _prescribeHandler.HandleAsync(request);
+        if (!result.Succeeded)
+        {
+            ModelState.AddModelError(nameof(request.Multiplier), result.Error!);
+            await PopulateDropdowns(request.FamilyMemberId, request.SupplementId);
+            return View(request);
+        }
+
+        return RedirectToAction(nameof(Index));
     }
 
     // GET: /PrescribedDose/Edit/5
     public async Task<IActionResult> Edit(int id)
     {
         var prescribedDose = await _prescribedDoseRepo.GetByIdAsync(id);
-        if (prescribedDose == null) return NotFound();
+        if (prescribedDose is null) return NotFound();
 
         await PopulateDropdowns(prescribedDose.FamilyMemberId, prescribedDose.SupplementId);
-        return View(prescribedDose);
+        return View(new EditDoseRequest
+        {
+            Id = prescribedDose.Id,
+            FamilyMemberId = prescribedDose.FamilyMemberId,
+            SupplementId = prescribedDose.SupplementId,
+            Multiplier = prescribedDose.Multiplier,
+            Instructions = prescribedDose.Instructions,
+            StartDate = prescribedDose.StartDate,
+            EndDate = prescribedDose.EndDate,
+        });
     }
 
     // POST: /PrescribedDose/Edit/5
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, PrescribedDose prescribedDose)
+    public async Task<IActionResult> Edit(EditDoseRequest request)
     {
-        if (id != prescribedDose.Id) return NotFound();
-
-        if (ModelState.IsValid)
+        if (!ModelState.IsValid)
         {
-            await _prescribedDoseRepo.UpdateAsync(prescribedDose);
-            return RedirectToAction(nameof(Index));
+            await PopulateDropdowns(request.FamilyMemberId, request.SupplementId);
+            return View(request);
         }
 
-        await PopulateDropdowns(prescribedDose.FamilyMemberId, prescribedDose.SupplementId);
-        return View(prescribedDose);
+        var result = await _amendHandler.HandleAsync(request);
+        if (!result.Succeeded)
+        {
+            ModelState.AddModelError(nameof(request.Multiplier), result.Error!);
+            await PopulateDropdowns(request.FamilyMemberId, request.SupplementId);
+            return View(request);
+        }
+
+        return RedirectToAction(nameof(Index));
     }
 
     // POST: /PrescribedDose/Delete/5

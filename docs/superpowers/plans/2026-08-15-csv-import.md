@@ -25,8 +25,8 @@
 ### Task 1: Models — CsvSupplementRow, CsvImportReport, CsvParseResult
 
 **Files:**
-- Create: `VitaTrack.Infrastructure/Models/CsvSupplementRow.cs`
-- Create: `VitaTrack.Infrastructure/Models/CsvImportReport.cs`
+- Create: `VitaTrack.Core/Models/CsvSupplementRow.cs`
+- Create: `VitaTrack.Core/Models/CsvImportReport.cs`
 
 **Interfaces:**
 - Produces: `CsvSupplementRow`, `CsvImportReport`, `CsvImportSuccess`, `CsvImportFailure`, `CsvParseResult`, `CsvParseError` — used by Tasks 2, 3, 4
@@ -34,8 +34,8 @@
 - [ ] **Step 1: Create CsvSupplementRow model**
 
 ```csharp
-// VitaTrack.Infrastructure/Models/CsvSupplementRow.cs
-namespace VitaTrack.Infrastructure.Models;
+// VitaTrack.Core/Models/CsvSupplementRow.cs
+namespace VitaTrack.Core.Models;
 
 public record CsvSupplementRow(
     int RowNumber,
@@ -50,8 +50,8 @@ public record CsvSupplementRow(
 - [ ] **Step 2: Create CsvImportReport and related models**
 
 ```csharp
-// VitaTrack.Infrastructure/Models/CsvImportReport.cs
-namespace VitaTrack.Infrastructure.Models;
+// VitaTrack.Core/Models/CsvImportReport.cs
+namespace VitaTrack.Core.Models;
 
 public record CsvImportReport(
     int TotalRows,
@@ -79,7 +79,7 @@ Expected: BUILD SUCCEEDED
 - [ ] **Step 4: Commit**
 
 ```bash
-git add VitaTrack.Infrastructure/Models/CsvSupplementRow.cs VitaTrack.Infrastructure/Models/CsvImportReport.cs
+git add VitaTrack.Core/Models/CsvSupplementRow.cs VitaTrack.Core/Models/CsvImportReport.cs
 git commit -m "feat: add CSV import models"
 ```
 
@@ -88,9 +88,9 @@ git commit -m "feat: add CSV import models"
 ### Task 2: CsvImportService — Parser Implementation
 
 **Files:**
-- Create: `VitaTrack.Infrastructure/Services/ICsvImportService.cs`
-- Create: `VitaTrack.Infrastructure/Services/CsvImportService.cs`
-- Modify: `VitaTrack.Infrastructure/ServiceCollectionExtensions.cs` (add DI registration)
+- Create: `VitaTrack.Core/Services/ICsvImportService.cs`
+- Create: `VitaTrack.Core/Services/CsvImportService.cs`
+- Modify: `VitaTrack.Core/ServiceCollectionExtensions.cs` (add DI registration)
 
 **Interfaces:**
 - Consumes: `CsvSupplementRow`, `CsvParseResult`, `CsvParseError` (from Task 1)
@@ -99,10 +99,10 @@ git commit -m "feat: add CSV import models"
 - [ ] **Step 1: Create ICsvImportService interface**
 
 ```csharp
-// VitaTrack.Infrastructure/Services/ICsvImportService.cs
-using VitaTrack.Infrastructure.Models;
+// VitaTrack.Core/Services/ICsvImportService.cs
+using VitaTrack.Core.Models;
 
-namespace VitaTrack.Infrastructure.Services;
+namespace VitaTrack.Core.Services;
 
 public interface ICsvImportService
 {
@@ -113,11 +113,11 @@ public interface ICsvImportService
 - [ ] **Step 2: Create CsvImportService implementation**
 
 ```csharp
-// VitaTrack.Infrastructure/Services/CsvImportService.cs
+// VitaTrack.Core/Services/CsvImportService.cs
 using System.Text;
-using VitaTrack.Infrastructure.Models;
+using VitaTrack.Core.Models;
 
-namespace VitaTrack.Infrastructure.Services;
+namespace VitaTrack.Core.Services;
 
 public class CsvImportService : ICsvImportService
 {
@@ -274,7 +274,7 @@ public class CsvImportService : ICsvImportService
 
 - [ ] **Step 3: Register in DI**
 
-Add to `VitaTrack.Infrastructure/ServiceCollectionExtensions.cs` after line 53 (`services.AddScoped<ISupplementLabelParser, SupplementLabelParser>();`):
+Add to `VitaTrack.Core/ServiceCollectionExtensions.cs` after line 53 (`services.AddScoped<ISupplementLabelParser, SupplementLabelParser>();`):
 
 ```csharp
 services.AddScoped<ICsvImportService, CsvImportService>();
@@ -288,7 +288,7 @@ Expected: BUILD SUCCEEDED
 - [ ] **Step 5: Commit**
 
 ```bash
-git add VitaTrack.Infrastructure/Services/ICsvImportService.cs VitaTrack.Infrastructure/Services/CsvImportService.cs VitaTrack.Infrastructure/ServiceCollectionExtensions.cs
+git add VitaTrack.Core/Services/ICsvImportService.cs VitaTrack.Core/Services/CsvImportService.cs VitaTrack.Core/ServiceCollectionExtensions.cs
 git commit -m "feat: add CsvImportService with custom CSV parser"
 ```
 
@@ -309,7 +309,7 @@ git commit -m "feat: add CsvImportService with custom CSV parser"
 // VitaTrack.Tests/CsvImportServiceTests.cs
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using VitaTrack.Infrastructure.Services;
+using VitaTrack.Core.Services;
 
 namespace VitaTrack.Tests;
 
@@ -625,7 +625,7 @@ Actually, the `ToFailure` helper can be a private static method in the controlle
 
 - [ ] **Step 4: Add using for ICsvImportService**
 
-The controller already has `using VitaTrack.Infrastructure.Services;` which covers it. No change needed.
+The controller already has `using VitaTrack.Core.Services;` which covers it. No change needed.
 
 - [ ] **Step 5: Build to verify compilation**
 
@@ -805,7 +805,7 @@ Save to: `wwwroot/templates/supplements-sample.csv`
 
 ```html
 <!-- VitaTrack.Web/Views/Supplement/_ImportReport.cshtml -->
-@using VitaTrack.Infrastructure.Models
+@using VitaTrack.Core.Models
 @model CsvImportReport
 
 <div class="card">

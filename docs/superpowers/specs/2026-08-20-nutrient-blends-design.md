@@ -12,7 +12,7 @@
 
 ## Current State (baseline)
 
-- `SupplementNutrient` (`VitaTrack.Infrastructure/Models/SupplementNutrient.cs`): `Dosage` is `[Required]`; DB column `Dosage TEXT NOT NULL` (empty string satisfies NOT NULL — no migration needed for empties).
+- `SupplementNutrient` (`VitaTrack.Core/Models/SupplementNutrient.cs`): `Dosage` is `[Required]`; DB column `Dosage TEXT NOT NULL` (empty string satisfies NOT NULL — no migration needed for empties).
 - `SupplementNutrientDto` (`LlmResult.cs:11`): flat `GenericName/SpecificForm/Dosage/Unit/AmountPerServing`, no hierarchy.
 - Persistence: `SupplementNutrientService.PersistAsync` inserts a **flat** list; `ReplaceAsync` deletes all then re-adds. No parent/child concept.
 - LLM: `SupplementLabelParser.BuildUserPrompt`/`BuildExtractionPrompt` asks for a flat `nutrients[]` array; `ParseNutrients` reads flat. `LlmService` compiles `NutritionJson` as `name → amount` dict.

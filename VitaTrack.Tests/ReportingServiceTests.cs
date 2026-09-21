@@ -1,8 +1,9 @@
 using Dapper;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using VitaTrack.Infrastructure.Data;
-using VitaTrack.Infrastructure.Models;
-using VitaTrack.Infrastructure.Services;
+using VitaTrack.Core.Data;
+using VitaTrack.Core.Features.Dosing;
+using VitaTrack.Core.Models;
+using VitaTrack.Core.Services;
 
 namespace VitaTrack.Tests;
 

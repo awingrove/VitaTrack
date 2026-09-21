@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Moq.Protected;
-using VitaTrack.Infrastructure.Services;
+using VitaTrack.Core.Services;
 
 namespace VitaTrack.Tests;
 

@@ -25,7 +25,7 @@ Draft — ready for implementation
 | `VitaTrack.Web/Controllers/SupplementController.cs` | Add `[HttpPost] FindUrl` action |
 | `VitaTrack.Web/Views/Supplement/Create.cshtml` | Add HTMX "Find URL" button next to ManufacturerUrl field |
 | `VitaTrack.Web/Views/Supplement/Edit.cshtml` | Add HTMX "Find URL" button next to ManufacturerUrl field |
-| `VitaTrack.Infrastructure/ServiceCollectionExtensions.cs` | Register `IUrlDiscoveryService` |
+| `VitaTrack.Core/ServiceCollectionExtensions.cs` | Register `IUrlDiscoveryService` |
 
 ## Technical Details
 

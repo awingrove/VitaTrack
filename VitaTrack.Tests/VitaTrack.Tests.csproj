@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\VitaTrack.Infrastructure\VitaTrack.Infrastructure.csproj" />
+    <ProjectReference Include="..\VitaTrack.Core\VitaTrack.Core.csproj" />
     <ProjectReference Include="..\VitaTrack.Web\VitaTrack.Web.csproj" />
   </ItemGroup>
 

@@ -93,7 +93,7 @@ partial) is identical, `SupplementController.cs:40-56`.
 `LlmService.cs` is at 284 lines today (near the 300-line hard limit,
 AGENTS.md). Adding the new method + private request/response helpers will
 exceed the cap. Extract request-building + response-parsing into a new
-`LlmChatClient` (`VitaTrack.Infrastructure/Services/LlmChatClient.cs`,
+`LlmChatClient` (`VitaTrack.Core/Services/LlmChatClient.cs`,
 ≈80 lines, `internal static`). Both `EnrichSupplementAsync` and
 `EnrichSupplementFromImagesAsync` call `LlmChatClient.SendAsync(...)`, which
 takes the message payload and returns a parsed `LlmResult`. `LlmService.cs`
@@ -105,8 +105,8 @@ shrinks to a thin orchestrator ≈150 lines.
 
 | Path | Purpose | Approx lines |
 |------|---------|--------------|
-| `VitaTrack.Infrastructure/Services/LlmChatClient.cs` | Extracted request-build + response-parse. `internal static class` with `static async Task<LlmResult> SendAsync(HttpClient http, VitaTrackOptions opts, object[] messages, string model)`. Both enrichment methods call it. | 80 |
-| `VitaTrack.Infrastructure/Models/SupplementImage.cs` | POCO `{ byte[] Bytes; string MediaType; string Label }`. | 10 |
+| `VitaTrack.Core/Services/LlmChatClient.cs` | Extracted request-build + response-parse. `internal static class` with `static async Task<LlmResult> SendAsync(HttpClient http, VitaTrackOptions opts, object[] messages, string model)`. Both enrichment methods call it. | 80 |
+| `VitaTrack.Core/Models/SupplementImage.cs` | POCO `{ byte[] Bytes; string MediaType; string Label }`. | 10 |
 | `VitaTrack.Web/wwwroot/js/supplement-source-toggle.js` | Radio toggle, webcam `<video>` + canvas capture, file `<input type=file>`, retake, FormData assembly. External `.js` per AGENTS.md CSP rule. | 120 |
 | `VitaTrack.Web/Views/Supplement/_SourcePicker.cshtml` | Partial rendering radio + two capture slots. Reused in Create and Edit to avoid duplication. | 30 |
 | `e2e-tests/playwright/tests/supplement-image-enrich.spec.js` | Vision flow E2E, env-gated on `LLM_API_KEY` + `VISION_MODEL`. | 80 |
@@ -115,9 +115,9 @@ shrinks to a thin orchestrator ≈150 lines.
 
 | Path | Change |
 |------|--------|
-| `VitaTrack.Infrastructure/Services/ILlmService.cs` | +1 method: `Task<LlmResult> EnrichSupplementFromImagesAsync(Supplement, IReadOnlyList<SupplementImage> images)`. → 12 lines. |
-| `VitaTrack.Infrastructure/Services/LlmService.cs` | Refactor `ExtractNutrientsWithLlmAsync` to call `LlmChatClient.SendAsync`; add `EnrichSupplementFromImagesAsync`. File shrinks (helpers extracted) — ends ≈150 lines. |
-| `VitaTrack.Infrastructure/VitaTrackOptions.cs` | Add `string? VisionModel`, `string? VisionApiKey`, `string? VisionBaseUrl` (nullable; fall back to `Model`/`ApiKey`/`BaseUrl` when null). → ≈16 lines. |
+| `VitaTrack.Core/Services/ILlmService.cs` | +1 method: `Task<LlmResult> EnrichSupplementFromImagesAsync(Supplement, IReadOnlyList<SupplementImage> images)`. → 12 lines. |
+| `VitaTrack.Core/Services/LlmService.cs` | Refactor `ExtractNutrientsWithLlmAsync` to call `LlmChatClient.SendAsync`; add `EnrichSupplementFromImagesAsync`. File shrinks (helpers extracted) — ends ≈150 lines. |
+| `VitaTrack.Core/VitaTrackOptions.cs` | Add `string? VisionModel`, `string? VisionApiKey`, `string? VisionBaseUrl` (nullable; fall back to `Model`/`ApiKey`/`BaseUrl` when null). → ≈16 lines. |
 | `VitaTrack.Web/appsettings.json` + `appsettings.Test.json` | Add `VisionModel: ""`, `VisionApiKey: ""`, `VisionBaseUrl: ""` templates (empty = fallback to non-vision values). |
 | `VitaTrack.Web/Controllers/SupplementController.cs` | `Enrich` and `Edit` actions accept `IFormFile? frontImage, IFormFile? backImage` + `string? source`; branch by `source`. Shared `_NutrientEditor` return path. +≈20 lines each action. |
 | `VitaTrack.Web/Views/Supplement/Create.cshtml` + `Edit.cshtml` | Render `_SourcePicker` partial, add `enctype="multipart/form-data"` + `hx-encoding="multipart/form-data"`, include `<script src="/js/supplement-source-toggle.js"></script>`. +≈5 lines each. |

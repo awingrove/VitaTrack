@@ -2,7 +2,7 @@
 
 This document defines the coding standards, architectural guidelines, testing philosophy, and tech stack for the VitaTrack (Vitamin and Supplement Tracking) ASP.NET application. 
 
-**AI Agents:** Read and adhere to these rules strictly before generating, refactoring, or modifying code in this repository. Per-project `AGENTS.md` files (under `VitaTrack.Web/`, `VitaTrack.Infrastructure/`, `VitaTrack.Tests/`) **supplement** this root; any contradiction is a defect to report, not a license to pick one.
+**AI Agents:** Read and adhere to these rules strictly before generating, refactoring, or modifying code in this repository. Per-project `AGENTS.md` files (under `VitaTrack.Web/`, `VitaTrack.Core/`, `VitaTrack.Tests/`) **supplement** this root; any contradiction is a defect to report, not a license to pick one.
 
 ## 💬 Response Style
 *   **Smart caveman:** Cut all filler, keep technical substance.
@@ -14,10 +14,10 @@ This document defines the coding standards, architectural guidelines, testing ph
 
 ## 🏗️ Architecture & Project Structure
 *   **Paradigm:** Pragmatic ASP.NET MVC. Avoid over-engineering and strict Clean Architecture dogmas.
-*   **Structure:** 3-project solution (`VitaTrack.Web → VitaTrack.Infrastructure`; `VitaTrack.Tests` refs both). Inter-project direction is enforced by csproj. Web layer handles HTTP, views, and thin mapping; business logic lives in `Infrastructure/Services` and `Infrastructure/Data` (Dapper repositories).
-*   **File Size & Organization:** 
+*   **Structure:** 3-project solution (`VitaTrack.Web → VitaTrack.Core`; `VitaTrack.Tests` refs both). Inter-project direction is enforced by csproj. Web layer handles HTTP, views, and thin mapping; business logic lives in `VitaTrack.Core/Services` and `VitaTrack.Core/Data` (Dapper repositories; reorganizing into feature slices per ADR-0006).
+*   **Type Size & Organization:** 
     *   Proactively extract classes/interfaces into separate files if a file exceeds 20-30 lines. Keep methods small (< 30 lines) and focused.
-    *   **Hard Limit:** No single file should exceed **300 lines**. Refactor immediately if a file approaches this limit.
+    *   **Split trigger (not a gameable cap):** a *complete type* — counting every partial part across files — must be reviewed for splitting into separate responsibilities once it exceeds **300 lines**. The intent is to stop a type from mushrooming in complexity, not to cap individual files. Splitting one type into partials in separate files to dodge the limit is itself a violation. `FileSizeTests` enforces the complete-type size, partials included.
 
 ## 🖥️ UI & Frontend Stack
 *   **Views:** Razor views (`.cshtml`) rendered by MVC controllers (not Razor Pages — `Program.cs` uses `MapControllerRoute`). Shared layout: `Views/Shared/_Layout.cshtml`.
@@ -45,7 +45,7 @@ This document defines the coding standards, architectural guidelines, testing ph
 *   **Seed Data:** `DbInit.EnsureCreated` seeds test data (family members, supplements, nutrients, prescribed doses) **only when ALL tables are empty** (fresh database). This prevents foreign key errors when partial data is cleared. When adding new entity types, always add corresponding seed data here so reports and E2E tests have realistic data to work with.
 *   **Configuration Layering:** `appsettings.json` holds defaults. Environment-specific overrides go in `appsettings.{Environment}.json`. For test environments, create `appsettings.Test.json` with test-specific connection strings. **Do not** rely on `ConnectionStrings__Default` env var via Playwright's `webServer.env` — it does not propagate to `dotnet run` child processes. Use `--environment Test` flag instead.
 *   **Dosage Unit Normalization:** Nutrient `Dosage` strings use one canonical designation per unit: `µg` (U+00B5) for micrograms, `IU` for international units, lowercase `mg`/`g`/`ml`/`tsp`. `DosageParser.NormalizeDosage` maps aliases (`mcg`, `ug`, Greek-mu `μg` → `µg`; `iu` → `IU`) and is enforced at the single write choke point (`SupplementNutrientRepository.AddAsync`/`UpdateAsync`) plus an idempotent `DbInit.EnsureCreated` migration for legacy rows. Never write nutrient dosages with alias units; extend `CanonicalUnit` in `DosageParser` when adding new units.
-*   **`appsettings.Test.json` exception (ArchitectureReview §2.7 side):** root rule says "keep only templates, don't commit populated `appsettings.*.json`". `appsettings.Test.json` is the documented exception — it is committed because (a) it contains no secrets (just a SQLite connection string), (b) `dotnet run` needs it on disk at startup, and (c) CI relies on it. The connection string is `Data Source=VitaTrack.Test.Memory;Mode=Memory;Cache=Shared` — a **named, shared in-memory SQLite DB** kept alive for the process lifetime by the keep-alive singleton in `ServiceCollectionExtensions.AddInfra` (registered only when `builder.Mode == SqliteOpenMode.Memory`). Don't edit this file unless explicitly redesigning the test DB strategy; don't add secrets here.
+*   **`appsettings.Test.json` exception (ArchitectureReview §2.7 side):** root rule says "keep only templates, don't commit populated `appsettings.*.json`". `appsettings.Test.json` is the documented exception — it is committed because (a) it contains no secrets (just a SQLite connection string), (b) `dotnet run` needs it on disk at startup, and (c) CI relies on it. The connection string is `Data Source=VitaTrack.Test.Memory;Mode=Memory;Cache=Shared` — a **named, shared in-memory SQLite DB** kept alive for the process lifetime by the keep-alive singleton in `ServiceCollectionExtensions.AddCore` (registered only when `builder.Mode == SqliteOpenMode.Memory`). Don't edit this file unless explicitly redesigning the test DB strategy; don't add secrets here.
 *   **Error Views:** If `Program.cs` uses `app.UseExceptionHandler("/Home/Error")`, you **must** provide a `Views/Home/Error.cshtml` and a `HomeController.Error()` action. Without them, any controller exception cascades into a bare 500 with no diagnostics.
 *   **LLM Integration:** The app uses `LlmService` (reading `VitaTrack:BaseUrl`, `VitaTrack:ApiKey`, `VitaTrack:Model`, `VitaTrack:ReasoningEffort`, and `VitaTrack:Temperature` via `IOptions<VitaTrackOptions>`) to enrich supplements. Any OpenAI-compatible API endpoint works (e.g., OpenRouter, OpenAI, local servers).
 
@@ -63,7 +63,7 @@ This document defines the coding standards, architectural guidelines, testing ph
 
 ## 🧪 Testing Philosophy
 *   **Framework:** MSTest. Run `dotnet test` and keep the suite green. Tests must verify *actual functionality*.
-*   **Architecture Tests:** `VitaTrack.ArchitectureTests` project uses NetArchTest + reflection to enforce rules csproj can't express: Web controllers must not depend on `System.Data`/`Dapper`/`Microsoft.Data.Sqlite`; Infrastructure services must not depend on `System.Data`/`Dapper`/`Microsoft.Data.Sqlite`; no assembly transitively references EF Core; `Infrastructure.Data` concrete classes must end in `Repository` (known exception: `DbInit`); no `.cs` file exceeds the 300-line hard limit; controllers must not `catch (Exception)` (active — CSV import row-level failures return result records; genuinely exceptional failures propagate to the global error handler).
+*   **Architecture Tests:** `VitaTrack.ArchitectureTests` project uses NetArchTest + reflection to enforce rules csproj can't express: Web controllers must not depend on `System.Data`/`Dapper`/`Microsoft.Data.Sqlite`; Core services must not depend on `System.Data`/`Dapper`/`Microsoft.Data.Sqlite`; no assembly transitively references EF Core; `VitaTrack.Core.Data` concrete classes must end in `Repository` (known exception: `DbInit`); no *complete type* (including partials) exceeds the 300-line split trigger; controllers must not `catch (Exception)` (active — CSV import row-level failures return result records; genuinely exceptional failures propagate to the global error handler).
 *   **Unit Tests:**
     *   Test business logic in Services and Repositories.
     *   `Moq` is permitted only to mock out dependencies (e.g., Repositories when testing Services, or `HttpClient` for LLM service tests) to isolate the unit under test.
@@ -101,7 +101,7 @@ This document defines the coding standards, architectural guidelines, testing ph
 ## 🤖 AI Workflow Directives
 1.  **Understand Context:** Before modifying a file, check how it interacts with the layered folders (Controller -> Service -> Repository).
 2.  **Naming:** Ensure generated names clearly describe *intent* without needing supplementary comments.
-3.  **Refactoring:** If asked to add a feature to a file nearing 300 lines, stop and refactor the file into smaller components first.
+3.  **Refactoring:** If asked to add a feature to a type whose complete size (including partials) is nearing 300 lines, stop and split it into separate responsibilities first.
 4.  **Debug Hygiene:** Temporary debug artifacts — `File.AppendAllText` logging lines, throwaway spec files, ad-hoc playwright configs, `reuseExistingServer: true`, probe members in models — must be tracked as todo items and reverted/removed before commit. Never let debug scaffolding ride along in a feature diff.
 5.  **Resumable Plans:** Feature work beyond ~3 tasks gets a committed plan at `docs/plans/<feature>.md` with checkbox tasks, updated as steps complete. Session context lives in the plan file, not in chat history — any agent must be able to resume cold from it.
 6.  **Post-Mortem Capture:** When fixing a bug whose root cause reveals a systemic gap (a gotcha, a missing rule, an unenforced convention), updating the relevant AGENTS.md / story map is part of the fix — same commit or immediate follow-up, not optional cleanup.

@@ -21,7 +21,7 @@
 ### Task 1: Server-side initial Name order for Supplements
 
 **Files:**
-- Modify: `VitaTrack.Infrastructure/Data/SupplementRepository.cs:16`
+- Modify: `VitaTrack.Core/Data/SupplementRepository.cs:16`
 
 **Interfaces:** none new.
 
@@ -58,7 +58,7 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add VitaTrack.Infrastructure/Data/SupplementRepository.cs VitaTrack.Tests/SupplementRepositoryTests.cs
+git add VitaTrack.Core/Data/SupplementRepository.cs VitaTrack.Tests/SupplementRepositoryTests.cs
 git commit -m "feat(repo): order supplements by name in GetAllAsync"
 ```
 

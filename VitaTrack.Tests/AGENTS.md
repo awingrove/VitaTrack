@@ -12,7 +12,7 @@
 - Use `Async` test methods when awaiting.
 
 ## Dependencies
-- References: `VitaTrack.Infrastructure` (for repositories, models, services).
+- References: `VitaTrack.Core` (for repositories, models, services).
 - Packages: `MSTest.TestFramework`, `MSTest.TestAdapter`, `Microsoft.NET.Test.Sdk`, `Moq`, `Microsoft.Data.Sqlite`, `Dapper`.
 
 ## Test Organization

@@ -67,7 +67,7 @@ Controllers bind entity classes directly from forms (no dedicated input DTOs). F
 
 ```
 VitaTrack.Web/             # Controllers + Razor views (thin HTTP layer)
-VitaTrack.Infrastructure/  # Dapper repositories, models, LLM service
+VitaTrack.Core/  # Dapper repositories, models, LLM service
 VitaTrack.Tests/           # MSTest unit tests
 e2e-tests/playwright/      # Playwright E2E tests
 docs/screenshots/          # App screenshots used in this README

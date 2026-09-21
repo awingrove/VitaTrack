@@ -1,6 +1,6 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
-using VitaTrack.Infrastructure.Services;
+using VitaTrack.Core.Services;
 
 namespace VitaTrack.Web.Controllers;
 

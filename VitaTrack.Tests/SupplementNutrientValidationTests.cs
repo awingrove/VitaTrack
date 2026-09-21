@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using VitaTrack.Infrastructure.Models;
+using VitaTrack.Core.Models;
 
 namespace VitaTrack.Tests;
 

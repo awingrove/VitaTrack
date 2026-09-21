@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using VitaTrack.Infrastructure.Data;
-using VitaTrack.Infrastructure.Models;
+using VitaTrack.Core.Data;
+using VitaTrack.Core.Models;
 
 namespace VitaTrack.Web.Controllers;
 

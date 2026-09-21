@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VitaTrack.Web", "VitaTrack.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VitaTrack.Tests", "VitaTrack.Tests\VitaTrack.Tests.csproj", "{22222222-2222-2222-2222-222222222222}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VitaTrack.Infrastructure", "VitaTrack.Infrastructure\VitaTrack.Infrastructure.csproj", "{44444444-4444-4444-4444-444444444444}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VitaTrack.Core", "VitaTrack.Core\VitaTrack.Core.csproj", "{44444444-4444-4444-4444-444444444444}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VitaTrack.ArchitectureTests", "VitaTrack.ArchitectureTests\VitaTrack.ArchitectureTests.csproj", "{50578B50-3582-4130-927A-6458F4A9392C}"
 EndProject

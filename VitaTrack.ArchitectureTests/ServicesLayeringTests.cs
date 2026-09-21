@@ -1,7 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using NetArchTest.Rules;
 using System.Reflection;
-using VitaTrack.Infrastructure.Services;
+using VitaTrack.Core.Services;
 using TestResult = NetArchTest.Rules.TestResult;
 
 namespace VitaTrack.ArchitectureTests;
@@ -19,7 +19,7 @@ public class ServicesLayeringTests
     public void Services_DoNotDependOnDataAssemblies()
     {
         var result = Types.InAssembly(InfrastructureAssembly)
-            .That().ResideInNamespace("VitaTrack.Infrastructure.Services")
+            .That().ResideInNamespace("VitaTrack.Core.Services")
             .Should().NotHaveDependencyOn("System.Data")
             .And().NotHaveDependencyOn("Microsoft.Data.Sqlite")
             .And().NotHaveDependencyOn("Dapper")

@@ -24,9 +24,9 @@
 ### Task 1: Data model — `ParentNutrientId` + migration + optional dosage
 
 **Files:**
-- Modify: `VitaTrack.Infrastructure/Models/SupplementNutrient.cs` (add `ParentNutrientId`/`ParentNutrient`; drop `Dosage [Required]`)
-- Modify: `VitaTrack.Infrastructure/Data/DbInit.cs` (add column via guarded ALTER)
-- Modify: `VitaTrack.Infrastructure/Data/SupplementNutrientRepository.cs` (read/write `ParentNutrientId`; add `GetByParentIdAsync`)
+- Modify: `VitaTrack.Core/Models/SupplementNutrient.cs` (add `ParentNutrientId`/`ParentNutrient`; drop `Dosage [Required]`)
+- Modify: `VitaTrack.Core/Data/DbInit.cs` (add column via guarded ALTER)
+- Modify: `VitaTrack.Core/Data/SupplementNutrientRepository.cs` (read/write `ParentNutrientId`; add `GetByParentIdAsync`)
 - Test: `VitaTrack.Tests/SupplementNutrientRepositoryTests.cs`
 
 **Interfaces:**
@@ -75,7 +75,7 @@ public async Task Add_WithParentId_PersistsAndReadsBack()
 
 - [ ] **Step 5: Commit**
 ```bash
-git add VitaTrack.Infrastructure
+git add VitaTrack.Core
 git commit -m "feat: add ParentNutrientId + optional dosage to SupplementNutrient"
 ```
 
@@ -84,8 +84,8 @@ git commit -m "feat: add ParentNutrientId + optional dosage to SupplementNutrien
 ### Task 2: DTO + service hierarchy persistence + dosage rule
 
 **Files:**
-- Modify: `VitaTrack.Infrastructure/Models/LlmResult.cs` (`SupplementNutrientDto` add `ParentNutrientId`, `Children`)
-- Modify: `VitaTrack.Infrastructure/Services/SupplementNutrientService.cs` (`PersistHierarchyAsync`; dosage rule)
+- Modify: `VitaTrack.Core/Models/LlmResult.cs` (`SupplementNutrientDto` add `ParentNutrientId`, `Children`)
+- Modify: `VitaTrack.Core/Services/SupplementNutrientService.cs` (`PersistHierarchyAsync`; dosage rule)
 - Test: `VitaTrack.Tests/SupplementNutrientServiceTests.cs`
 
 **Interfaces:**
@@ -155,7 +155,7 @@ public async Task PersistHierarchy_TopLevelMissingDosage_Fails()
 
 - [ ] **Step 5: Commit**
 ```bash
-git add VitaTrack.Infrastructure
+git add VitaTrack.Core
 git commit -m "feat: persist nutrient hierarchy + enforce top-level dosage rule"
 ```
 
@@ -164,8 +164,8 @@ git commit -m "feat: persist nutrient hierarchy + enforce top-level dosage rule"
 ### Task 3: LLM prompt / schema / parser blends + NutritionJson
 
 **Files:**
-- Modify: `VitaTrack.Infrastructure/Services/SupplementLabelParser.cs` (prompt + `ParseNutrients` recurse + `NutritionJson` build)
-- Modify: `VitaTrack.Infrastructure/Services/LlmService.cs` (`NutritionJson` includes children)
+- Modify: `VitaTrack.Core/Services/SupplementLabelParser.cs` (prompt + `ParseNutrients` recurse + `NutritionJson` build)
+- Modify: `VitaTrack.Core/Services/LlmService.cs` (`NutritionJson` includes children)
 - Test: `VitaTrack.Tests/LlmServiceTests.cs` (parser nested; prompt contains blend instructions)
 
 **Interfaces:**
@@ -189,7 +189,7 @@ git commit -m "feat: persist nutrient hierarchy + enforce top-level dosage rule"
 
 - [ ] **Step 5: Commit**
 ```bash
-git add VitaTrack.Infrastructure
+git add VitaTrack.Core
 git commit -m "feat: LLM enrichment returns nutrient blends (prompt/schema/parser)"
 ```
 
@@ -286,7 +286,7 @@ git commit -m "feat: optional parent blend dropdown on nutrient pages"
 ### Task 7: Seed blend (demo/E2E)
 
 **Files:**
-- Modify: `VitaTrack.Infrastructure/Data/DbInit.cs` (seed one blend + children on a seeded supplement)
+- Modify: `VitaTrack.Core/Data/DbInit.cs` (seed one blend + children on a seeded supplement)
 
 - [ ] **Step 1: Add seed rows**
   - After existing SupplementNutrients seed, insert a blend for supplement 3 (Multivitamin): e.g. `(3, 'Proprietary Blend', 'Blend', '500mg')` then 2 children with `ParentNutrientId = <that id>` (use `last_insert_rowid()` or fixed id if safe). Keep FK order.
@@ -295,7 +295,7 @@ git commit -m "feat: optional parent blend dropdown on nutrient pages"
 
 - [ ] **Step 3: Commit**
 ```bash
-git add VitaTrack.Infrastructure
+git add VitaTrack.Core
 git commit -m "test: seed a sample nutrient blend"
 ```
 

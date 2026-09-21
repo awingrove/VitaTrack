@@ -7,9 +7,9 @@ using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Moq.Protected;
-using VitaTrack.Infrastructure;
-using VitaTrack.Infrastructure.Models;
-using VitaTrack.Infrastructure.Services;
+using VitaTrack.Core;
+using VitaTrack.Core.Models;
+using VitaTrack.Core.Services;
 
 namespace VitaTrack.Tests;
 

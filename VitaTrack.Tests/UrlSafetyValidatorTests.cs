@@ -1,5 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using VitaTrack.Infrastructure.Services;
+using VitaTrack.Core.Services;
 
 namespace VitaTrack.Tests;
 

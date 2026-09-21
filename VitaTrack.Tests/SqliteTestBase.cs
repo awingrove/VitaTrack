@@ -1,6 +1,6 @@
 using System.Data;
 using Microsoft.Data.Sqlite;
-using VitaTrack.Infrastructure.Data;
+using VitaTrack.Core.Data;
 
 namespace VitaTrack.Tests;
 

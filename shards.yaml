@@ -89,6 +89,7 @@ slices:
       - VitaTrack.Tests/CsvImportServiceTests.cs
       - VitaTrack.Tests/SupplementNutrientControllerTests.cs
       - VitaTrack.Tests/SupplementNutrientServiceTests.cs
+      - VitaTrack.Tests/MockSupplementNutrientRepo.cs
       - VitaTrack.Tests/SupplementNutrientServiceHierarchyTests.cs
       - VitaTrack.Tests/SupplementNutrientValidationTests.cs
       - VitaTrack.Tests/SupplementNutrientDosageNormalizationTests.cs
@@ -100,6 +101,10 @@ slices:
       - e2e-tests/playwright/tests/supplement-nutrient.spec.js
       - e2e-tests/playwright/tests/supplement-blends.spec.js
       - e2e-tests/playwright/tests/csv-import.spec.js
+      - e2e-tests/playwright/tests/supplement-delete-cascade.spec.js
+      - e2e-tests/playwright/tests/blend-cascade-delete.spec.js
+      - e2e-tests/playwright/tests/enrich-without-url-roundtrip.spec.js
+      - e2e-tests/playwright/tests/nutrient-validation-surfaces.spec.js
 
   - id: RP
     name: Reports (nutrient + cost)
@@ -118,6 +123,7 @@ slices:
     e2e_specs:
       - e2e-tests/playwright/tests/nutrient-report.spec.js
       - e2e-tests/playwright/tests/cost-report.spec.js
+      - e2e-tests/playwright/tests/daily-loop.spec.js
 
   - id: LLM
     name: LLM Enrichment

@@ -43,6 +43,7 @@ public class LlmServiceTests
             BaseAddress = new System.Uri("https://dummy.example.com/v1")
         };
         factoryMock.Setup(f => f.CreateClient("llm")).Returns(llmClient);
+
         return factoryMock.Object;
     }
 

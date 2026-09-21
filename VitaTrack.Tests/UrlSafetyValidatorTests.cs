@@ -13,9 +13,21 @@ public class UrlSafetyValidatorTests
     }
 
     [TestMethod]
+    public void IsUrlSafe_AllowsPublicHttps()
+    {
+        Assert.IsTrue(UrlSafetyValidator.IsUrlSafe("https://example.com/product"));
+    }
+
+    [TestMethod]
     public void IsUrlSafe_BlocksIpv4Loopback()
     {
         Assert.IsFalse(UrlSafetyValidator.IsUrlSafe("https://127.0.0.1/x"));
+    }
+
+    [TestMethod]
+    public void IsUrlSafe_BlocksLoopbackHostnames()
+    {
+        Assert.IsFalse(UrlSafetyValidator.IsUrlSafe("https://localhost/"));
     }
 
     [TestMethod]
@@ -55,9 +67,17 @@ public class UrlSafetyValidatorTests
     }
 
     [TestMethod]
+    public void IsUrlSafe_BlocksNonHttpsSchemes()
+    {
+        Assert.IsFalse(UrlSafetyValidator.IsUrlSafe("http://example.com"));
+        Assert.IsFalse(UrlSafetyValidator.IsUrlSafe("ftp://example.com"));
+    }
+
+    [TestMethod]
     public void IsUrlSafe_BlocksNonUrlInput()
     {
         Assert.IsFalse(UrlSafetyValidator.IsUrlSafe("not a url"));
+        Assert.IsFalse(UrlSafetyValidator.IsUrlSafe("https://"));
     }
 
     [TestMethod]

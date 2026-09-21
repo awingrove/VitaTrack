@@ -111,7 +111,8 @@ slices:
       - VitaTrack.Core/Models/Result.cs
     views:
       - VitaTrack.Web/Views/Reporting/**
-    js: []
+    js:
+      - VitaTrack.Web/wwwroot/js/report-toggle.js
     unit_tests:
       - VitaTrack.Tests/ReportingServiceTests.cs
     e2e_specs:

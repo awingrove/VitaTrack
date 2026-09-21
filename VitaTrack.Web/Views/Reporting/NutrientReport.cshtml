@@ -92,7 +92,10 @@ else
                                         data-bs-toggle="collapse"
                                         data-bs-target="#bd-@(nutrientRow)-@(m)"
                                         aria-expanded="false"
-                                        aria-controls="bd-@(nutrientRow)-@(m)">@total@unitSuffix</button>
+                                        aria-controls="bd-@(nutrientRow)-@(m)">@total@unitSuffix
+                                    <span data-chevron="collapsed" class="ms-1" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+                                    <span data-chevron="expanded" class="ms-1" aria-hidden="true" hidden><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708"/></svg></span>
+                                </button>
                                 @* `!` safe: expandable proves contribs is non-null with Count > 0 *@
                                 <span class="badge rounded-pill bg-secondary" title="@contribs!.Count supplement(s)">@contribs!.Count</span>
                             }
@@ -118,7 +121,15 @@ else
                                 {
                                     <div>
                                         <a asp-controller="Supplement" asp-action="Edit" asp-route-id="@row.SupplementId">@row.SupplementName (@row.Brand)</a>
-                                        <text> — @row.Amount.ToString("0.##")@unitSuffix</text>
+                                        <text> — </text>
+                                        @if (row.SupplementNutrientId is int nutrientId)
+                                        {
+                                            <a asp-controller="SupplementNutrient" asp-action="Edit" asp-route-id="@nutrientId">@row.Amount.ToString("0.##")@unitSuffix</a>
+                                        }
+                                        else
+                                        {
+                                            <text>@row.Amount.ToString("0.##")@unitSuffix</text>
+                                        }
                                         @if (row.Multiplier is > 1)
                                         {
                                             <text> (×@(row.Multiplier))</text>
@@ -158,6 +169,8 @@ else
     }
     </tbody>
 </table>
+
+<script src="~/js/report-toggle.js" asp-append-version="true"></script>
 
 <div class="mt-3">
     <a asp-controller="PrescribedDose" asp-action="Index" class="btn btn-outline-info">Manage Prescribed Doses</a>

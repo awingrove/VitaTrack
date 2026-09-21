@@ -32,6 +32,7 @@ the code-level rules live in `AGENTS.md` (root) and the per-project `AGENTS.md` 
 ## Skills
 
 - `new-shard` — scaffold a shard by copying the exemplar; runs green immediately.
+  Committed recipe: [docs/factory/new-shard.md](docs/factory/new-shard.md).
 - `verify-shard` — scoped acceptance gate for one shard (Definition of Done).
 
 ## Definition of Done (per shard)

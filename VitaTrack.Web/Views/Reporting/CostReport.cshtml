@@ -26,8 +26,8 @@
                 <tr>
                     <td>@item.Name</td>
                     <td>@item.Brand</td>
-                    <td>£@item.UnitCost.ToString("F2")</td>
-                    <td>£@item.MonthlyCost.ToString("F2")</td>
+                    <td>@item.UnitCost</td>
+                    <td>@item.MonthlyCost</td>
                 </tr>
             }
         }
@@ -52,7 +52,7 @@
             {
                 <tr>
                     <td>@item.Name</td>
-                    <td>£@item.MonthlyCost.ToString("F2")</td>
+                    <td>@item.MonthlyCost</td>
                 </tr>
             }
         }
@@ -61,4 +61,4 @@
 </table>
 
 <h3>Grand Total</h3>
-<p class="lead">£@ViewData["GrandTotal"]</p>
+<p class="lead">@ViewData["GrandTotal"]</p>

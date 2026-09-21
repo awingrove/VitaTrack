@@ -14,7 +14,7 @@ public class ReportingController(IReportingService reportingService) : Controlle
 
         ViewData["Units"] = JsonSerializer.Serialize(data.Units);
         ViewData["MemberContributions"] = JsonSerializer.Serialize(data.MemberContributions);
-        ViewData["TotalCost"] = data.TotalCost.ToString("F2");
+        ViewData["TotalCost"] = data.TotalCost.ToString();
         ViewData["ReportDate"] = data.ReportDate.ToString("yyyy-MM-dd");
         ViewData["MemberNames"] = JsonSerializer.Serialize(data.MemberNames);
         ViewData["MemberData"] = JsonSerializer.Serialize(data.MemberData);
@@ -25,7 +25,7 @@ public class ReportingController(IReportingService reportingService) : Controlle
                 s.Brand,
                 s.DailyDose,
                 MonthlyCost = data.SupplementMonthlyCosts.TryGetValue(s.Id, out var cost)
-                    ? cost.ToString("F2")
+                    ? cost.ToString()
                     : (string?)"N/A"
             }).ToList();
 
@@ -40,7 +40,7 @@ public class ReportingController(IReportingService reportingService) : Controlle
             .Select(s => new { s.Name, s.Brand, s.UnitCost, s.MonthlyCost }).ToList();
         ViewData["MemberCosts"] = data.MemberCosts
             .Select(m => new { m.Name, m.MonthlyCost }).ToList();
-        ViewData["GrandTotal"] = data.GrandTotal.ToString("F2");
+        ViewData["GrandTotal"] = data.GrandTotal.ToString();
         ViewData["ReportDate"] = data.ReportDate.ToString("yyyy-MM-dd");
 
         return View();

@@ -31,5 +31,7 @@ public class Supplement
     [Range(0.01, 99999)]
     public decimal? ServingsPerBottle { get; set; }
 
+    public string Currency { get; set; } = "GBP";
+
     public int NutrientCount { get; set; }
 }

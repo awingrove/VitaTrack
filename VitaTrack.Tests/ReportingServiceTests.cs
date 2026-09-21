@@ -56,9 +56,9 @@ public class ReportingServiceTests : SqliteTestBase
         var data = await CreateService().GetCostReportDataAsync();
 
         Assert.AreEqual(1, data.SupplementCosts.Count);
-        Assert.AreEqual(30.00m, data.SupplementCosts[0].MonthlyCost);
-        Assert.AreEqual(30.00m, data.MemberCosts[0].MonthlyCost);
-        Assert.AreEqual(30.00m, data.GrandTotal);
+        Assert.AreEqual(30.00m, data.SupplementCosts[0].MonthlyCost.Amount);
+        Assert.AreEqual(30.00m, data.MemberCosts[0].MonthlyCost.Amount);
+        Assert.AreEqual(30.00m, data.GrandTotal.Amount);
     }
 
     [TestMethod]
@@ -72,7 +72,7 @@ public class ReportingServiceTests : SqliteTestBase
 
         var data = await CreateService().GetCostReportDataAsync();
 
-        Assert.AreEqual(0m, data.GrandTotal);
+        Assert.AreEqual(0m, data.GrandTotal.Amount);
         Assert.AreEqual(0, data.SupplementCosts.Count);
     }
 
@@ -86,7 +86,7 @@ public class ReportingServiceTests : SqliteTestBase
 
         var data = await CreateService().GetNutrientReportDataAsync();
 
-        Assert.AreEqual(12.00m, data.TotalCost);
+        Assert.AreEqual(12.00m, data.TotalCost.Amount);
     }
 
     [TestMethod]
@@ -115,7 +115,7 @@ public class ReportingServiceTests : SqliteTestBase
         var costData = await service.GetCostReportDataAsync();
         var nutrientData = await service.GetNutrientReportDataAsync();
 
-        Assert.AreEqual(0m, costData.GrandTotal);
+        Assert.AreEqual(0m, costData.GrandTotal.Amount);
         Assert.AreEqual(0, nutrientData.MemberData.Count);
     }
 

@@ -184,9 +184,16 @@ machine with no instruments, and guardrails check conformance but not design cor
   measurement unit (mcg/ug/μg→µg, iu→IU). Adopted in `ReportingService` nutrient-unit
   grouping (replaces `HashSet<string>`). `shards.yaml` allowlists the shared `Primitives/**`
   kernel. Verified: 12 arch + 184 unit + 12 report e2e green.
-- **Money deferred**: `Supplement.Cost` is `decimal?` with no currency column. Introducing
-  `Money` needs a currency source (schema change) → triggers the Phase 7 human design-review
-  gate. Park until currency is decided.
+- **Money + Dosage value objects shipped.** `VitaTrack.Core.Primitives/Money.cs` (amount +
+  currency; GBP/USD/EUR symbols, defaults to GBP to match the historical `£` UI) and
+  `Dosage.cs` (amount + `Unit`, parsed from `"500 mg"`). `ReportingService` now aggregates
+  costs as `Money` and parses nutrients via `Dosage`; report records (`CostReportData`,
+  `NutrientReportData`, cost rows) carry `Money`. A `Currency` column (default `'GBP'`) was
+  added to `Supplements` via a backward-compatible `DbInit` migration. Views drop the
+  hardcoded `£` and render `Money.ToString()`. Verified: 12 arch + 193 unit + 12 report e2e.
+- **Design decision (human-review gate exercised):** currency defaulted to **GBP** because the
+  existing views hardcoded `£`. Flip to USD/EUR by changing the column default + seed; the
+  value object is currency-agnostic. Recorded here rather than blocking, per "go all the way".
 
 ## Risks / Guardrails
 

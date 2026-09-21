@@ -25,8 +25,8 @@ public class ReportingService(
         var memberTotals = new Dictionary<int, Dictionary<string, decimal>>();
         var memberContributions = new Dictionary<int, Dictionary<string, Dictionary<int, (decimal Amount, decimal? Multiplier)>>>();
         var nutrientUnits = new Dictionary<string, HashSet<Unit>>();
-        var supplementMonthlyCosts = new Dictionary<int, decimal>();
-        decimal totalCost = 0;
+        var supplementMonthlyCosts = new Dictionary<int, Money>();
+        Money totalCost = default;
 
         foreach (var pd in activeDoses)
         {
@@ -44,19 +44,18 @@ public class ReportingService(
 
             foreach (var n in nutrientCache[pd.SupplementId])
             {
-                var unit = Unit.Parse(n.Dosage);
-                if (unit.IsDefined)
+                var dosage = Dosage.Parse(n.Dosage);
+                if (dosage.Unit.IsDefined)
                 {
                     if (!nutrientUnits.TryGetValue(n.GenericName, out var units))
                     {
                         units = [];
                         nutrientUnits[n.GenericName] = units;
                     }
-                    units.Add(unit);
+                    units.Add(dosage.Unit);
                 }
 
-                var nutrientValue = DosageParser.ParseAmount(n.Dosage);
-                var dailyAmount = nutrientValue * dailyFrequency;
+                var dailyAmount = dosage.Amount * dailyFrequency;
 
                 memberTotals[pd.FamilyMemberId][n.GenericName] =
                     memberTotals[pd.FamilyMemberId].GetValueOrDefault(n.GenericName) + dailyAmount;
@@ -88,11 +87,13 @@ public class ReportingService(
             }
 
             var monthlyCost = GetMonthlyCost(supplement, dailyFrequency);
-            if (monthlyCost > 0m)
+            if (monthlyCost.Amount > 0m)
             {
-                totalCost += monthlyCost;
+                totalCost = totalCost.IsDefined ? totalCost + monthlyCost : monthlyCost;
                 supplementMonthlyCosts[pd.SupplementId] =
-                    supplementMonthlyCosts.GetValueOrDefault(pd.SupplementId) + monthlyCost;
+                    supplementMonthlyCosts.TryGetValue(pd.SupplementId, out var existing)
+                        ? existing + monthlyCost
+                        : monthlyCost;
             }
         }
 
@@ -154,7 +155,7 @@ public class ReportingService(
 
         var supplementCosts = new Dictionary<int, SupplementCostRow>();
         var memberCosts = new Dictionary<int, MemberCostRow>();
-        decimal grandTotal = 0;
+        Money grandTotal = default;
 
         foreach (var pd in activeDoses)
         {
@@ -175,7 +176,7 @@ public class ReportingService(
                 ? memberExisting with { MonthlyCost = memberExisting.MonthlyCost + monthlyCost }
                 : new MemberCostRow(memberName, monthlyCost);
 
-            grandTotal += monthlyCost;
+            grandTotal = grandTotal.IsDefined ? grandTotal + monthlyCost : monthlyCost;
         }
 
         return new CostReportData(
@@ -189,17 +190,17 @@ public class ReportingService(
 
     private static bool HasServings(Supplement supplement) => supplement.ServingsPerBottle is > 0;
 
-    private static decimal GetMonthlyCost(Supplement supplement, decimal dailyFrequency)
+    private static Money GetMonthlyCost(Supplement supplement, decimal dailyFrequency)
         => HasServings(supplement) && supplement.Cost.HasValue
             // `!` safe: HasServings proves ServingsPerBottle non-null; Cost guarded by HasValue
-            ? supplement.Cost.Value / supplement.ServingsPerBottle!.Value * dailyFrequency * 30m
-            : 0m;
+            ? new Money(supplement.Cost.Value / supplement.ServingsPerBottle!.Value * dailyFrequency * 30m, supplement.Currency)
+            : default;
 
     // Caller guarantees Cost.HasValue; HasServings guards the servings divisor.
-    private static decimal GetUnitCost(Supplement supplement)
+    private static Money GetUnitCost(Supplement supplement)
         => HasServings(supplement)
-            ? supplement.Cost!.Value / supplement.ServingsPerBottle!.Value
-            : supplement.Cost!.Value;
+            ? new Money(supplement.Cost!.Value / supplement.ServingsPerBottle!.Value, supplement.Currency)
+            : new Money(supplement.Cost!.Value, supplement.Currency);
 
     private async Task<(List<PrescribedDose> ActiveDoses, DateTime Today)> GetActiveDosesAsync()
     {

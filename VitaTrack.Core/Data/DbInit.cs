@@ -27,7 +27,8 @@ public static class DbInit
                 NutritionJson TEXT NULL,
                 SwapSuggestion TEXT NULL,
                 Cost REAL NULL,
-                ServingsPerBottle REAL NULL
+                ServingsPerBottle REAL NULL,
+                Currency TEXT NULL DEFAULT 'GBP'
             );");
 
         db.Execute(@"
@@ -92,6 +93,13 @@ public static class DbInit
         if (servingsCol == 0)
         {
             db.Execute("ALTER TABLE Supplements ADD COLUMN ServingsPerBottle REAL NULL;");
+        }
+
+        // Add Currency column if it doesn't exist (default GBP to match the historical UI).
+        var currencyCol = db.QuerySingle<int>("SELECT COUNT(*) FROM pragma_table_info('Supplements') WHERE name = 'Currency';");
+        if (currencyCol == 0)
+        {
+            db.Execute("ALTER TABLE Supplements ADD COLUMN Currency TEXT NULL DEFAULT 'GBP';");
         }
 
         // Normalize legacy dosage units (mcg/ug/μg -> µg, iu -> IU) so every unit of

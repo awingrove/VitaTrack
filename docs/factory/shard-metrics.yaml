@@ -1,0 +1,12 @@
+# Shard estimation/actuals ledger. See docs/factory/metrics.md.
+# One block per shipped shard. Gate is warn-only until 3 shards have actual_hours.
+
+- id: PD
+  name: Prescribed Doses
+  estimate_hours: 4
+  actual_hours: 3.5
+  defects_escaped: 0
+  escalations: 0
+  notes: >
+    Pilot slice. Value objects (DoseMultiplier, DosePeriod, Unit) paid off;
+    handler-per-rule held at slice scale; no-MediatR (explicit DI handlers) sufficient.

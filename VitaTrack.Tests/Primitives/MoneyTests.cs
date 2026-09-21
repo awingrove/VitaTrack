@@ -32,6 +32,20 @@ public class MoneyTests
     }
 
     [TestMethod]
+    public void Addition_MixedCurrencies_Throws()
+    {
+        Assert.ThrowsException<InvalidOperationException>(
+            () => { var _ = new Money(10m, "GBP") + new Money(5m, "USD"); });
+    }
+
+    [TestMethod]
+    public void Addition_DefaultAdoptsOtherCurrency()
+    {
+        var sum = default(Money) + new Money(5m, "GBP");
+        Assert.AreEqual(new Money(5m, "GBP"), sum);
+    }
+
+    [TestMethod]
     public void Default_IsUndefined()
     {
         Assert.IsFalse(default(Money).IsDefined);

@@ -25,8 +25,9 @@ Run it from the shard's working tree; all checks must be green.
   (re-point `shards.yaml`, split the type, rename the repo).
 - E2E arrives only via `goto` → the page is orphaned; wire a nav/list entry point.
 
-## Estimation gate
+## Ledger gate
 
-If `docs/factory/metrics.md` has ≥ 3 shards with `actual_hours`, the gate also checks the
-shard's `estimate_hours` is present and within 3x the running median. Warn-only before
-that threshold.
+A shipped slice needs an entry in `docs/factory/shard-metrics.yaml` (`ShardMetricsLedgerTests`
+enforces schema integrity in CI). Warn-only until three shards have entries; afterward a
+missing entry fails the gate, and `human_interventions` above the ratchet target
+(start: ≤ 1 per shard) fails review. See `metrics.md`.

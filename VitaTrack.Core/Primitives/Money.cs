@@ -37,8 +37,17 @@ public readonly record struct Money
 
     public static Money operator +(Money left, Money right)
     {
-        // Caller guarantees same currency for aggregations; mixed-currency addition is
-        // out of scope (single-currency reports today).
-        return new Money(left.Amount + right.Amount, left.Currency);
+        // A null currency (default Money) adopts the other operand's currency, so
+        // accumulators can start from default. Two defined-but-different currencies is
+        // a programming defect and fails loudly instead of silently misreporting.
+        if (left.Currency != null && right.Currency != null
+            && !string.Equals(left.Currency, right.Currency, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "Cannot add Money of different currencies (" + left.Currency + " + " + right.Currency + ").");
+        }
+
+        var currency = left.Currency ?? right.Currency;
+        return new Money(left.Amount + right.Amount, currency ?? string.Empty);
     }
 }

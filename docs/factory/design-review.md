@@ -35,6 +35,7 @@ never happens.
 
 ## Notes
 
-- Estimation is **warn-only** until three shards have recorded actuals (see
-  `metrics.md`); after that the gate hard-fails on missing/implausible estimates.
+- The intervention ledger (`metrics.md`) is warn-only until three shards have entries;
+  after that a shipped slice without an entry fails the gate, and `human_interventions`
+  above the ratchet target fails review.
 - The `new-shard` recipe (`docs/factory/new-shard.md`) embeds this gate at step 1.

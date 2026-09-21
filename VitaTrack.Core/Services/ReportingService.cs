@@ -89,7 +89,7 @@ public class ReportingService(
             var monthlyCost = GetMonthlyCost(supplement, dailyFrequency);
             if (monthlyCost.Amount > 0m)
             {
-                totalCost = totalCost.IsDefined ? totalCost + monthlyCost : monthlyCost;
+                totalCost += monthlyCost;
                 supplementMonthlyCosts[pd.SupplementId] =
                     supplementMonthlyCosts.TryGetValue(pd.SupplementId, out var existing)
                         ? existing + monthlyCost
@@ -176,7 +176,7 @@ public class ReportingService(
                 ? memberExisting with { MonthlyCost = memberExisting.MonthlyCost + monthlyCost }
                 : new MemberCostRow(memberName, monthlyCost);
 
-            grandTotal = grandTotal.IsDefined ? grandTotal + monthlyCost : monthlyCost;
+            grandTotal += monthlyCost;
         }
 
         return new CostReportData(

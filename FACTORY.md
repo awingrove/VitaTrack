@@ -9,9 +9,10 @@ the code-level rules live in `AGENTS.md` (root) and the per-project `AGENTS.md` 
 - **Slices, not layers.** Each feature is a vertical folder owning its logic end-to-end.
 - **Guardrails enforce conformance; humans own design.** Automated checks catch rule
   violations; a developer confirms architecture decisions (ADR / slice boundary).
-- **Cheap models suffice** because work is sliced small, contextualized by the shard
-  manifest, and self-correcting via loud guardrail failures.
-- **Measure.** Every shard records estimate, actuals, and defects (see `docs/factory/metrics.md`).
+- **Cheap models are the benchmark, not the rule.** The productivity proof targets
+  ≤ $1-per-1M-token models (GLM-5.3-Flash, Hy3 class); the factory runs anything.
+- **Measure touch, not time.** Every shard records agent class, human interventions,
+  guardrail failures, fix commits, and escaped defects (see `docs/factory/metrics.md`).
 
 ## Process
 
@@ -52,8 +53,8 @@ the code-level rules live in `AGENTS.md` (root) and the per-project `AGENTS.md` 
 
 ## Quality management (Construx-aligned)
 
-- Metrics: `docs/factory/metrics.md`. Estimation warn-only until 3 shards have actuals,
-  then a hard gate.
+- Metrics: `docs/factory/metrics.md` + `docs/factory/shard-metrics.yaml` (ledger schema
+  enforced by `ShardMetricsLedgerTests`). Warn-only until 3 shards have entries, then hard.
 - Static analysis: Roslyn analyzers + warnings-as-errors in CI.
 - Non-functional requirements: `docs/quality/nfr.md`.
 - Technical debt register: `docs/technical-debt.md` (each entry with an interest rate).

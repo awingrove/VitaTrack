@@ -140,12 +140,15 @@ no cross-slice SQL). Add an arch test so it cannot regress.
 Closes the gaps a Construx review would raise: the factory is currently a construction
 machine with no instruments, and guardrails check conformance but not design correctness.
 
-- [ ] **Metrics starter set** — `docs/factory/metrics.md`: one row per shard recording
-      estimate (3-point range), actual effort, cycle time, and defect count by stage
-      (scaffold / build / verify / escaped). Purpose: prove the factory works, not assert it.
-- [ ] **Estimate-before-build gate** — `verify-shard` warns if a shard has no recorded estimate.
-      **Warn-only until 3 shards have actuals**; becomes a hard gate once estimate-vs-actual
-      data exists. The pilot is the first data point.
+- [x] **Metrics starter set** — `docs/factory/metrics.md`: one entry per shard recording
+      agent class, human interventions, guardrail failures, fix commits, and escaped
+      defects. Purpose: prove the factory works, not assert it. (Hours were dropped —
+      meaningless across models; touch and rework are the signal.)
+- [x] **Ledger gate** — `ShardMetricsLedgerTests` validates `docs/factory/shard-metrics.yaml`
+      (entries resolve to real shards, unique ids, required fields). **Warn-only until 3
+      shards have entries**; then a missing entry fails `verify-shard` and interventions
+      above the ratchet target fail review. The pilot is the first entry (frontier-executed,
+      so not a productivity-proof data point).
 - [ ] **Design-before-code gate + human review** — when a shard needs an ADR or a new slice
       boundary decision, the agent **STOPS and prompts the developer for confirmation** before
       generating code. Guardrails cannot judge whether a boundary or abstraction is correct;
@@ -180,6 +183,13 @@ machine with no instruments, and guardrails check conformance but not design cor
 
 ## Progress log
 
+- **Money `+` defect fixed** (found in review): mixed-currency addition now throws
+  instead of silently keeping the left currency; `default` adopts the other operand's
+  currency so accumulators simplify back to `+=`. ReportingService guards collapsed.
+- **Metrics redesigned** away from hours: agent class + human interventions + guardrail
+  failures + fix commits + escaped defects, with `ShardMetricsLedgerTests` enforcing the
+  ledger schema. Productivity proof targets ≤$1/1M-token models (GLM-5.3-Flash / Hy3
+  class) — a benchmark, not a rule; only `agent: cheap` entries count toward it.
 - **Unit value object shipped** (`VitaTrack.Core/Primitives/Unit.cs`): canonical, alias-safe
   measurement unit (mcg/ug/μg→µg, iu→IU). Adopted in `ReportingService` nutrient-unit
   grouping (replaces `HashSet<string>`). `shards.yaml` allowlists the shared `Primitives/**`

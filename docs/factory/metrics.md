@@ -1,41 +1,45 @@
-# Shard Metrics & Estimation Gate
+# Shard Metrics & Intervention Ledger
 
-Every shard records **estimate**, **actuals**, and **defects** so the factory can measure
-whether cheap models, with shard-context, complete deep features without escalation. This
-is the Construx gap: a software factory without measurement is undefended against drift.
+The factory's claim to prove: an agent, given the shard recipe (`new-shard.md`) and the
+guardrails, delivers a correct slice with **minimal human touch**. So we measure touch and
+rework — not wall-clock hours, which are meaningless across models and sessions.
+
+## Target model class
+
+The productivity proof targets **≤ $1 per 1M token models** (GLM-5.3-Flash, Hy3 class).
+This is a benchmark target, not a rule: the factory does not refuse to run other models.
+A shard only counts toward the proof when its ledger entry records `agent` in that class.
+
+## What we measure (per shard)
+
+| Field | Meaning |
+|---|---|
+| `agent` | Model class that built it (`frontier` / `cheap` / `human`). Only `cheap` entries count toward the productivity proof. |
+| `human_interventions` | Every stop that needed a human: design-review prompts, corrections, unblocks, review findings that forced changes. **The headline number.** `0` = fully autonomous. |
+| `guardrail_failures` | Red gate cycles (arch/format/build/e2e failures before green). Loud failures are the design working; a high count means the recipe under-contextualizes the shard. |
+| `fix_commits` | Commits after the first "done" claim. Measures verification honesty. |
+| `defects_escaped` | Defects found after merge (from the defect log in `technical-debt.md`). |
+| `cost_usd` (optional) | Token cost of the shard, when the session tooling reports it. Direct productivity-per-dollar number. |
 
 ## Ledger
 
-The canonical ledger is `docs/factory/shard-metrics.yaml`. One block per shipped shard:
+Canonical ledger: `docs/factory/shard-metrics.yaml`. One block per shipped shard.
+`ShardMetricsLedgerTests` enforces its integrity: ids resolve to real shards in
+`shards.yaml`, ids are unique, and every entry carries the required fields.
 
-```yaml
-- id: PD
-  name: Prescribed Doses
-  estimate_hours: 4
-  actual_hours: 3.5
-  defects_escaped: 0
-  notes: pilot; value objects paid off; handler-per-rule held
-```
+## Gate
 
-## Estimation gate
+- **Warn-only until three shards** have entries. Warn = reviewer checks the entry exists
+  and the numbers are plausible.
+- **Hard afterward**: a shipped slice without a ledger entry fails `verify-shard`, and
+  `human_interventions` above the ratchet target (start: **≤ 1 per shard**) fails review —
+  the target ratchets down as the recipe improves.
 
-- **Warn-only** until **three** shards have recorded `actual_hours`. The gate is the
-  `estimate_hours` field being present and within an order of magnitude of the prior
-  median.
-- **Hard** afterward: a shard without `estimate_hours`, or whose estimate deviates > 3x
-  from the running median for its slice class, fails the verify-shard gate (local + CI).
-- The gate is intentionally lightweight (a yaml lint + range check), not a time-tracking
-  system — the goal is trend visibility, not surveillance.
+## Reading the numbers
 
-## What we measure
-
-- `estimate_hours` — developer's pre-code estimate.
-- `actual_hours` — wall-clock from first shard commit to green CI.
-- `defects_escaped` — defects found after the shard merged (from the defect log in
-  `technical-debt.md`).
-- `escalations` — count of times the agent had to stop for human design review
-  (`design-review.md`); a rising rate signals slices that are too large or under-specified.
-
-## Current state
-
-As of the Dosing pilot, only one shard has actuals, so the gate remains **warn-only**.
+- Rising `human_interventions` → slices are too large or under-specified; fix the recipe,
+  not the agent.
+- High `guardrail_failures` with low `interventions` → guardrails are doing their job
+  (self-correction), but consider enriching `new-shard.md` with the recurring failure mode.
+- `defects_escaped > 0` → post-mortem per the defect-log rule; the systemic gap updates
+  `AGENTS.md` / the recipe in the same change.

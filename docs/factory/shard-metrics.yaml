@@ -16,3 +16,17 @@ shards:
       Pilot slice, frontier-executed — proves the shape (handler-per-rule, value objects,
       DTO binding), NOT the productivity claim. First cheap-model proof point is the
       Nutrients slice conversion.
+
+  - id: NT
+    name: Nutrients & Blends
+    agent: cheap
+    human_interventions: 0
+    guardrail_failures: 1
+    fix_commits: 0
+    defects_escaped: 0
+    notes: >
+      Slice conversion from MS per docs/plans/2026-09-21-nutrients-slice.md. Four
+      commits, one red gate run (FileSizeTests: added cascade test pushed
+      SupplementNutrientRepositoryTests past 300 lines; fixed by splitting
+      delete/cascade tests into SupplementNutrientRepositoryCascadeTests). No human
+      stops.

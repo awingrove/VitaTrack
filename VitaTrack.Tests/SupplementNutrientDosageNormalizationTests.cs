@@ -4,6 +4,7 @@ using VitaTrack.Core.Data;
 using VitaTrack.Core.Models;
 
 using VitaTrack.Core.Features.Nutrients;
+using VitaTrack.Core.Features.Dosing;
 
 namespace VitaTrack.Tests;
 
@@ -19,7 +20,7 @@ public class SupplementNutrientDosageNormalizationTests : SqliteTestBase
     public void Setup()
     {
         _nutrientRepo = new SupplementNutrientRepository(Connection);
-        _supplementRepo = new SupplementRepository(Connection);
+        _supplementRepo = new SupplementRepository(Connection, new SupplementNutrientRepository(Connection), new PrescribedDoseRepository(Connection));
     }
 
     private async Task<int> SeedSupplementAsync()

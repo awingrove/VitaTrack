@@ -30,6 +30,8 @@ When deleting a `Supplement`, delete in this order:
 2. `DELETE FROM PrescribedDoses WHERE SupplementId = @Id`
 3. `DELETE FROM Supplements WHERE Id = @Id`
 
+**Cross-slice deletes are routed via the owning slice's repository** (ADR-0006 cross-slice invariant). `SupplementRepository.DeleteAsync` (both overloads) no longer issues that raw SQL itself — it calls `ISupplementNutrientRepository.DeleteBySupplementIdsAsync` and `IPrescribedDoseRepository.DeleteBySupplementIdsAsync`, which implement the same order against their own tables. When a delete cascade crosses a slice boundary, add a bulk-delete method to the owning slice's repository and call it — never write SQL against another slice's table. Repo-to-repo constructor injection is the accepted pragmatic pattern for this.
+
 When deleting a `FamilyMember`, delete in this order:
 1. `DELETE FROM PrescribedDoses WHERE FamilyMemberId = @Id`
 2. `DELETE FROM FamilyMembers WHERE Id = @Id`

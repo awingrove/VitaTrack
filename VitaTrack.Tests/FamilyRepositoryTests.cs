@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using VitaTrack.Core.Data;
 using VitaTrack.Core.Features.Dosing;
+using VitaTrack.Core.Features.Nutrients;
 using VitaTrack.Core.Models;
 
 namespace VitaTrack.Tests;
@@ -83,7 +84,7 @@ public class FamilyRepositoryTests : SqliteTestBase
     public async Task Delete_RemovesFamilyMemberWithPrescribedDoses()
     {
         // Arrange – create a family member with a prescribed dose
-        var suppRepo = new SupplementRepository(Connection);
+        var suppRepo = new SupplementRepository(Connection, new SupplementNutrientRepository(Connection), new PrescribedDoseRepository(Connection));
         var doseRepo = new PrescribedDoseRepository(Connection);
 
         var memberId = await _repo.AddAsync(new FamilyMember

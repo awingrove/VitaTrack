@@ -13,7 +13,7 @@ namespace VitaTrack.Tests;
 public class ReportingServiceTests : SqliteTestBase
 {
     private ReportingService CreateService() => new(
-        new SupplementRepository(Connection),
+        new SupplementRepository(Connection, new SupplementNutrientRepository(Connection), new PrescribedDoseRepository(Connection)),
         new PrescribedDoseRepository(Connection),
         new FamilyRepository(Connection),
         new SupplementNutrientRepository(Connection));

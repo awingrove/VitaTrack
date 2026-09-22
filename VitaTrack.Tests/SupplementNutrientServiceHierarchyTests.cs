@@ -129,5 +129,16 @@ public class SupplementNutrientServiceHierarchyTests
             }
             return Task.FromResult(count);
         }
+
+        public Task DeleteBySupplementIdsAsync(IEnumerable<int> supplementIds)
+        {
+            var ids = supplementIds.ToHashSet();
+            foreach (var id in _byId.Values.Where(n => ids.Contains(n.SupplementId)).Select(n => n.Id).ToList())
+            {
+                DeletedIds.Add(id);
+                _byId.Remove(id);
+            }
+            return Task.CompletedTask;
+        }
     }
 }

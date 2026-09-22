@@ -14,4 +14,11 @@ public interface ISupplementNutrientRepository
     Task UpdateAsync(SupplementNutrient nutrient);
     Task<int> DeleteAsync(int id);
     Task<int> DeleteAsync(IEnumerable<int> ids);
+
+    /// <summary>
+    /// Deletes all nutrients (blend children before parents) belonging to the
+    /// given supplements. The owning supplement slice calls this instead of
+    /// issuing SQL against the SupplementNutrients table directly.
+    /// </summary>
+    Task DeleteBySupplementIdsAsync(IEnumerable<int> supplementIds);
 }

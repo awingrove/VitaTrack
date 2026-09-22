@@ -3,13 +3,20 @@ using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using Dapper;
+using VitaTrack.Core.Features.Dosing;
+using VitaTrack.Core.Features.Nutrients;
 using VitaTrack.Core.Models;
 
 namespace VitaTrack.Core.Data;
 
-public class SupplementRepository(IDbConnection db) : ISupplementRepository
+public class SupplementRepository(
+    IDbConnection db,
+    ISupplementNutrientRepository nutrientRepository,
+    IPrescribedDoseRepository prescribedDoseRepository) : ISupplementRepository
 {
     private readonly IDbConnection _db = db;
+    private readonly ISupplementNutrientRepository _nutrientRepository = nutrientRepository;
+    private readonly IPrescribedDoseRepository _prescribedDoseRepository = prescribedDoseRepository;
 
     public async Task<IReadOnlyList<Supplement>> GetAllAsync()
     {
@@ -51,8 +58,8 @@ WHERE Id = @Id";
 
     public async Task<int> DeleteAsync(int id)
     {
-        await _db.ExecuteAsync("DELETE FROM SupplementNutrients WHERE SupplementId = @Id", new { Id = id });
-        await _db.ExecuteAsync("DELETE FROM PrescribedDoses WHERE SupplementId = @Id", new { Id = id });
+        await _nutrientRepository.DeleteBySupplementIdsAsync([id]);
+        await _prescribedDoseRepository.DeleteBySupplementIdsAsync([id]);
         const string sql = "DELETE FROM Supplements WHERE Id = @Id";
         return await _db.ExecuteAsync(sql, new { Id = id });
     }
@@ -61,8 +68,8 @@ WHERE Id = @Id";
     {
         var idList = ids.ToList();
         if (idList.Count == 0) return 0;
-        await _db.ExecuteAsync("DELETE FROM SupplementNutrients WHERE SupplementId IN @Ids", new { Ids = idList });
-        await _db.ExecuteAsync("DELETE FROM PrescribedDoses WHERE SupplementId IN @Ids", new { Ids = idList });
+        await _nutrientRepository.DeleteBySupplementIdsAsync(idList);
+        await _prescribedDoseRepository.DeleteBySupplementIdsAsync(idList);
         const string sql = "DELETE FROM Supplements WHERE Id IN @Ids";
         return await _db.ExecuteAsync(sql, new { Ids = idList });
     }

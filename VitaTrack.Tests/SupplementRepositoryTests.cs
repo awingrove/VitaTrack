@@ -14,7 +14,7 @@ public class SupplementRepositoryTests : SqliteTestBase
     private ISupplementRepository _repo = null!;
 
     [TestInitialize]
-    public void Setup() => _repo = new SupplementRepository(Connection);
+    public void Setup() => _repo = new SupplementRepository(Connection, new SupplementNutrientRepository(Connection), new PrescribedDoseRepository(Connection));
 
     [TestMethod]
     public async Task Crud_Works()

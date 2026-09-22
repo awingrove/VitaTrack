@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using VitaTrack.Core.Data;
 using VitaTrack.Core.Features.Dosing;
+using VitaTrack.Core.Features.Nutrients;
 using VitaTrack.Core.Models;
 
 namespace VitaTrack.Tests.Features.Dosing;
@@ -21,7 +22,7 @@ public class PrescribedDoseRepositoryTests : SqliteTestBase
     {
         _doseRepo = new PrescribedDoseRepository(Connection);
         _familyRepo = new FamilyRepository(Connection);
-        _supplementRepo = new SupplementRepository(Connection);
+        _supplementRepo = new SupplementRepository(Connection, new SupplementNutrientRepository(Connection), new PrescribedDoseRepository(Connection));
     }
 
     private async Task<int> SeedMemberAsync(string displayName)
@@ -155,6 +156,23 @@ public class PrescribedDoseRepositoryTests : SqliteTestBase
 
         // Act & Assert – deleting a missing id affects no rows
         Assert.AreEqual(0, await _doseRepo.DeleteAsync(id));
+    }
+
+    [TestMethod]
+    public async Task DeleteBySupplementIdsAsync_RemovesOnlyTargetSupplementsDoses()
+    {
+        var aliceId = await SeedMemberAsync("Alice");
+        var targetId = await SeedSupplementAsync("Target");
+        var keepId = await SeedSupplementAsync("Keep");
+        var targetDoseId = await AddDoseAsync(aliceId, targetId);
+        var keepDoseId = await AddDoseAsync(aliceId, keepId);
+
+        // Act
+        await _doseRepo.DeleteBySupplementIdsAsync([targetId]);
+
+        // Assert
+        Assert.IsNull(await _doseRepo.GetByIdAsync(targetDoseId));
+        Assert.IsNotNull(await _doseRepo.GetByIdAsync(keepDoseId));
     }
 
     [TestMethod]

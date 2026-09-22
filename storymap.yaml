@@ -220,7 +220,7 @@ activities:
             status: done
             priority: medium
             tests:
-              - unit: SupplementNutrientRepositoryTests.Delete_ParentBlend_AlsoDeletesChildren
+              - unit: SupplementNutrientRepositoryCascadeTests.Delete_ParentBlend_AlsoDeletesChildren
               - e2e: blend-cascade-delete::deleting a blend parent removes its children
 
   - name: Track Prescribed Doses

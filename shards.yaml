@@ -95,6 +95,7 @@ slices:
       - VitaTrack.Tests/SupplementNutrientValidationTests.cs
       - VitaTrack.Tests/SupplementNutrientDosageNormalizationTests.cs
       - VitaTrack.Tests/SupplementNutrientRepositoryTests.cs
+      - VitaTrack.Tests/SupplementNutrientRepositoryCascadeTests.cs
       - VitaTrack.Tests/BlendEnrichmentTests.cs
     e2e_specs:
       - e2e-tests/playwright/tests/supplement-crud.spec.js

@@ -52,35 +52,25 @@ slices:
       - e2e-tests/playwright/tests/prescribed-dose.spec.js
 
   - id: MS
-    name: Supplements (CRUD, CSV import, nutrients, blends)
+    name: Supplements (CRUD, CSV import)
     controller:
       - VitaTrack.Web/Controllers/SupplementController.cs
       - VitaTrack.Web/Controllers/SupplementController.Editor.cs
-      - VitaTrack.Web/Controllers/SupplementNutrientController.cs
     core:
       - VitaTrack.Core/Data/SupplementRepository.cs
       - VitaTrack.Core/Data/ISupplementRepository.cs
-      - VitaTrack.Core/Features/Nutrients/SupplementNutrientRepository.cs
-      - VitaTrack.Core/Features/Nutrients/ISupplementNutrientRepository.cs
       - VitaTrack.Core/Services/CsvImportService.cs
       - VitaTrack.Core/Services/ICsvImportService.cs
-      - VitaTrack.Core/Features/Nutrients/SupplementNutrientService.cs
-      - VitaTrack.Core/Features/Nutrients/ISupplementNutrientService.cs
-      - VitaTrack.Core/Features/Nutrients/ReplaceNutrientsResult.cs
       - VitaTrack.Core/Models/Supplement.cs
-      - VitaTrack.Core/Features/Nutrients/SupplementNutrient.cs
       - VitaTrack.Core/Models/CsvSupplementRow.cs
       - VitaTrack.Core/Models/CsvImportReport.cs
     views:
       - VitaTrack.Web/Views/Supplement/**
-      - VitaTrack.Web/Views/SupplementNutrient/**
     js:
       - VitaTrack.Web/wwwroot/js/create.js
       - VitaTrack.Web/wwwroot/js/edit.js
       - VitaTrack.Web/wwwroot/js/import-csv.js
       - VitaTrack.Web/wwwroot/js/review.js
-      - VitaTrack.Web/wwwroot/js/nutrient-editor.js
-      - VitaTrack.Web/wwwroot/js/nutrient-form.js
     unit_tests:
       - VitaTrack.Tests/SupplementRepositoryTests.cs
       - VitaTrack.Tests/SupplementControllerTests.cs
@@ -88,24 +78,42 @@ slices:
       - VitaTrack.Tests/SupplementControllerImportCsvTests.cs
       - VitaTrack.Tests/SupplementControllerUpdateNutrientsTests.cs
       - VitaTrack.Tests/CsvImportServiceTests.cs
+    e2e_specs:
+      - e2e-tests/playwright/tests/supplement-crud.spec.js
+      - e2e-tests/playwright/tests/supplement-llm-flow.spec.js
+      - e2e-tests/playwright/tests/csv-import.spec.js
+      - e2e-tests/playwright/tests/enrich-without-url-roundtrip.spec.js
+
+  - id: NT
+    name: Nutrients & Blends
+    controller:
+      - VitaTrack.Web/Controllers/SupplementNutrientController.cs
+    core:
+      - VitaTrack.Core/Features/Nutrients/SupplementNutrient.cs
+      - VitaTrack.Core/Features/Nutrients/ISupplementNutrientRepository.cs
+      - VitaTrack.Core/Features/Nutrients/SupplementNutrientRepository.cs
+      - VitaTrack.Core/Features/Nutrients/ISupplementNutrientService.cs
+      - VitaTrack.Core/Features/Nutrients/SupplementNutrientService.cs
+      - VitaTrack.Core/Features/Nutrients/ReplaceNutrientsResult.cs
+    views:
+      - VitaTrack.Web/Views/SupplementNutrient/**
+    js:
+      - VitaTrack.Web/wwwroot/js/nutrient-editor.js
+      - VitaTrack.Web/wwwroot/js/nutrient-form.js
+    unit_tests:
       - VitaTrack.Tests/SupplementNutrientControllerTests.cs
       - VitaTrack.Tests/SupplementNutrientServiceTests.cs
-      - VitaTrack.Tests/MockSupplementNutrientRepo.cs
       - VitaTrack.Tests/SupplementNutrientServiceHierarchyTests.cs
       - VitaTrack.Tests/SupplementNutrientValidationTests.cs
       - VitaTrack.Tests/SupplementNutrientDosageNormalizationTests.cs
       - VitaTrack.Tests/SupplementNutrientRepositoryTests.cs
       - VitaTrack.Tests/SupplementNutrientRepositoryCascadeTests.cs
-      - VitaTrack.Tests/BlendEnrichmentTests.cs
+      - VitaTrack.Tests/MockSupplementNutrientRepo.cs
     e2e_specs:
-      - e2e-tests/playwright/tests/supplement-crud.spec.js
-      - e2e-tests/playwright/tests/supplement-llm-flow.spec.js
       - e2e-tests/playwright/tests/supplement-nutrient.spec.js
       - e2e-tests/playwright/tests/supplement-blends.spec.js
-      - e2e-tests/playwright/tests/csv-import.spec.js
       - e2e-tests/playwright/tests/supplement-delete-cascade.spec.js
       - e2e-tests/playwright/tests/blend-cascade-delete.spec.js
-      - e2e-tests/playwright/tests/enrich-without-url-roundtrip.spec.js
       - e2e-tests/playwright/tests/nutrient-validation-surfaces.spec.js
 
   - id: RP
@@ -150,6 +158,7 @@ slices:
       - VitaTrack.Tests/UrlSafetyValidatorTests.cs
       - VitaTrack.Tests/HtmlScraperServiceTests.cs
       - VitaTrack.Tests/SupplementLabelParserTests.cs
+      - VitaTrack.Tests/BlendEnrichmentTests.cs
     e2e_specs:
       - e2e-tests/playwright/tests/supplement-llm-integration.spec.js
 

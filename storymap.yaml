@@ -147,7 +147,7 @@ activities:
               - e2e: csv-import::should open import modal and download sample CSV
 
       - name: Manage supplement nutrients
-        id: MS-6
+        id: NT-1
         entry_point: Supplements index row -> Nutrients; Supplement Edit -> Manage All Nutrients
         stories:
           - title: View nutrients for a supplement
@@ -187,7 +187,7 @@ activities:
               - e2e: supplement-nutrient::should show multiple supplements with their own nutrients
 
       - name: Build and manage nutrient blends
-        id: MS-7
+        id: NT-2
         entry_point: Supplement Edit -> Edit Nutrient Breakdown; Nutrient index -> Edit Breakdown (Blends)
         stories:
           - title: Create a blend parent row in the breakdown editor

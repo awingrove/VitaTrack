@@ -3,6 +3,8 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using VitaTrack.Core.Data;
 using VitaTrack.Core.Models;
 
+using VitaTrack.Core.Features.Nutrients;
+
 namespace VitaTrack.Tests;
 
 // Dosage unit normalization is enforced at the repository boundary: every write

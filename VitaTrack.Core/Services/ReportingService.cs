@@ -3,6 +3,8 @@ using VitaTrack.Core.Features.Dosing;
 using VitaTrack.Core.Models;
 using VitaTrack.Core.Primitives;
 
+using VitaTrack.Core.Features.Nutrients;
+
 namespace VitaTrack.Core.Services;
 
 public class ReportingService(

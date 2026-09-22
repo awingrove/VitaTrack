@@ -1,12 +1,8 @@
 using VitaTrack.Core.Primitives;
 
+using VitaTrack.Core.Features.Nutrients;
+
 namespace VitaTrack.Core.Models;
-
-public record NutrientFailure(string GenericName, string Error);
-
-public record ReplaceNutrientsResult(
-    IReadOnlyList<SupplementNutrient> Saved,
-    IReadOnlyList<NutrientFailure> Failures);
 
 public record MemberCostRow(string Name, Money MonthlyCost);
 public record SupplementCostRow(string Name, string Brand, Money UnitCost, Money MonthlyCost);

@@ -60,14 +60,15 @@ slices:
     core:
       - VitaTrack.Core/Data/SupplementRepository.cs
       - VitaTrack.Core/Data/ISupplementRepository.cs
-      - VitaTrack.Core/Data/SupplementNutrientRepository.cs
-      - VitaTrack.Core/Data/ISupplementNutrientRepository.cs
+      - VitaTrack.Core/Features/Nutrients/SupplementNutrientRepository.cs
+      - VitaTrack.Core/Features/Nutrients/ISupplementNutrientRepository.cs
       - VitaTrack.Core/Services/CsvImportService.cs
       - VitaTrack.Core/Services/ICsvImportService.cs
-      - VitaTrack.Core/Services/SupplementNutrientService.cs
-      - VitaTrack.Core/Services/ISupplementNutrientService.cs
+      - VitaTrack.Core/Features/Nutrients/SupplementNutrientService.cs
+      - VitaTrack.Core/Features/Nutrients/ISupplementNutrientService.cs
+      - VitaTrack.Core/Features/Nutrients/ReplaceNutrientsResult.cs
       - VitaTrack.Core/Models/Supplement.cs
-      - VitaTrack.Core/Models/SupplementNutrient.cs
+      - VitaTrack.Core/Features/Nutrients/SupplementNutrient.cs
       - VitaTrack.Core/Models/CsvSupplementRow.cs
       - VitaTrack.Core/Models/CsvImportReport.cs
     views:

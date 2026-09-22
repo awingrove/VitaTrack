@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Dapper;
 using VitaTrack.Core.Models;
 
-namespace VitaTrack.Core.Data;
+namespace VitaTrack.Core.Features.Nutrients;
 
 public class SupplementNutrientRepository(IDbConnection db) : ISupplementNutrientRepository
 {

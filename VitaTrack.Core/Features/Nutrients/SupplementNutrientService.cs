@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using VitaTrack.Core.Data;
 using VitaTrack.Core.Models;
 
-namespace VitaTrack.Core.Services;
+namespace VitaTrack.Core.Features.Nutrients;
 
 public class SupplementNutrientService(
     ISupplementNutrientRepository nutrientRepo,

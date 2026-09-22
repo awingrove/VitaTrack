@@ -1,7 +1,8 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using VitaTrack.Core.Models;
 
-namespace VitaTrack.Core.Models;
+namespace VitaTrack.Core.Features.Nutrients;
 
 public class SupplementNutrient : IValidatableObject
 {

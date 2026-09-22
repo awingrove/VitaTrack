@@ -44,6 +44,15 @@ them, per the post-mortem rule in `AGENTS.md`.
 - **Paydown:** typed row records per report. Part of the Reporting slice conversion
   (Visitor over the blend tree).
 
+### TD-005 — `FamilyRepository.DeleteAsync` issues cross-slice SQL against `PrescribedDoses`
+- **Where:** `VitaTrack.Core/Data/FamilyRepository.cs`
+- **What:** deleting a family member runs raw `DELETE FROM PrescribedDoses` — a second
+  instance of the cross-slice SQL violation fixed for `SupplementRepository` in the NT
+  conversion. Found by the glm-flash NT session (its notice, correctly not fixed in-scope).
+- **Interest:** the ADR-0006 invariant is untrue for the MF→PD edge; every audit re-finds it.
+- **Paydown:** add `DeleteByFamilyMemberIdsAsync` to `IPrescribedDoseRepository` and route —
+  same three-line pattern as the NT fix. Trivial; bundle with the next MF or PD slice touch.
+
 ## Defect log
 
 Escaped defects are recorded here with **injection stage** + **root cause**, feeding the
@@ -59,3 +68,20 @@ post-mortem rule (a systemic gap updates `AGENTS.md`/ADR in the same change).
   - **Systemic gap:** the value-object recipe had no rule about invalid-combination
     semantics. Closed in `new-shard.md` (value objects fail loudly on invalid
     combinations; test the error edges, not just the happy path).
+
+- **DL-002 — NT briefing contained two design-stage defects, caught by the executing
+  cheap-model session** (found Sep 2026 during the NT slice conversion; no code damage —
+  both resolved by logged mechanical deviations).
+  - **Defect a (step ordering):** the briefing put all `shards.yaml` surgery in step 5,
+    but the pre-commit hook runs ShardOwnershipTests on every commit — file moves in
+    step 2 cannot go green without re-pointing the five core paths in the same commit.
+    The agent re-pointed paths in step 2 and left full ownership surgery for step 5.
+  - **Defect b (wrong current-state claim):** the briefing said `BlendEnrichmentTests`
+    "stays in LLM" but it was claimed by MS; the agent moved the claim to LLM, matching
+    intent.
+  - **Injection stage:** briefing authoring (design). **Detection stage:** cheap-model
+    execution with escalation protocol — the deviations were logged, not silent.
+  - **Systemic gap:** briefings stated current-state facts from memory instead of
+    checking the manifest, and weren't dry-run against the guardrail gating each step.
+    Closed in `design-review.md` (checklist now requires verifying claimed current-state
+    facts against `shards.yaml`, and dry-running each step against its gate).

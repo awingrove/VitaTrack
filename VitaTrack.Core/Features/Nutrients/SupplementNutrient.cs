@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using VitaTrack.Core.Models;
+using VitaTrack.Core.Primitives;
 
 namespace VitaTrack.Core.Features.Nutrients;
 
@@ -21,6 +22,13 @@ public class SupplementNutrient : IValidatableObject
 
     public int? ParentNutrientId { get; set; }
     public SupplementNutrient? ParentNutrient { get; set; }
+
+    /// <summary>
+    /// The <see cref="Dosage"/> value object parsed from the free-text
+    /// <see cref="Dosage"/> string column; the string column and Dapper
+    /// mapping are unchanged.
+    /// </summary>
+    public Dosage ParsedDosage => Primitives.Dosage.Parse(Dosage);
 
     public Supplement? Supplement { get; set; }
 

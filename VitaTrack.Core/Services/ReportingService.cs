@@ -46,7 +46,7 @@ public class ReportingService(
 
             foreach (var n in nutrientCache[pd.SupplementId])
             {
-                var dosage = Dosage.Parse(n.Dosage);
+                var dosage = n.ParsedDosage;
                 if (dosage.Unit.IsDefined)
                 {
                     if (!nutrientUnits.TryGetValue(n.GenericName, out var units))

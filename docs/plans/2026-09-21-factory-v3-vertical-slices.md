@@ -183,15 +183,17 @@ machine with no instruments, and guardrails check conformance but not design cor
 
 ## Rollout backlog (each slice gated by `verify-shard`)
 
-- [ ] **Nutrients** — `Dosage` + `Unit` value objects; `DosageParser` → `Dosage.Parse`; **Composite** for blend
-      hierarchy (`SupplementNutrient.ParentNutrientId`); **Strategy** for unit normalization.
-- [ ] **Reporting** — **Visitor** over the blend tree; kill `IReadOnlyList<Dictionary<string,string>>`
+- [x] **Nutrients** — `Dosage` + `Unit` value objects; `DosageParser` → `Dosage.Parse`; **Composite** for blend
+      hierarchy (`SupplementNutrient.ParentNutrientId`); **Strategy** for unit normalization. *(Composite for
+      blend hierarchy deferred — flat iteration is behaviorally correct today; see RP progress log entry.)*
+- [x] **Reporting** — **Visitor** over the blend tree; kill `IReadOnlyList<Dictionary<string,string>>`
       (`Result.cs:23`); `Money` value object.
 - [ ] **Supplements / CSV** — **Chain of Responsibility** for row validation; split `SupplementController`
       (263 + 50 partial).
 - [ ] **Family**, **LLM** — remaining slices.
-- [ ] Split `Result.cs` (6 concepts: `NutrientFailure`, `ReplaceNutrientsResult`, `MemberCostRow`,
+- [x] Split `Result.cs` (6 concepts: `NutrientFailure`, `ReplaceNutrientsResult`, `MemberCostRow`,
       `SupplementCostRow`, `NutrientContributionRow`, report data records) — one file per concept.
+      *(Completed across NT + RP slices.)*
 
 ## Progress log
 
@@ -216,6 +218,18 @@ machine with no instruments, and guardrails check conformance but not design cor
 - **Design decision (human-review gate exercised):** currency defaulted to **GBP** because the
   existing views hardcoded `£`. Flip to USD/EUR by changing the column default + seed; the
   value object is currency-agnostic. Recorded here rather than blocking, per "go all the way".
+- **RP (Reporting) rollout shipped** (mimo-flash executed, PR #17). Files moved to
+  `VitaTrack.Core/Features/Reporting/`; `Result.cs` dissolved — one record per file (TD-001
+  closed); report contracts re-typed (`NutrientUnitRow`, `MemberNutrientTotals`,
+  `MemberNutrientContributions` …) and views consume the model directly, killing the
+  ViewData→JSON→Razor round-trip (TD-004 closed). Visitor realized as
+  `NutrientAggregationVisitor` (sealed): visits each nutrient row exactly once, roots then
+  children — the blend-tree traversal now has one named home, but **Composite-style blend
+  aggregation is NOT built** (flat per-row semantics were already correct; scaffolding a
+  visitor that changed nothing would be speculative). Reviewer: spec ✅, approved, 3 minors
+  parked (visitor+bucket co-located is brief-mandated shape; ledger text fixed in e76d7c4).
+  Controller re-verified gates independently: format/build clean, 15 arch + 210 unit, report
+  e2e 13/13, executor ran full e2e 77/77. Ledger entry RP (third; ledger ratchet now active).
 
 ## Risks / Guardrails
 

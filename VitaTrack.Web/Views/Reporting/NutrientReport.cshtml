@@ -2,40 +2,22 @@
     ViewData["Title"] = "Daily Nutrient Report";
     Layout = "_Layout";
 }
-@using System.Text.Json
 @using VitaTrack.Core.Features.Reporting
-@model IEnumerable<Supplement>
+@model NutrientReportData
 
 @{
-    var units = ViewData["Units"] as string;
-    var unitsDict = new Dictionary<string, string>();
-    if (units != null)
-        unitsDict = JsonSerializer.Deserialize<Dictionary<string, string>>(units) ?? new Dictionary<string, string>();
-
-    var memberNames = ViewData["MemberNames"] as string;
-    var memberNamesList = new List<string>();
-    if (memberNames != null)
-        memberNamesList = JsonSerializer.Deserialize<List<string>>(memberNames) ?? new List<string>();
-
-    var memberData = ViewData["MemberData"] as string;
-    var memberDataList = new List<Dictionary<string, string>>();
-    if (memberData != null)
-        memberDataList = JsonSerializer.Deserialize<List<Dictionary<string, string>>>(memberData) ?? new List<Dictionary<string, string>>();
-
-    var memberContributions = ViewData["MemberContributions"] as string;
-    var memberContributionsList = new List<Dictionary<string, List<NutrientContributionRow>>>();
-    if (memberContributions != null)
-        memberContributionsList = JsonSerializer.Deserialize<List<Dictionary<string, List<NutrientContributionRow>>>>(memberContributions)
-            ?? new List<Dictionary<string, List<NutrientContributionRow>>>();
-
-    var totalCost = ViewData["TotalCost"] as string;
-    var reportDate = ViewData["ReportDate"] as string;
+    var unitsByNutrient = Model.Units.ToDictionary(u => u.NutrientName, u => u.Units);
+    var memberNamesList = Model.MemberTotals.Select(t => t.MemberName).ToList();
+    var memberTotalsList = Model.MemberTotals;
+    var memberContributionsList = Model.MemberContributions;
+    var totalCost = Model.TotalCost.ToString();
+    var reportDate = Model.ReportDate.ToString("yyyy-MM-dd");
 }
 
 <h2>@ViewData["Title"]</h2>
 <p class="text-muted">Report date: @reportDate</p>
 
-@if (!Model.Any())
+@if (!Model.Supplements.Any())
 {
     <p class="text-muted">No active prescribed doses found. Add a prescribed dose first.</p>
 }
@@ -47,12 +29,12 @@ else
     {
         // Collect all unique nutrient names
         var allNutrients = new List<string>();
-        foreach (var md in memberDataList)
+        foreach (var md in memberTotalsList)
         {
-            foreach (var kvp in md)
+            foreach (var row in md.Totals)
             {
-                if (!allNutrients.Contains(kvp.Key))
-                    allNutrients.Add(kvp.Key);
+                if (!allNutrients.Contains(row.NutrientName))
+                    allNutrients.Add(row.NutrientName);
             }
         }
         allNutrients.Sort();
@@ -71,17 +53,16 @@ else
             @{ var nutrientRow = 0; }
             @foreach (var nutrient in allNutrients)
             {
-                var unitSuffix = unitsDict.TryGetValue(nutrient, out var nu) && !string.IsNullOrEmpty(nu)
+                var unitSuffix = unitsByNutrient.TryGetValue(nutrient, out var nu) && !string.IsNullOrEmpty(nu)
                     ? $" {nu}"
                     : string.Empty;
                 <tr>
                     <td>@nutrient</td>
-                    @for (var m = 0; m < memberDataList.Count; m++)
+                    @for (var m = 0; m < memberTotalsList.Count; m++)
                     {
-                        var total = memberDataList[m].TryGetValue(nutrient, out var val) ? val : "0";
+                        var total = memberTotalsList[m].Totals.FirstOrDefault(t => t.NutrientName == nutrient)?.Amount ?? "0";
                         var contribs = m < memberContributionsList.Count
-                            && memberContributionsList[m].TryGetValue(nutrient, out var cell)
-                            ? cell
+                            ? memberContributionsList[m].ByNutrient.FirstOrDefault(c => c.NutrientName == nutrient)?.Contributions
                             : null;
                         var expandable = decimal.TryParse(total, out var totalValue)
                             && totalValue != 0m
@@ -107,17 +88,16 @@ else
                         </td>
                     }
                 </tr>
-                @for (var m = 0; m < memberDataList.Count; m++)
+                @for (var m = 0; m < memberTotalsList.Count; m++)
                 {
-                    var total = memberDataList[m].TryGetValue(nutrient, out var val) ? val : "0";
+                    var total = memberTotalsList[m].Totals.FirstOrDefault(t => t.NutrientName == nutrient)?.Amount ?? "0";
                     var contribs = m < memberContributionsList.Count
-                        && memberContributionsList[m].TryGetValue(nutrient, out var cell)
-                        ? cell
+                        ? memberContributionsList[m].ByNutrient.FirstOrDefault(c => c.NutrientName == nutrient)?.Contributions
                         : null;
                     if (decimal.TryParse(total, out var totalValue) && totalValue != 0m && contribs is { Count: > 0 })
                     {
                         <tr class="collapse" id="bd-@(nutrientRow)-@(m)">
-                            <td colspan="@(memberDataList.Count + 1)">
+                            <td colspan="@(memberTotalsList.Count + 1)">
                                 @foreach (var row in contribs)
                                 {
                                     <div>
@@ -159,13 +139,13 @@ else
         <tr><th>Name</th><th>Brand</th><th>Serving</th><th>Estimated Monthly Cost</th></tr>
     </thead>
     <tbody>
-    @foreach (var s in (IEnumerable<dynamic>)ViewData["SupplementRows"]!)
+    @foreach (var s in Model.Supplements)
     {
         <tr>
             <td>@s.Name</td>
             <td>@s.Brand</td>
             <td>@s.DailyDose</td>
-            <td>@s.MonthlyCost</td>
+            <td>@(Model.SupplementMonthlyCosts.TryGetValue(s.Id, out var cost) ? cost.ToString() : "N/A")</td>
         </tr>
     }
     </tbody>

@@ -5,10 +5,9 @@ namespace VitaTrack.Core.Features.Reporting;
 
 public record NutrientReportData(
     DateTime ReportDate,
-    IReadOnlyDictionary<string, string> Units,
+    IReadOnlyList<NutrientUnitRow> Units,
     Money TotalCost,
-    IReadOnlyList<string> MemberNames,
-    IReadOnlyList<Dictionary<string, string>> MemberData,
-    IReadOnlyList<Dictionary<string, List<NutrientContributionRow>>> MemberContributions,
+    IReadOnlyList<MemberNutrientTotals> MemberTotals,
+    IReadOnlyList<MemberNutrientContributions> MemberContributions,
     IReadOnlyList<Supplement> Supplements,
     IReadOnlyDictionary<int, Money> SupplementMonthlyCosts);

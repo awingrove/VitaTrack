@@ -105,21 +105,22 @@ public class ReportingService(
             }
         }
 
-        var memberNames = new List<string>();
-        var memberData = new List<Dictionary<string, string>>();
-        var memberContributionRows = new List<Dictionary<string, List<NutrientContributionRow>>>();
+        var memberTotalsRows = new List<MemberNutrientTotals>();
+        var memberContributionRows = new List<MemberNutrientContributions>();
         foreach (var kvp in memberTotals)
         {
             var member = await GetCachedAsync(familyCache, kvp.Key, _familyRepo.GetByIdAsync);
-            memberNames.Add(member?.DisplayName ?? $"Member #{kvp.Key}");
-            memberData.Add(kvp.Value.ToDictionary(n => n.Key, n => n.Value.ToString("0.##")));
+            var memberName = member?.DisplayName ?? $"Member #{kvp.Key}";
+            memberTotalsRows.Add(new MemberNutrientTotals(
+                memberName,
+                kvp.Value.Select(n => new NutrientTotalRow(n.Key, n.Value.ToString("0.##"))).ToList()));
 
-            var rows = new Dictionary<string, List<NutrientContributionRow>>();
+            var cells = new List<NutrientContributionsCell>();
             if (memberContributions.TryGetValue(kvp.Key, out var byNutrient))
             {
                 foreach (var (nutrient, bySupplement) in byNutrient)
                 {
-                    rows[nutrient] = bySupplement
+                    var rows = bySupplement
                         .Select(b =>
                         {
                             // Contributions are only recorded after the null-supplement guard,
@@ -132,9 +133,10 @@ public class ReportingService(
                         })
                         .OrderBy(r => r.SupplementName, StringComparer.Ordinal)
                         .ToList();
+                    cells.Add(new NutrientContributionsCell(nutrient, rows));
                 }
             }
-            memberContributionRows.Add(rows);
+            memberContributionRows.Add(new MemberNutrientContributions(memberName, cells));
         }
 
         var supplements = new List<Supplement>();
@@ -144,14 +146,15 @@ public class ReportingService(
                 supplements.Add(supp);
         }
 
-        var reportUnits = nutrientUnits.ToDictionary(k => k.Key, k => string.Join(", ", k.Value.OrderBy(u => u.Symbol)));
+        var reportUnits = nutrientUnits
+            .Select(k => new NutrientUnitRow(k.Key, string.Join(", ", k.Value.OrderBy(u => u.Symbol))))
+            .ToList();
 
         return new NutrientReportData(
             ReportDate: today,
             Units: reportUnits,
             TotalCost: totalCost,
-            MemberNames: memberNames,
-            MemberData: memberData,
+            MemberTotals: memberTotalsRows,
             MemberContributions: memberContributionRows,
             Supplements: supplements,
             SupplementMonthlyCosts: supplementMonthlyCosts);

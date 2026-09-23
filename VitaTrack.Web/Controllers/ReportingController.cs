@@ -12,12 +12,16 @@ public class ReportingController(IReportingService reportingService) : Controlle
     {
         var data = await _reportingService.GetNutrientReportDataAsync();
 
-        ViewData["Units"] = JsonSerializer.Serialize(data.Units);
-        ViewData["MemberContributions"] = JsonSerializer.Serialize(data.MemberContributions);
+        ViewData["Units"] = JsonSerializer.Serialize(data.Units.ToDictionary(u => u.NutrientName, u => u.Units));
+        ViewData["MemberContributions"] = JsonSerializer.Serialize(data.MemberContributions
+            .Select(m => m.ByNutrient.ToDictionary(c => c.NutrientName, c => c.Contributions.ToList()))
+            .ToList());
         ViewData["TotalCost"] = data.TotalCost.ToString();
         ViewData["ReportDate"] = data.ReportDate.ToString("yyyy-MM-dd");
-        ViewData["MemberNames"] = JsonSerializer.Serialize(data.MemberNames);
-        ViewData["MemberData"] = JsonSerializer.Serialize(data.MemberData);
+        ViewData["MemberNames"] = JsonSerializer.Serialize(data.MemberTotals.Select(t => t.MemberName).ToList());
+        ViewData["MemberData"] = JsonSerializer.Serialize(data.MemberTotals
+            .Select(t => t.Totals.ToDictionary(x => x.NutrientName, x => x.Amount))
+            .ToList());
         ViewData["SupplementRows"] = data.Supplements
             .Select(s => new
             {

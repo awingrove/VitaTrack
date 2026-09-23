@@ -101,7 +101,7 @@ public class ReportingServiceTests : SqliteTestBase
 
         var data = await CreateService().GetNutrientReportDataAsync();
 
-        Assert.AreEqual("500", data.MemberData.Single()["Vitamin C"]);
+        Assert.AreEqual("500", data.MemberTotals.Single().Totals.Single(t => t.NutrientName == "Vitamin C").Amount);
     }
 
     [TestMethod]
@@ -118,7 +118,7 @@ public class ReportingServiceTests : SqliteTestBase
         var nutrientData = await service.GetNutrientReportDataAsync();
 
         Assert.AreEqual(0m, costData.GrandTotal.Amount);
-        Assert.AreEqual(0, nutrientData.MemberData.Count);
+        Assert.AreEqual(0, nutrientData.MemberTotals.Count);
     }
 
     [TestMethod]
@@ -131,8 +131,8 @@ public class ReportingServiceTests : SqliteTestBase
 
         var data = await CreateService().GetNutrientReportDataAsync();
 
-        Assert.IsTrue(data.Units.TryGetValue("Vitamin C", out var unit));
-        Assert.AreEqual("mg", unit);
+        Assert.IsTrue(data.Units.Any(u => u.NutrientName == "Vitamin C"));
+        Assert.AreEqual("mg", data.Units.Single(u => u.NutrientName == "Vitamin C").Units);
     }
 
     [TestMethod]
@@ -147,8 +147,8 @@ public class ReportingServiceTests : SqliteTestBase
         InsertDose(memberId, suppB, multiplier: 1);
         var data = await CreateService().GetNutrientReportDataAsync();
 
-        Assert.IsTrue(data.Units.TryGetValue("Vitamin D", out var unit));
-        Assert.AreEqual("IU, µg", unit);
+        Assert.IsTrue(data.Units.Any(u => u.NutrientName == "Vitamin D"));
+        Assert.AreEqual("IU, µg", data.Units.Single(u => u.NutrientName == "Vitamin D").Units);
     }
 
     [TestMethod]
@@ -164,7 +164,7 @@ public class ReportingServiceTests : SqliteTestBase
 
         var data = await CreateService().GetNutrientReportDataAsync();
 
-        var contribs = data.MemberContributions.Single()["Vitamin C"];
+        var contribs = data.MemberContributions.Single().ByNutrient.Single(c => c.NutrientName == "Vitamin C").Contributions;
         Assert.AreEqual(2, contribs.Count);
         Assert.AreEqual("Alpha Vit", contribs[0].SupplementName);
         Assert.AreEqual(500m, contribs[0].Amount);
@@ -183,7 +183,7 @@ public class ReportingServiceTests : SqliteTestBase
 
         var data = await CreateService().GetNutrientReportDataAsync();
 
-        var contribs = data.MemberContributions.Single()["Vitamin D"];
+        var contribs = data.MemberContributions.Single().ByNutrient.Single(c => c.NutrientName == "Vitamin D").Contributions;
         Assert.AreEqual(1, contribs.Count);
         Assert.AreEqual(1000m, contribs[0].Amount);
         Assert.AreEqual(2m, contribs[0].Multiplier);
@@ -200,7 +200,7 @@ public class ReportingServiceTests : SqliteTestBase
 
         var data = await CreateService().GetNutrientReportDataAsync();
 
-        var contribs = data.MemberContributions.Single()["Vitamin D"];
+        var contribs = data.MemberContributions.Single().ByNutrient.Single(c => c.NutrientName == "Vitamin D").Contributions;
         Assert.AreEqual(1, contribs.Count);
         Assert.AreEqual(2000m, contribs[0].Amount);
         Assert.AreEqual(2m, contribs[0].Multiplier);
@@ -217,7 +217,7 @@ public class ReportingServiceTests : SqliteTestBase
 
         var data = await CreateService().GetNutrientReportDataAsync();
 
-        var contribs = data.MemberContributions.Single()["Vitamin D"];
+        var contribs = data.MemberContributions.Single().ByNutrient.Single(c => c.NutrientName == "Vitamin D").Contributions;
         Assert.AreEqual(1, contribs.Count);
         Assert.AreEqual(2500m, contribs[0].Amount);
         Assert.IsNull(contribs[0].Multiplier);
@@ -235,8 +235,8 @@ public class ReportingServiceTests : SqliteTestBase
         var data = await CreateService().GetNutrientReportDataAsync();
 
         var memberRows = data.MemberContributions.Single();
-        Assert.IsTrue(memberRows.ContainsKey("Vitamin C"));
-        Assert.IsFalse(memberRows.ContainsKey("Blend Child"));
+        Assert.IsTrue(memberRows.ByNutrient.Any(c => c.NutrientName == "Vitamin C"));
+        Assert.IsFalse(memberRows.ByNutrient.Any(c => c.NutrientName == "Blend Child"));
     }
 
     [TestMethod]
@@ -252,7 +252,7 @@ public class ReportingServiceTests : SqliteTestBase
         var rowId = Connection.QuerySingle<int>(
             "SELECT Id FROM SupplementNutrients WHERE SupplementId = @id AND GenericName = 'Vitamin D'",
             new { id = suppId });
-        var contribs = data.MemberContributions.Single()["Vitamin D"];
+        var contribs = data.MemberContributions.Single().ByNutrient.Single(c => c.NutrientName == "Vitamin D").Contributions;
         Assert.AreEqual(rowId, contribs.Single().SupplementNutrientId);
     }
 
@@ -267,7 +267,7 @@ public class ReportingServiceTests : SqliteTestBase
 
         var data = await CreateService().GetNutrientReportDataAsync();
 
-        var contribs = data.MemberContributions.Single()["Vitamin C"];
+        var contribs = data.MemberContributions.Single().ByNutrient.Single(c => c.NutrientName == "Vitamin C").Contributions;
         Assert.IsNull(contribs.Single().SupplementNutrientId, "Aggregated rows share one amount and cannot link to one editor");
     }
 
@@ -284,8 +284,8 @@ public class ReportingServiceTests : SqliteTestBase
 
         var data = await CreateService().GetNutrientReportDataAsync();
 
-        var totals = data.MemberData.Single();
-        Assert.AreEqual("500", totals["Vitamin C"], "Whole numbers render without decimals");
-        Assert.AreEqual("1.5", totals["Vitamin D"], "Fractional amounts keep one decimal");
+        var totals = data.MemberTotals.Single().Totals;
+        Assert.AreEqual("500", totals.Single(t => t.NutrientName == "Vitamin C").Amount, "Whole numbers render without decimals");
+        Assert.AreEqual("1.5", totals.Single(t => t.NutrientName == "Vitamin D").Amount, "Fractional amounts keep one decimal");
     }
 }

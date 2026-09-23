@@ -13,16 +13,12 @@ public partial class SupplementController(
     ISupplementRepository suppRepo,
     ISupplementNutrientRepository nutrientRepo,
     ISupplementNutrientService nutrientService,
-    ILlmService llmService,
-    ICsvImportService csvImportService,
-    ImportSupplementsHandler importHandler) : Controller
+    ILlmService llmService) : Controller
 {
     private readonly ISupplementRepository _suppRepo = suppRepo;
     private readonly ISupplementNutrientRepository _nutrientRepo = nutrientRepo;
     private readonly ISupplementNutrientService _nutrientService = nutrientService;
     private readonly ILlmService _llmService = llmService;
-    private readonly ICsvImportService _csvImportService = csvImportService;
-    private readonly ImportSupplementsHandler _importHandler = importHandler;
 
     public async Task<IActionResult> Index()
     {
@@ -177,32 +173,6 @@ public partial class SupplementController(
         await _nutrientService.PersistHierarchyAsync(newId, SafeNutrients(request.Nutrients));
 
         return RedirectToAction(nameof(Index));
-    }
-
-    [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> ImportCsv(IFormFile file)
-    {
-        if (file == null || file.Length == 0)
-            return PartialView("_ImportReport", new CsvImportReport(1, [],
-                [new CsvImportFailure(0, "No file", "No file uploaded")]));
-
-        if (!file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
-            return PartialView("_ImportReport", new CsvImportReport(1, [],
-                [new CsvImportFailure(0, "Invalid file", "File must be a .csv")]));
-
-        CsvParseResult parseResult;
-        await using var stream = file.OpenReadStream();
-        parseResult = await _csvImportService.ParseAsync(stream);
-
-        if (parseResult.Errors.Count > 0 && parseResult.Rows.Count == 0)
-        {
-            var failures = parseResult.Errors
-                .Select(e => new CsvImportFailure(e.RowNumber, "N/A", e.Message)).ToList();
-            return PartialView("_ImportReport", new CsvImportReport(parseResult.Errors.Count, [], failures));
-        }
-
-        var report = await _importHandler.ImportAsync(parseResult);
-        return PartialView("_ImportReport", report);
     }
 
     private static void ApplyEnrichment(Supplement supplement, LlmResult llmResult)

@@ -19,7 +19,6 @@ public class SupplementControllerUpdateNutrientsTests
     private Mock<ISupplementNutrientRepository> _nutrientRepo = null!;
     private Mock<ISupplementNutrientService> _nutrientService = null!;
     private Mock<ILlmService> _llmService = null!;
-    private Mock<ICsvImportService> _csvImportService = null!;
     private SupplementController _controller = null!;
 
     [TestInitialize]
@@ -29,14 +28,11 @@ public class SupplementControllerUpdateNutrientsTests
         _nutrientRepo = new Mock<ISupplementNutrientRepository>();
         _nutrientService = new Mock<ISupplementNutrientService>();
         _llmService = new Mock<ILlmService>();
-        _csvImportService = new Mock<ICsvImportService>();
         _controller = new SupplementController(
             _suppRepo.Object,
             _nutrientRepo.Object,
             _nutrientService.Object,
-            _llmService.Object,
-            _csvImportService.Object,
-            new ImportSupplementsHandler(_suppRepo.Object, _nutrientService.Object, _llmService.Object));
+            _llmService.Object);
     }
 
     [TestMethod]

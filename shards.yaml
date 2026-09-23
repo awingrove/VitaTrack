@@ -73,6 +73,7 @@ slices:
     controller:
       - VitaTrack.Web/Controllers/SupplementController.cs
       - VitaTrack.Web/Controllers/SupplementController.Editor.cs
+      - VitaTrack.Web/Controllers/SupplementImportController.cs
     core:
       - VitaTrack.Core/Features/Supplements/SupplementRepository.cs
       - VitaTrack.Core/Features/Supplements/ISupplementRepository.cs

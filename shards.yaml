@@ -85,6 +85,12 @@ slices:
       - VitaTrack.Core/Features/Supplements/CsvImportFailure.cs
       - VitaTrack.Core/Features/Supplements/CsvParseResult.cs
       - VitaTrack.Core/Features/Supplements/CsvParseError.cs
+      - VitaTrack.Core/Features/Supplements/ICsvRowRule.cs
+      - VitaTrack.Core/Features/Supplements/CsvRowContext.cs
+      - VitaTrack.Core/Features/Supplements/CsvRequiredFieldsRule.cs
+      - VitaTrack.Core/Features/Supplements/CsvLengthLimitsRule.cs
+      - VitaTrack.Core/Features/Supplements/CsvCostRule.cs
+      - VitaTrack.Core/Features/Supplements/CsvServingsRule.cs
     views:
       - VitaTrack.Web/Views/Supplement/**
     js:

@@ -43,6 +43,11 @@ Adopt **Vertical Slice Architecture** *within* the existing three projects:
   Enforcement is convention + routed deletes (`AGENTS.md`) + the `design-review.md`
   human gate; the machine check is a tracked follow-up in the factory-v3 plan. TD-005
   in `technical-debt.md` records the violation the audit found and its fix.*
+  *Update, 2026-09-23 (same day): `CrossSliceSqlTests` now enforces the table clause —
+  each slice's SQL must reference only tables declared in its `tables` map in
+  `shards.yaml`; declared cross-slice read dependencies are visible manifest diffs for
+  design review. The interface-routing clause remains the human gate. The follow-up
+  task in the factory-v3 plan is complete.*
 - **Value objects over primitives/strings** where the domain demands: `DoseMultiplier`,
   `DosePeriod` (pilot); `Dosage`, `Unit`, `Money` (rollout).
 - The project is renamed `VitaTrack.Infrastructure` → `VitaTrack.Core`. `Core` means

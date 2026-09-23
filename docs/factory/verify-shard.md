@@ -11,7 +11,8 @@ Run it from the shard's working tree; all checks must be green.
 3. **Architecture tests** — `dotnet test VitaTrack.sln -c Release`
    Inside: `ShardOwnershipTests` (no orphan/double-claim, story-map id integrity),
    `FileSizeTests` (no complete type > 300 lines incl. partials),
-   `RepositoryNamingTests` (repos end in `Repository`).
+   `RepositoryNamingTests` (repos end in `Repository`),
+   `CrossSliceSqlTests` (SQL references only the slice's declared `tables`).
 4. **Slice unit tests** — run the slice's `unit_tests` from `shards.yaml`
    (in-memory SQLite). Must be green and actually exercise the feature.
 5. **Slice e2e** — `cd e2e-tests/playwright && npx playwright test tests/<name>.spec.js`

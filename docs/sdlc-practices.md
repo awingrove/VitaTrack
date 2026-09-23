@@ -16,9 +16,9 @@ Four principles define the lifecycle:
   controller, handlers, repository, models, tests. No file in the repo *is* a feature by
   accident; ownership is declared.
 - **Guardrails enforce conformance; humans own design.** Automated checks catch rule
-  violations — orphan files, oversized types, unreachable pages. Cross-slice SQL is
-  enforced by convention + routed deletes and audited at the design-review gate, not by
-  an automated check (deferred as brittle; see `new-shard.md` and pilot lesson #5). A
+  violations — orphan files, oversized types, cross-slice SQL (via each slice's declared
+  `tables` map in `shards.yaml`), unreachable pages. Interface-routing of those reads and
+  writes beyond the table map stays a `design-review.md` human gate. A
   developer confirms architecture decisions. The factory executes architecture; it does
   not invent it.
 - **Measure touch, not time.** Every shipped shard records agent class, human

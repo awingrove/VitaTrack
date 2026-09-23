@@ -6,16 +6,6 @@ them, per the post-mortem rule in `AGENTS.md`.
 
 ## Open entries
 
-### TD-002 — `SupplementController` exceeds the type-size split trigger
-- **Where:** `VitaTrack.Web/Controllers/SupplementController.cs` (263) +
-  `SupplementController.Editor.cs` (50) = 313 lines across partials.
-- **What:** controller owns CRUD, CSV import, and nutrient editing; `KnownTypeDebt`
-  allowlist in `FileSizeTests` currently suppresses the violation.
-- **Interest:** the largest, most-edited controller; new endpoints pile on.
-- **Paydown:** split into `SupplementController` (CRUD), `SupplementImportController`
-  (CSV), `SupplementNutrientController` (already separate). Removes the `KnownTypeDebt`
-  entry. Candidate for the Supplements/CSV slice conversion.
-
 ### TD-003 — `DosageParser` should be a `Dosage` value object
 - **Where:** `VitaTrack.Core/DosageParser.cs`
 - **What:** parsing of free-text `"500 mg"` lives in static helpers; callers recombine
@@ -27,6 +17,15 @@ them, per the post-mortem rule in `AGENTS.md`.
   `Dosage` adoption on `SupplementNutrient.Dosage` is pending the Nutrients slice work.
 
 ## Closed entries
+
+### TD-002 — `SupplementController` exceeds the type-size split trigger
+- **Where:** was `VitaTrack.Web/Controllers/SupplementController.cs` (263) +
+  `SupplementController.Editor.cs` (50) = 313 lines across partials.
+- **What:** controller owned CRUD, CSV import, and nutrient editing; `KnownTypeDebt`
+  allowlist in `FileSizeTests` suppressed the violation.
+- **Closed 2026-09-23:** CSV import extracted to `SupplementImportController` +
+  `ImportSupplementsHandler`; controller is back to 190 + 52 partial lines and the
+  `KnownTypeDebt` set is deleted from `FileSizeTests`. MS slice conversion.
 
 ### TD-001 — `Result.cs` is six concepts in one file
 - **Where:** was `VitaTrack.Core/Models/Result.cs`

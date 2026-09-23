@@ -30,3 +30,19 @@ shards:
       SupplementNutrientRepositoryTests past 300 lines; fixed by splitting
       delete/cascade tests into SupplementNutrientRepositoryCascadeTests). No human
       stops.
+
+  - id: RP
+    name: Reports (nutrient + cost)
+    agent: cheap
+    human_interventions: 0
+    guardrail_failures: 0
+    fix_commits: 0
+    defects_escaped: 0
+    notes: >
+      Slice conversion from MS per docs/plans/2026-09-23-reporting-slice.md. Five
+      commits, zero red gate runs (every format/build/test/e2e gate passed first
+      try). Two logged mechanical deviations, no human stops: shards.yaml RP paths
+      re-pointed incrementally in each file-changing commit (pre-commit runs
+      ShardOwnershipTests — NT lesson DL-002 defect a), and the controller's
+      ViewData projections were adapted mid-sequence so step 3 compiles before the
+      step-5 view swap kills the round-trip.

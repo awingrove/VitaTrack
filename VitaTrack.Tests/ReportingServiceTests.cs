@@ -5,15 +5,17 @@ using VitaTrack.Core.Features.Dosing;
 using VitaTrack.Core.Models;
 using VitaTrack.Core.Services;
 
+using VitaTrack.Core.Features.Nutrients;
+
 namespace VitaTrack.Tests;
 
 [TestClass]
 public class ReportingServiceTests : SqliteTestBase
 {
     private ReportingService CreateService() => new(
-        new SupplementRepository(Connection),
+        new SupplementRepository(Connection, new SupplementNutrientRepository(Connection), new PrescribedDoseRepository(Connection)),
         new PrescribedDoseRepository(Connection),
-        new FamilyRepository(Connection),
+        new FamilyRepository(Connection, new PrescribedDoseRepository(Connection)),
         new SupplementNutrientRepository(Connection));
 
     private int InsertSupplement(string name, decimal? cost, decimal? servingsPerBottle)

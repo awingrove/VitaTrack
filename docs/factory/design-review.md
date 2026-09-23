@@ -24,13 +24,19 @@ never happens.
 1. **Decision statement** — one sentence: what is being decided and why it is not mechanical.
 2. **Options considered** — at least two, with the tradeoff each imposes on total system
    complexity, ownership, and future change cost.
-3. **Recommended option** — with the material tradeoff called out explicitly.
-4. **Blast radius** — which slices, repos, views, and tests are affected; which
+3. **Current-state facts verified** — every claim about existing code ("X is claimed by
+   Y", "Z is already in the allowlist") is checked against `shards.yaml` /
+   `storymap.yaml` at briefing time, not recalled (DL-002). Likewise, dry-run each
+   briefing step against the guardrail that gates its commit (e.g. the pre-commit hook
+   runs ShardOwnershipTests on every commit, so file moves and manifest re-points land
+   in the same step).
+4. **Recommended option** — with the material tradeoff called out explicitly.
+5. **Blast radius** — which slices, repos, views, and tests are affected; which
    `shards.yaml` / `storymap.yaml` entries change.
-5. **Migration / rollback** — for schema changes: forward migration + how to roll back
+6. **Migration / rollback** — for schema changes: forward migration + how to roll back
    without data loss; for code: the commit that reverses it.
-6. **Reviewer sign-off** — name + date. Unsigned = not merged.
-7. **Record** — outcome written to the relevant ADR (or a new `docs/adr/` entry) and, if it
+7. **Reviewer sign-off** — name + date. Unsigned = not merged.
+8. **Record** — outcome written to the relevant ADR (or a new `docs/adr/` entry) and, if it
    reveals a systemic gap, to `AGENTS.md` / this checklist in the same change.
 
 ## Notes

@@ -2,6 +2,8 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using VitaTrack.Core.Models;
 
+using VitaTrack.Core.Features.Nutrients;
+
 namespace VitaTrack.Tests;
 
 [TestClass]

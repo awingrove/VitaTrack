@@ -3,6 +3,8 @@ using VitaTrack.Core.Features.Dosing;
 using VitaTrack.Core.Models;
 using VitaTrack.Core.Primitives;
 
+using VitaTrack.Core.Features.Nutrients;
+
 namespace VitaTrack.Core.Services;
 
 public class ReportingService(
@@ -44,7 +46,7 @@ public class ReportingService(
 
             foreach (var n in nutrientCache[pd.SupplementId])
             {
-                var dosage = Dosage.Parse(n.Dosage);
+                var dosage = n.ParsedDosage;
                 if (dosage.Unit.IsDefined)
                 {
                     if (!nutrientUnits.TryGetValue(n.GenericName, out var units))

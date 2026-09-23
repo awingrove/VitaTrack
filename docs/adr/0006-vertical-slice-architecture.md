@@ -38,6 +38,11 @@ Adopt **Vertical Slice Architecture** *within* the existing three projects:
   slice's published repository/query interface; it must never issue SQL against another
   slice's tables. (True today — `ReportingService.cs:204` reads doses via
   `IPrescribedDoseRepository`, no cross-slice SQL; an arch test locks it.)
+  *Erratum, 2026-09-23: no arch test enforces this today — the claim above was
+  aspirational and is corrected by `new-shard.md` (invariant split) and pilot lesson #5.
+  Enforcement is convention + routed deletes (`AGENTS.md`) + the `design-review.md`
+  human gate; the machine check is a tracked follow-up in the factory-v3 plan. TD-005
+  in `technical-debt.md` records the violation the audit found and its fix.*
 - **Value objects over primitives/strings** where the domain demands: `DoseMultiplier`,
   `DosePeriod` (pilot); `Dosage`, `Unit`, `Money` (rollout).
 - The project is renamed `VitaTrack.Infrastructure` → `VitaTrack.Core`. `Core` means

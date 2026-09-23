@@ -7,6 +7,8 @@ using VitaTrack.Core.Services;
 using VitaTrack.Web.Controllers;
 using VitaTrack.Web.Models;
 
+using VitaTrack.Core.Features.Nutrients;
+
 namespace VitaTrack.Tests;
 
 [TestClass]

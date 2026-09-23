@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Dapper;
 using VitaTrack.Core.Models;
 
-namespace VitaTrack.Core.Data;
+namespace VitaTrack.Core.Features.Nutrients;
 
 public class SupplementNutrientRepository(IDbConnection db) : ISupplementNutrientRepository
 {
@@ -91,5 +91,15 @@ public class SupplementNutrientRepository(IDbConnection db) : ISupplementNutrien
                 DELETE FROM SupplementNutrients WHERE ParentNutrientId IN @Ids;
                 DELETE FROM SupplementNutrients WHERE Id IN @Ids;";
         return await _db.ExecuteAsync(sql, new { Ids = idList });
+    }
+
+    public async Task DeleteBySupplementIdsAsync(IEnumerable<int> supplementIds)
+    {
+        var idList = supplementIds.ToList();
+        if (idList.Count == 0) return;
+        const string sql = @"
+                DELETE FROM SupplementNutrients WHERE SupplementId IN @Ids AND ParentNutrientId IS NOT NULL;
+                DELETE FROM SupplementNutrients WHERE SupplementId IN @Ids;";
+        await _db.ExecuteAsync(sql, new { Ids = idList });
     }
 }

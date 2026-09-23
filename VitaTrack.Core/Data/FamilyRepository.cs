@@ -3,13 +3,15 @@ using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using Dapper;
+using VitaTrack.Core.Features.Dosing;
 using VitaTrack.Core.Models;
 
 namespace VitaTrack.Core.Data;
 
-public class FamilyRepository(IDbConnection db) : IFamilyRepository
+public class FamilyRepository(IDbConnection db, IPrescribedDoseRepository prescribedDoseRepository) : IFamilyRepository
 {
     private readonly IDbConnection _db = db;
+    private readonly IPrescribedDoseRepository _prescribedDoseRepository = prescribedDoseRepository;
 
     public async Task<IReadOnlyList<FamilyMember>> GetAllAsync()
     {
@@ -44,7 +46,7 @@ WHERE Id = @Id";
 
     public async Task<int> DeleteAsync(int id)
     {
-        await _db.ExecuteAsync("DELETE FROM PrescribedDoses WHERE FamilyMemberId = @Id", new { Id = id });
+        await _prescribedDoseRepository.DeleteByFamilyMemberIdsAsync([id]);
         const string sql = "DELETE FROM FamilyMembers WHERE Id = @Id";
         return await _db.ExecuteAsync(sql, new { Id = id });
     }

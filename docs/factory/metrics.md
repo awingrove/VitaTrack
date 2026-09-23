@@ -19,7 +19,32 @@ A shard only counts toward the proof when its ledger entry records `agent` in th
 | `guardrail_failures` | Red gate cycles (arch/format/build/e2e failures before green). Loud failures are the design working; a high count means the recipe under-contextualizes the shard. |
 | `fix_commits` | Commits after the first "done" claim. Measures verification honesty. |
 | `defects_escaped` | Defects found after merge (from the defect log in `technical-debt.md`). |
-| `cost_usd` (optional) | Token cost of the shard, when the session tooling reports it. Direct productivity-per-dollar number. |
+| `agent_model` (optional) | Exact `provider/model` of the executor session, e.g. `opencode-go/glm-5.3-flash`. |
+| `tokens_input` / `tokens_output` / `tokens_reasoning` / `tokens_cache_read` (optional) | Exact token usage of the executor session. `tokens_reasoning` is `0` when the model does not expose thinking tokens. |
+| `cost_usd` (optional) | Dollar spend reported by opencode for the session. `0` on free-tier models is a real measurement, not an omission — record it as `0`, not blank. |
+
+### How to extract usage numbers (opencode)
+
+After the executor session finishes:
+
+```bash
+opencode session list                 # find the executor session id
+opencode export <sessionID> > s.json  # dump the session as JSON
+```
+
+The session-level block (`info` in the export) carries the exact numbers to copy into
+the ledger entry:
+
+- `info.modelID` / `info.providerID` → `agent_model` (`<providerID>/<modelID>`)
+- `info.tokens.input` / `.output` / `.reasoning` / `.cache.read` → the token fields
+- `info.cost` → `cost_usd`
+
+Cross-check the model class with `opencode stats --models` (aggregate view). Note the
+per-message `tokens` in the export are cumulative-per-turn; **always use the
+session-level `info` block**, not a sum of messages.
+
+Executions done outside a tracked opencode session (e.g. a human or an external tool)
+omit these fields — they are optional, and an empty field is more honest than a guess.
 
 ## Ledger
 

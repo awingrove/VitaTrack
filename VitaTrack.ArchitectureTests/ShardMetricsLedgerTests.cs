@@ -18,6 +18,9 @@ public class ShardMetricsLedgerTests
     private static readonly string[] RequiredFields =
         ["agent", "human_interventions", "guardrail_failures", "fix_commits", "defects_escaped"];
 
+    private static readonly string[] NumericUsageFields =
+        ["tokens_input", "tokens_output", "tokens_reasoning", "tokens_cache_read", "cost_usd"];
+
     [TestMethod]
     public void Ledger_Entries_Resolve_To_Real_Shards_And_Carry_Required_Fields()
     {
@@ -50,6 +53,15 @@ public class ShardMetricsLedgerTests
                     && (!int.TryParse(value, out var n) || n < 0))
                     errors.Add($"ledger entry '{id}' field '{field}' must be a non-negative integer.");
             }
+
+            foreach (var field in NumericUsageFields)
+            {
+                if (fields.TryGetValue(field, out var value)
+                    && (!decimal.TryParse(value, out var n) || n < 0))
+                    errors.Add($"ledger entry '{id}' optional field '{field}' must be a non-negative number when present.");
+            }
+            if (fields.TryGetValue("agent_model", out var model) && string.IsNullOrWhiteSpace(model))
+                errors.Add($"ledger entry '{id}' field 'agent_model' must be a non-empty provider/model when present.");
         }
 
         Assert.AreEqual(0, errors.Count,

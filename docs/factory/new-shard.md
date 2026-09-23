@@ -25,21 +25,21 @@ feature. Read it before adding or extracting a slice.
    Split on the split-trigger; don't dodge with partials.
 3. **Repository naming** — repos end in `Repository`; live in `VitaTrack.Core.Data` or a
    `VitaTrack.Core.Features.*` slice (`RepositoryNamingTests`).
-
-## Invariant by convention + design gate (not machine-enforced)
-
-4. **Cross-slice reads** — a slice reads another slice's data ONLY via that slice's
-   published repository/query interface. Never issue SQL on another slice's tables.
-   No arch test parses inline SQL (deemed brittle in the Dosing pilot — see
-   `docs/plans/2026-09-20-dosing-slice-pilot.md`, lesson #5); the controls are this
-   recipe, the routed-delete pattern in `AGENTS.md`, `design-review.md`'s human gate,
-   and TD-005 in `technical-debt.md` as the standing example of what re-audits catch.
+4. **Cross-slice SQL** — a slice's core files may reference only tables declared in that
+   slice's `tables` list in `shards.yaml` (`CrossSliceSqlTests`). Never issue SQL on
+   another slice's tables; route writes through the owning slice's repository
+   (`AGENTS.md`). Cross-slice read dependencies (e.g. display joins) must be declared —
+   adding one is a visible manifest diff for design review. The invariant's
+   interface-routing clause stays a `design-review.md` human gate; the table map is the
+   machine check (this replaces the pilot's "deferred, deemed brittle" note — full SQL
+   parsing was avoided; only SQL-shaped string literals are scanned).
 
 ## Recipe (tracer-bullet, then fill)
 
 1. **Claim the slice.** Add an entry to `shards.yaml` under `slices:` with `id`
-   (2-letter, also a `storymap.yaml` task-id prefix), `name`, `controller`, `core`,
-   `views`, `js`, `unit_tests`, `e2e_specs`. Resolve every path to a real file
+   (2-letter, also a `storymap.yaml` task-id prefix), `name`, `tables` (the SQL tables
+   this slice's core files may reference — `[]` if it issues no SQL), `controller`,
+   `core`, `views`, `js`, `unit_tests`, `e2e_specs`. Resolve every path to a real file
    (ShardOwnershipTests errors on globs that match nothing). Add a matching
    `storymap.yaml` task with an `entry_point`.
 2. **Model + repository in the slice dir.**
@@ -71,12 +71,12 @@ feature. Read it before adding or extracting a slice.
 ```bash
 dotnet format VitaTrack.sln --verify-no-changes   # format
 dotnet build VitaTrack.sln -c Release             # build
-dotnet test VitaTrack.sln -c Release              # arch (12) + unit (~184)
+dotnet test VitaTrack.sln -c Release              # arch (15) + unit (~210)
 cd e2e-tests/playwright && npx playwright test tests/<name>.spec.js
 ```
 
-`ShardOwnershipTests` + `FileSizeTests` are inside `dotnet test`. A red gate means stop —
-do not widen the change to fix forward; fix the slice.
+`ShardOwnershipTests` + `FileSizeTests` + `CrossSliceSqlTests` are inside `dotnet test`.
+A red gate means stop — do not widen the change to fix forward; fix the slice.
 
 ## Human design-review gate (Phase 7)
 

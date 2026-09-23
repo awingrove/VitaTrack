@@ -47,6 +47,10 @@
    add a lighter check later (e.g., each `Features/*` repo's SQL references only its owned
    tables) once the table→slice map is explicit; for now the convention + this exemplar is
    the control.
+   *Resolved 2026-09-23: the lighter check shipped as proposed — `tables:` per slice in
+   `shards.yaml` + `CrossSliceSqlTests` scanning SQL-shaped string literals only (no full
+   SQL parsing). Cross-slice display joins are declared read dependencies; interface
+   routing beyond the table map stays a design-review gate.*
 
 6. **DTO binding change was low-risk.** The views' `@model` swapped from `PrescribedDose` to
    the request DTO with identical field names, so `asp-for` bindings needed no edits. The

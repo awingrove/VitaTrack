@@ -174,7 +174,7 @@ public class SupplementRepositoryTests : SqliteTestBase
         });
 
         // Add a family member and prescribed dose for supp1
-        var familyRepo = new FamilyRepository(Connection);
+        var familyRepo = new FamilyRepository(Connection, new PrescribedDoseRepository(Connection));
         var familyId = await familyRepo.AddAsync(new FamilyMember { Name = "Test", DisplayName = "Test" });
         await doseRepo.AddAsync(new PrescribedDose
         {

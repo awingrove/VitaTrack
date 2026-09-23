@@ -15,7 +15,7 @@ public class ReportingServiceTests : SqliteTestBase
     private ReportingService CreateService() => new(
         new SupplementRepository(Connection, new SupplementNutrientRepository(Connection), new PrescribedDoseRepository(Connection)),
         new PrescribedDoseRepository(Connection),
-        new FamilyRepository(Connection),
+        new FamilyRepository(Connection, new PrescribedDoseRepository(Connection)),
         new SupplementNutrientRepository(Connection));
 
     private int InsertSupplement(string name, decimal? cost, decimal? servingsPerBottle)

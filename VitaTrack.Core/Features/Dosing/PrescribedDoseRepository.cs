@@ -89,4 +89,11 @@ public class PrescribedDoseRepository(IDbConnection db) : IPrescribedDoseReposit
         if (idList.Count == 0) return;
         await _db.ExecuteAsync("DELETE FROM PrescribedDoses WHERE SupplementId IN @Ids", new { Ids = idList });
     }
+
+    public async Task DeleteByFamilyMemberIdsAsync(IEnumerable<int> familyMemberIds)
+    {
+        var idList = familyMemberIds.ToList();
+        if (idList.Count == 0) return;
+        await _db.ExecuteAsync("DELETE FROM PrescribedDoses WHERE FamilyMemberId IN @Ids", new { Ids = idList });
+    }
 }

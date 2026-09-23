@@ -21,7 +21,7 @@ public class PrescribedDoseRepositoryTests : SqliteTestBase
     public void Setup()
     {
         _doseRepo = new PrescribedDoseRepository(Connection);
-        _familyRepo = new FamilyRepository(Connection);
+        _familyRepo = new FamilyRepository(Connection, new PrescribedDoseRepository(Connection));
         _supplementRepo = new SupplementRepository(Connection, new SupplementNutrientRepository(Connection), new PrescribedDoseRepository(Connection));
     }
 
@@ -169,6 +169,23 @@ public class PrescribedDoseRepositoryTests : SqliteTestBase
 
         // Act
         await _doseRepo.DeleteBySupplementIdsAsync([targetId]);
+
+        // Assert
+        Assert.IsNull(await _doseRepo.GetByIdAsync(targetDoseId));
+        Assert.IsNotNull(await _doseRepo.GetByIdAsync(keepDoseId));
+    }
+
+    [TestMethod]
+    public async Task DeleteByFamilyMemberIdsAsync_RemovesOnlyTargetMembersDoses()
+    {
+        var targetId = await SeedMemberAsync("Target");
+        var keepId = await SeedMemberAsync("Keep");
+        var supplementId = await SeedSupplementAsync("Vitamin D");
+        var targetDoseId = await AddDoseAsync(targetId, supplementId);
+        var keepDoseId = await AddDoseAsync(keepId, supplementId);
+
+        // Act
+        await _doseRepo.DeleteByFamilyMemberIdsAsync([targetId]);
 
         // Assert
         Assert.IsNull(await _doseRepo.GetByIdAsync(targetDoseId));

@@ -14,7 +14,7 @@ public class FamilyRepositoryTests : SqliteTestBase
     private IFamilyRepository _repo = null!;
 
     [TestInitialize]
-    public void Setup() => _repo = new FamilyRepository(Connection);
+    public void Setup() => _repo = new FamilyRepository(Connection, new PrescribedDoseRepository(Connection));
 
     [TestMethod]
     public async Task Add_GetAll_GetById_Update_Works()

@@ -36,6 +36,8 @@ When deleting a `FamilyMember`, delete in this order:
 1. `DELETE FROM PrescribedDoses WHERE FamilyMemberId = @Id`
 2. `DELETE FROM FamilyMembers WHERE Id = @Id`
 
+`FamilyRepository.DeleteAsync` routes step 1 through `IPrescribedDoseRepository.DeleteByFamilyMemberIdsAsync` instead of issuing that SQL itself (same cross-slice rule as `SupplementRepository` below).
+
 Bulk deletes (`DeleteAsync(IEnumerable<int> ids)`) must follow the same order using `WHERE Id IN @Ids`.
 
 When deleting a `SupplementNutrient` that is a blend parent, delete its children first:

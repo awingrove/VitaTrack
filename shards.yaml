@@ -3,15 +3,26 @@
 # Maps each feature slice to the files that implement it. Drives
 # VitaTrack.ArchitectureTests.ShardOwnershipTests: no orphan feature files,
 # every path resolves, no double-claim, and story-map id integrity (each
-# slice id is a prefix of at least one story-map task id, and vice versa).
+# slice id is a prefix of at least one story-map task id, and vice versa),
+# and VitaTrack.ArchitectureTests.CrossSliceSqlTests: every SQL table
+# reference in a slice's core files must appear in that slice's `tables`
+# declaration (the ADR-0006 cross-slice invariant, machine-checked).
 #
 # Paths are repo-relative with forward slashes. `**` means "all files under
 # this directory, recursively". Cross-cutting files that belong to no single
 # slice are listed once in the `allowlist` at the bottom, not here.
+#
+# `tables` is required on every slice (declare `[]` when the slice issues no
+# SQL): the tables this slice's SQL may reference. Own table first; cross-slice
+# read dependencies (e.g. display joins) must be declared too — adding one is a
+# visible manifest diff for design review. Writes must stay on the own table
+# via the owning slice's repository (AGENTS.md FK section).
 
 slices:
   - id: MF
     name: Family Members
+    tables:
+      - FamilyMembers
     controller:
       - VitaTrack.Web/Controllers/FamilyController.cs
     core:
@@ -28,6 +39,10 @@ slices:
 
   - id: PD
     name: Prescribed Doses
+    tables:
+      - PrescribedDoses
+      - FamilyMembers  # read-only: display join for dose rows
+      - Supplements     # read-only: display join for dose rows
     controller:
       - VitaTrack.Web/Controllers/PrescribedDoseController.cs
     core:
@@ -53,6 +68,8 @@ slices:
 
   - id: MS
     name: Supplements (CRUD, CSV import)
+    tables:
+      - Supplements
     controller:
       - VitaTrack.Web/Controllers/SupplementController.cs
       - VitaTrack.Web/Controllers/SupplementController.Editor.cs
@@ -86,6 +103,8 @@ slices:
 
   - id: NT
     name: Nutrients & Blends
+    tables:
+      - SupplementNutrients
     controller:
       - VitaTrack.Web/Controllers/SupplementNutrientController.cs
     core:
@@ -118,6 +137,7 @@ slices:
 
   - id: RP
     name: Reports (nutrient + cost)
+    tables: []
     controller:
       - VitaTrack.Web/Controllers/ReportingController.cs
     core:
@@ -137,6 +157,7 @@ slices:
 
   - id: LLM
     name: LLM Enrichment
+    tables: []
     controller: []
     core:
       - VitaTrack.Core/Services/LlmService.cs
@@ -164,6 +185,7 @@ slices:
 
   - id: SHELL
     name: Application Shell
+    tables: []
     controller:
       - VitaTrack.Web/Controllers/HomeController.cs
     core: []

@@ -28,6 +28,7 @@ public class ReportingService(
         var memberContributions = new Dictionary<int, Dictionary<string, Dictionary<int, ContributionBucket>>>();
         var nutrientUnits = new Dictionary<string, HashSet<Unit>>();
         var supplementMonthlyCosts = new Dictionary<int, Money>();
+        var visitor = new NutrientAggregationVisitor(nutrientUnits, memberTotals, memberContributions);
         Money totalCost = default;
 
         foreach (var pd in activeDoses)
@@ -42,57 +43,7 @@ public class ReportingService(
             }
 
             var dailyFrequency = GetMultiplier(pd);
-            memberTotals.TryAdd(pd.FamilyMemberId, []);
-
-            foreach (var n in nutrientCache[pd.SupplementId])
-            {
-                var dosage = n.ParsedDosage;
-                if (dosage.Unit.IsDefined)
-                {
-                    if (!nutrientUnits.TryGetValue(n.GenericName, out var units))
-                    {
-                        units = [];
-                        nutrientUnits[n.GenericName] = units;
-                    }
-                    units.Add(dosage.Unit);
-                }
-
-                var dailyAmount = dosage.Amount * dailyFrequency;
-
-                memberTotals[pd.FamilyMemberId][n.GenericName] =
-                    memberTotals[pd.FamilyMemberId].GetValueOrDefault(n.GenericName) + dailyAmount;
-
-                if (dailyAmount != 0m)
-                {
-                    if (!memberContributions.TryGetValue(pd.FamilyMemberId, out var byNutrient))
-                    {
-                        byNutrient = [];
-                        memberContributions[pd.FamilyMemberId] = byNutrient;
-                    }
-
-                    if (!byNutrient.TryGetValue(n.GenericName, out var bySupplement))
-                    {
-                        bySupplement = [];
-                        byNutrient[n.GenericName] = bySupplement;
-                    }
-
-                    if (bySupplement.TryGetValue(pd.SupplementId, out var bucket))
-                    {
-                        bucket.Amount += dailyAmount;
-                        bucket.Multiplier = bucket.Multiplier == dailyFrequency ? dailyFrequency : null;
-                        bucket.NutrientIds.Add(n.Id);
-                    }
-                    else
-                    {
-                        bySupplement[pd.SupplementId] = new ContributionBucket
-                        {
-                            Amount = dailyAmount,
-                            Multiplier = dailyFrequency,
-                            NutrientIds = [n.Id]
-                        };
-                    }
-                }
-            }
+            visitor.Visit(pd.FamilyMemberId, pd.SupplementId, dailyFrequency, nutrientCache[pd.SupplementId]);
 
             var monthlyCost = GetMonthlyCost(supplement, dailyFrequency);
             if (monthlyCost.Amount > 0m)
@@ -200,16 +151,6 @@ public class ReportingService(
     }
 
     private static decimal GetMultiplier(PrescribedDose pd) => pd.Multiplier > 0 ? pd.Multiplier : 1;
-
-    // Mutable aggregation holder for one (member, nutrient, supplement) cell:
-    // summed daily amount, merged dose multiplier, and the SupplementNutrient
-    // row ids that produced the amount (single id → amount links to its editor).
-    private sealed class ContributionBucket
-    {
-        public decimal Amount { get; set; }
-        public decimal? Multiplier { get; set; }
-        public HashSet<int> NutrientIds { get; init; } = [];
-    }
 
     private static bool HasServings(Supplement supplement) => supplement.ServingsPerBottle is > 0;
 

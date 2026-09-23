@@ -44,14 +44,17 @@ them, per the post-mortem rule in `AGENTS.md`.
 - **Paydown:** typed row records per report. Part of the Reporting slice conversion
   (Visitor over the blend tree).
 
-### TD-005 — `FamilyRepository.DeleteAsync` issues cross-slice SQL against `PrescribedDoses`
+## Closed entries
+
+### TD-005 — `FamilyRepository.DeleteAsync` issued cross-slice SQL against `PrescribedDoses`
 - **Where:** `VitaTrack.Core/Data/FamilyRepository.cs`
-- **What:** deleting a family member runs raw `DELETE FROM PrescribedDoses` — a second
+- **What:** deleting a family member ran raw `DELETE FROM PrescribedDoses` — a second
   instance of the cross-slice SQL violation fixed for `SupplementRepository` in the NT
   conversion. Found by the glm-flash NT session (its notice, correctly not fixed in-scope).
-- **Interest:** the ADR-0006 invariant is untrue for the MF→PD edge; every audit re-finds it.
-- **Paydown:** add `DeleteByFamilyMemberIdsAsync` to `IPrescribedDoseRepository` and route —
-  same three-line pattern as the NT fix. Trivial; bundle with the next MF or PD slice touch.
+- **Interest:** the ADR-0006 invariant was untrue for the MF→PD edge; every audit re-found it.
+- **Closed 2026-09-23:** `DeleteByFamilyMemberIdsAsync` added to `IPrescribedDoseRepository`
+  and routed — same pattern as the NT fix. Remaining exposure: the invariant still has no
+  machine check (tracked as the cross-slice arch test follow-up in the factory-v3 plan).
 
 ## Defect log
 

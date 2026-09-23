@@ -49,12 +49,18 @@ features.
 - UI reachable (no orphan page); cross-layer tracer green.
 - Docs updated (`AGENTS.md`, ADR if architecture changed).
 
-## Cross-Slice Invariant (machine-enforced)
+## Cross-Slice Invariant (convention + design gate; not machine-enforced)
 
 A slice may **read** another slice's data only through that slice's published
 repository/query interface. It must **never** issue SQL against another slice's tables.
-This holds today (`ReportingService.cs:204` reads doses via `IPrescribedDoseRepository`,
-no cross-slice SQL). Add an arch test so it cannot regress.
+Today this holds by convention plus routed deletes (see `AGENTS.md`); the one violation
+found by audit (TD-005) was fixed 2026-09-23. A machine check was deferred as brittle
+(pilot lesson #5) — tracked as a follow-up task:
+
+- [ ] **Cross-slice SQL arch test (deferred, needs design):** make the cross-slice
+      invariant machine-checked. Sketch from pilot lesson #5: explicit table→slice map
+      (e.g. a `tables:` field per slice in `shards.yaml`), then assert each repository's
+      SQL references only its own slice's tables. Do not attempt full inline-SQL parsing.
 
 ---
 
@@ -208,8 +214,9 @@ machine with no instruments, and guardrails check conformance but not design cor
 ## Risks / Guardrails
 
 - Rename is broad but mechanical; one commit + full green gate contains it.
-- Shared SQLite tables: cross-slice invariant (read-only-via-interface, no cross-slice SQL) is true today;
-  an arch test locks it.
+- Shared SQLite tables: cross-slice invariant (read-only-via-interface, no cross-slice SQL) holds by
+  convention + routed deletes; **no arch test enforces it yet** — deferred as brittle (pilot lesson #5),
+  tracked as the checkbox task under "Cross-Slice Invariant" above.
 - Value objects touch Dapper column mapping; pilot proves the mapping pattern before rollout.
 - No speculative scaffolding: handler-per-rule threshold (Phase 1) prevents ceremony; patterns
   (Composite/Visitor/Strategy/Chain) are applied only where the code already demands them.

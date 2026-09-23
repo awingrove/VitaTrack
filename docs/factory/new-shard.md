@@ -21,12 +21,19 @@ feature. Read it before adding or extracting a slice.
 1. **Ownership** — every feature `.cs` under `VitaTrack.Core` belongs to exactly one shard
    in `shards.yaml` (or the `allowlist`). `ShardOwnershipTests` fails on orphans and
    double-claims.
-2. **Cross-slice reads** — a slice reads another slice's data ONLY via that slice's
-   published repository/query interface. Never issue SQL on another slice's tables.
-3. **Type size** — no complete type (incl. partials) exceeds 300 lines (`FileSizeTests`).
+2. **Type size** — no complete type (incl. partials) exceeds 300 lines (`FileSizeTests`).
    Split on the split-trigger; don't dodge with partials.
-4. **Repository naming** — repos end in `Repository`; live in `VitaTrack.Core.Data` or a
+3. **Repository naming** — repos end in `Repository`; live in `VitaTrack.Core.Data` or a
    `VitaTrack.Core.Features.*` slice (`RepositoryNamingTests`).
+
+## Invariant by convention + design gate (not machine-enforced)
+
+4. **Cross-slice reads** — a slice reads another slice's data ONLY via that slice's
+   published repository/query interface. Never issue SQL on another slice's tables.
+   No arch test parses inline SQL (deemed brittle in the Dosing pilot — see
+   `docs/plans/2026-09-20-dosing-slice-pilot.md`, lesson #5); the controls are this
+   recipe, the routed-delete pattern in `AGENTS.md`, `design-review.md`'s human gate,
+   and TD-005 in `technical-debt.md` as the standing example of what re-audits catch.
 
 ## Recipe (tracer-bullet, then fill)
 

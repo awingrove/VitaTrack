@@ -91,6 +91,7 @@ slices:
       - VitaTrack.Core/Features/Supplements/CsvLengthLimitsRule.cs
       - VitaTrack.Core/Features/Supplements/CsvCostRule.cs
       - VitaTrack.Core/Features/Supplements/CsvServingsRule.cs
+      - VitaTrack.Core/Features/Supplements/ImportSupplementsHandler.cs
     views:
       - VitaTrack.Web/Views/Supplement/**
     js:

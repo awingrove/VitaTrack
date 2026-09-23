@@ -35,7 +35,8 @@ public class SupplementControllerImportCsvTests
             _nutrientRepo.Object,
             _nutrientService.Object,
             _llmService.Object,
-            _csvImportService.Object);
+            _csvImportService.Object,
+            new ImportSupplementsHandler(_suppRepo.Object, _nutrientService.Object, _llmService.Object));
     }
 
     [TestMethod]

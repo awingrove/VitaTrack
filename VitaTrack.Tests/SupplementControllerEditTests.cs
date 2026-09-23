@@ -32,7 +32,8 @@ public class SupplementControllerEditTests
         _csvImportService = new Mock<ICsvImportService>();
         _controller = new SupplementController(
             _suppRepo.Object, _nutrientRepo.Object, _nutrientService.Object,
-            _llmService.Object, _csvImportService.Object);
+            _llmService.Object, _csvImportService.Object,
+            new ImportSupplementsHandler(_suppRepo.Object, _nutrientService.Object, _llmService.Object));
 
         var urlHelper = new Mock<IUrlHelper>();
         urlHelper.Setup(u => u.Action(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlActionContext>()))

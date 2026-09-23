@@ -52,6 +52,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPrescribedDoseRepository, PrescribedDoseRepository>();
         services.AddScoped<PrescribeDoseHandler>();
         services.AddScoped<AmendDoseHandler>();
+        services.AddScoped<ImportSupplementsHandler>();
 
         services.AddScoped<ISupplementNutrientService, SupplementNutrientService>();
         services.AddScoped<IReportingService, ReportingService>();

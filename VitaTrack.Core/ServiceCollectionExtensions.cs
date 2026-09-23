@@ -8,6 +8,7 @@ using VitaTrack.Core.Features.Dosing;
 using VitaTrack.Core.Services;
 
 using VitaTrack.Core.Features.Nutrients;
+using VitaTrack.Core.Features.Reporting;
 
 namespace VitaTrack.Core;
 

@@ -6,16 +6,6 @@ them, per the post-mortem rule in `AGENTS.md`.
 
 ## Open entries
 
-### TD-001 — `Result.cs` is six concepts in one file
-- **Where:** `VitaTrack.Core/Models/Result.cs`
-- **What:** `NutrientFailure`, `ReplaceNutrientsResult`, `MemberCostRow`,
-  `SupplementCostRow`, `NutrientContributionRow`, and the report-data records all live in
-  one file.
-- **Interest:** every report or result change touches a shared file; review noise and
-  merge friction.
-- **Paydown:** one file per concept under `VitaTrack.Core/Models/` (or a `Reports/`
-  sub-namespace). Not urgent — file is below the 300-line cap.
-
 ### TD-002 — `SupplementController` exceeds the type-size split trigger
 - **Where:** `VitaTrack.Web/Controllers/SupplementController.cs` (263) +
   `SupplementController.Editor.cs` (50) = 313 lines across partials.
@@ -36,15 +26,27 @@ them, per the post-mortem rule in `AGENTS.md`.
   shipped (`VitaTrack.Core/Primitives/Unit.cs`). ReportingService adopted `Unit`; the
   `Dosage` adoption on `SupplementNutrient.Dosage` is pending the Nutrients slice work.
 
-### TD-004 — report contracts use `Dictionary<string,string>` view data
-- **Where:** `ReportingService` (`IReadOnlyList<Dictionary<string,string>>` and similar),
-  `Result.cs:23`.
-- **What:** report rows are passed to views as stringly-typed dictionaries.
-- **Interest:** view typos are runtime-only; no compile-time safety; hard to evolve.
-- **Paydown:** typed row records per report. Part of the Reporting slice conversion
-  (Visitor over the blend tree).
-
 ## Closed entries
+
+### TD-001 — `Result.cs` is six concepts in one file
+- **Where:** was `VitaTrack.Core/Models/Result.cs`
+- **What:** `NutrientFailure`, `ReplaceNutrientsResult`, `MemberCostRow`,
+  `SupplementCostRow`, `NutrientContributionRow`, and the report-data records all lived in
+  one file.
+- **Interest:** every report or result change touched a shared file; review noise and
+  merge friction.
+- **Closed 2026-09-23:** report records moved one-file-per-concept under
+  `VitaTrack.Core/Features/Reporting/` in the RP slice conversion; `Result.cs` deleted
+  (the nutrient-result records had already moved to the NT slice).
+
+### TD-004 — report contracts use `Dictionary<string,string>` view data
+- **Where:** was `ReportingService` (`IReadOnlyList<Dictionary<string,string>>` and
+  similar), `Result.cs:23`
+- **What:** report rows were passed to views as stringly-typed dictionaries.
+- **Interest:** view typos were runtime-only; no compile-time safety; hard to evolve.
+- **Closed 2026-09-23:** typed row records (`MemberNutrientTotals`,
+  `NutrientContributionsCell`, `NutrientUnitRow`, …) passed straight to the views —
+  the ViewData JSON round-trip is gone. RP slice conversion.
 
 ### TD-005 — `FamilyRepository.DeleteAsync` issued cross-slice SQL against `PrescribedDoses`
 - **Where:** `VitaTrack.Core/Data/FamilyRepository.cs`

@@ -141,9 +141,19 @@ slices:
     controller:
       - VitaTrack.Web/Controllers/ReportingController.cs
     core:
-      - VitaTrack.Core/Services/ReportingService.cs
-      - VitaTrack.Core/Services/IReportingService.cs
-      - VitaTrack.Core/Models/Result.cs
+      - VitaTrack.Core/Features/Reporting/ReportingService.cs
+      - VitaTrack.Core/Features/Reporting/IReportingService.cs
+      - VitaTrack.Core/Features/Reporting/MemberCostRow.cs
+      - VitaTrack.Core/Features/Reporting/SupplementCostRow.cs
+      - VitaTrack.Core/Features/Reporting/NutrientContributionRow.cs
+      - VitaTrack.Core/Features/Reporting/NutrientReportData.cs
+      - VitaTrack.Core/Features/Reporting/CostReportData.cs
+      - VitaTrack.Core/Features/Reporting/NutrientUnitRow.cs
+      - VitaTrack.Core/Features/Reporting/NutrientTotalRow.cs
+      - VitaTrack.Core/Features/Reporting/MemberNutrientTotals.cs
+      - VitaTrack.Core/Features/Reporting/NutrientContributionsCell.cs
+      - VitaTrack.Core/Features/Reporting/MemberNutrientContributions.cs
+      - VitaTrack.Core/Features/Reporting/NutrientAggregationVisitor.cs
     views:
       - VitaTrack.Web/Views/Reporting/**
     js:

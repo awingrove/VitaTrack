@@ -5,7 +5,7 @@ using VitaTrack.Core.Primitives;
 
 using VitaTrack.Core.Features.Nutrients;
 
-namespace VitaTrack.Core.Services;
+namespace VitaTrack.Core.Features.Reporting;
 
 public class ReportingService(
     ISupplementRepository supplementRepo,

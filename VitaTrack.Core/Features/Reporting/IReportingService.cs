@@ -1,6 +1,4 @@
-using VitaTrack.Core.Models;
-
-namespace VitaTrack.Core.Services;
+namespace VitaTrack.Core.Features.Reporting;
 
 public interface IReportingService
 {

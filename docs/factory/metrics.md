@@ -25,6 +25,15 @@ A shard only counts toward the proof when its ledger entry records `agent` in th
 
 ### How to extract usage numbers (opencode)
 
+Dispatching the executor session (so the numbers exist at all): define the executor
+as a subagent in `.opencode/agents/<name>.md` with `mode: subagent`, the pinned
+`model: <provider>/<model-id>`, and `permission: { edit: allow, bash: allow }` (see
+`.opencode/agents/mimo-flash.md`). Dispatch it from the controller session via the
+Task tool with that agent's name as the subagent type — the session then shows up in
+`opencode session list` as a child of the controller session, with model, tokens, and
+cost recorded. Avoid `opencode run --agent ...` headless runs for slice work: the
+report does not return to the controller, and a hung provider stream has no supervisor.
+
 After the executor session finishes:
 
 ```bash

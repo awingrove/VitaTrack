@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Reflection;
 using VitaTrack.Core.Data;
+using VitaTrack.Core.Features.Supplements;
 using VitaTrack.Web.Controllers;
 
 namespace VitaTrack.ArchitectureTests;

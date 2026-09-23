@@ -4,6 +4,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using VitaTrack.Core.Data;
 using VitaTrack.Core.Features.Dosing;
 using VitaTrack.Core.Features.Nutrients;
+using VitaTrack.Core.Features.Supplements;
 using VitaTrack.Core.Models;
 
 namespace VitaTrack.Tests;

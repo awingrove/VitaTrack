@@ -1,8 +1,7 @@
-using VitaTrack.Core.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace VitaTrack.Core.Data;
+namespace VitaTrack.Core.Features.Supplements;
 
 public interface ISupplementRepository
 {

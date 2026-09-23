@@ -5,6 +5,7 @@ using VitaTrack.Core.Services;
 using VitaTrack.Web.Models;
 
 using VitaTrack.Core.Features.Nutrients;
+using VitaTrack.Core.Features.Supplements;
 
 namespace VitaTrack.Web.Controllers;
 

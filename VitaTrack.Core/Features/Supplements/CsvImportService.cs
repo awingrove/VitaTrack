@@ -1,8 +1,7 @@
 using System.Globalization;
 using System.Text;
-using VitaTrack.Core.Models;
 
-namespace VitaTrack.Core.Services;
+namespace VitaTrack.Core.Features.Supplements;
 
 public class CsvImportService : ICsvImportService
 {

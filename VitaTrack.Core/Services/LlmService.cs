@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VitaTrack.Core;
+using VitaTrack.Core.Features.Supplements;
 using VitaTrack.Core.Models;
 
 namespace VitaTrack.Core.Services;

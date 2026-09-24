@@ -1,3 +1,5 @@
+using VitaTrack.Core.Features.Nutrients;
+
 namespace VitaTrack.Core.Features.LlmEnrichment;
 
 public class LlmResult
@@ -6,15 +8,4 @@ public class LlmResult
     public string? SwapSuggestion { get; set; }
     public List<SupplementNutrientDto> Nutrients { get; set; } = [];
     public string? ExtractionError { get; set; }
-}
-
-public class SupplementNutrientDto
-{
-    public string GenericName { get; set; } = string.Empty;
-    public string SpecificForm { get; set; } = string.Empty;
-    public string Dosage { get; set; } = string.Empty;
-    public string? Unit { get; set; }
-    public decimal? AmountPerServing { get; set; }
-    public int? ParentNutrientId { get; set; }
-    public List<SupplementNutrientDto>? Children { get; set; }
 }

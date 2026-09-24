@@ -63,6 +63,9 @@ them, per the post-mortem rule in `AGENTS.md`.
   `VitaTrack.Core.Services` only. Slice code in `VitaTrack.Core.Features.*` (e.g. the
   moved `CsvImportService`) is outside its net — a Dapper dependency added to a slice
   service would not be caught. Found by the MiMo MS session.
+- **Update 2026-09-23:** after the LLM conversion, `VitaTrack.Core/Services` is EMPTY —
+  the rule now passes **vacuously** and covers nothing. `Features/*` services
+  (`ReportingService`, `LlmService`, `LlmClient`, …) have no layering guard at all.
 - **Interest:** the guardrail predates slices; every slice conversion shrinks its coverage.
 - **Paydown:** retarget the rule to Core business logic at large (`VitaTrack.Core`
   excluding `VitaTrack.Core.Data` + `VitaTrack.Core.Primitives`), or per-slice via

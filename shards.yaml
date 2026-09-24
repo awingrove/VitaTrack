@@ -123,6 +123,7 @@ slices:
       - VitaTrack.Web/Controllers/SupplementNutrientController.cs
     core:
       - VitaTrack.Core/Features/Nutrients/SupplementNutrient.cs
+      - VitaTrack.Core/Features/Nutrients/SupplementNutrientDto.cs
       - VitaTrack.Core/Features/Nutrients/ISupplementNutrientRepository.cs
       - VitaTrack.Core/Features/Nutrients/SupplementNutrientRepository.cs
       - VitaTrack.Core/Features/Nutrients/ISupplementNutrientService.cs

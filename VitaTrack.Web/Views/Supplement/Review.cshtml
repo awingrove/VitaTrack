@@ -3,7 +3,7 @@
     Layout = "_Layout";
 }
 @model Supplement
-@using VitaTrack.Core.Features.LlmEnrichment
+@using VitaTrack.Core.Features.Nutrients
 @{
     var nutrients = ViewData["ExtractedNutrients"] as List<SupplementNutrientDto>;
     var extractionError = ViewData["ExtractionError"] as string;

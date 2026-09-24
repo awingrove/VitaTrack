@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using VitaTrack.Core.Features.Nutrients;
 
 namespace VitaTrack.Core.Features.LlmEnrichment;
 

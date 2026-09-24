@@ -82,3 +82,4 @@ FodyWeavers.xml
 
 # Bencher
 bencher.toml
+__pycache__/

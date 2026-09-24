@@ -5,7 +5,7 @@
 - Define repository interfaces (`IFamilyRepository`, `ISupplementRepository`, `ISupplementNutrientRepository`, `IPrescribedDoseRepository`).
 - Implement repositories with async CRUD methods.
 - Provide access to external services (LLM) via `ILlmService`.
-- Contain models used across layers; feature-owned models live in their slice under `Features/<Slice>/` (`Supplement`, `FamilyMember`, `SupplementNutrient`, `PrescribedDose`), cross-slice service records (`LlmResult`) remain in `Models`.
+- Contain models used across layers; every slice owns its models under `Features/<Slice>/` (`Supplement`, `FamilyMember`, `SupplementNutrient`, `PrescribedDose`, `LlmResult`, report records) — `VitaTrack.Core/Models` and the flat `VitaTrack.Core/Services` namespace are retired.
 - No direct HTTP or UI concerns; keep pure C#.
 
 ## Conventions
@@ -64,7 +64,7 @@ When adding new tables (or FK-like columns, via `CREATE TABLE` or `ALTER TABLE` 
 - Mock `HttpClient` (with Moq) for `OpenRouterLlmService` tests.
 
 ## Adding New Features
-1. Add model (if needed) to the owning feature slice under `VitaTrack.Core/Features/<Slice>/` (or `VitaTrack.Core/Models` only for cross-slice shared records like `LlmResult`).
+1. Add model (if needed) to the owning feature slice under `VitaTrack.Core/Features/<Slice>/`.
 2. Extend repository interface (if new entity) and implement.
 3. Register new interface/implementation in `VitaTrack.Web/Program.cs` via `builder.Services.AddScoped<...>()`.
 4. If external service, add to `VitaTrack.Core.Services` and register via `AddHttpClient<TInterface, TImplementation>()` (you may also need to register `HttpClient` separately if not already).

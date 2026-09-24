@@ -81,3 +81,28 @@ the agent records them from the branch's actual commit/test history.
   (self-correction), but consider enriching `new-shard.md` with the recurring failure mode.
 - `defects_escaped > 0` → post-mortem per the defect-log rule; the systemic gap updates
   `AGENTS.md` / the recipe in the same change.
+
+## Factory dashboard
+
+`docs/factory/dashboard.html` is a generated static view of the factory's current
+state, rendered from `shards.yaml`, `docs/factory/shard-metrics.yaml`, and the plan
+Markdown under `docs/plans/` and `docs/superpowers/plans/`. The committed snapshot is
+regenerated and verified with:
+
+```bash
+python3 scripts/generate-factory-dashboard.py
+python3 scripts/generate-factory-dashboard.py --check
+python3 scripts/test-generate-factory-dashboard.py
+```
+
+- The first command rewrites `docs/factory/dashboard.html` from current sources —
+  run it after any change to the manifest, ledger, or plan files, and commit the
+  result in the same change.
+- `--check` regenerates to a temp file and exits non-zero if the committed snapshot
+  is stale (CI-style freshness gate); it never writes.
+- The third command runs the generator's unit tests.
+
+Missing ledger records (shards that have not shipped) and needs-review plans are
+**intentional rendered states**, not errors: the dashboard shows them as such rather
+than failing. PyYAML must be available in the Python 3 environment that runs the
+generator.

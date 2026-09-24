@@ -89,6 +89,11 @@ state, rendered from `shards.yaml`, `docs/factory/shard-metrics.yaml`, and the p
 Markdown under `docs/plans/` and `docs/superpowers/plans/`. The committed snapshot is
 regenerated and verified with:
 
+Plan status precedence is explicit status, whole-plan progress, checkboxes, then
+needs review. Positive whole-word completion values are `done`, `complete`, `completed`,
+and `shipped`; negated forms such as `Incomplete` or `Not completed` do not complete a plan.
+Fenced or indented examples are not plan metadata.
+
 ```bash
 python3 scripts/generate-factory-dashboard.py
 python3 scripts/generate-factory-dashboard.py --check

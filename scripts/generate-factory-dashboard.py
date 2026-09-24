@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import html
+import math
 import os
 import re
 import sys
@@ -36,15 +37,22 @@ class DashboardData:
     generated_at: str
 
 
-STATUS_RE = re.compile(r"(?im)^\s*(?:[-*]\s*)?(?:\*\*)?status(?:\*\*)?\s*:\s*(.+?)\s*$")
+STATUS_RE = re.compile(
+    r"^(?:\*\*)?status(?:\*\*:|:\*\*|:)\s*(.+?)\s*$", re.IGNORECASE
+)
 PROGRESS_RE = re.compile(
-    r"(?im)^\s*(?:[-*]\s*)?(?:\*\*)?(?:overall\s+status|plan\s+status|status)(?:\*\*)?\s*:\s*(?:plan\s+)?(?:is\s+)?(complete|completed|done|shipped)\b"
+    r"^(?:\*\*)?(?:overall\s+status|plan\s+status)(?:\*\*:|:\*\*|:)\s*(.+?)\s*$",
+    re.IGNORECASE,
+)
+COMPLETION_RE = re.compile(r"\b(done|complete|completed|shipped)\b", re.IGNORECASE)
+NEGATIVE_STATUS_RE = re.compile(
+    r"\b(?:not|incomplete|pending|blocked|open|unfinished|in\s+progress)\b",
+    re.IGNORECASE,
 )
 CHECKED_RE = re.compile(r"(?m)^\s*- \[x\]\s+", re.IGNORECASE)
 UNCHECKED_RE = re.compile(r"(?m)^\s*- \[ \]\s+")
 H1_RE = re.compile(r"(?m)^#\s+(.+?)\s*$")
 
-COMPLETION_WORDS = ("done", "complete", "completed", "shipped")
 REQUIRED_LEDGER_FIELDS = (
     "id",
     "name",
@@ -61,6 +69,19 @@ OPTIONAL_METRIC_FIELDS = (
     "tokens_reasoning",
     "tokens_cache_read",
     "cost_usd",
+    "notes",
+)
+REQUIRED_INTEGER_FIELDS = (
+    "human_interventions",
+    "guardrail_failures",
+    "fix_commits",
+    "defects_escaped",
+)
+OPTIONAL_INTEGER_FIELDS = (
+    "tokens_input",
+    "tokens_output",
+    "tokens_reasoning",
+    "tokens_cache_read",
 )
 PLAN_DIRECTORIES = ("docs/plans", "docs/superpowers/plans")
 
@@ -79,22 +100,59 @@ def read_yaml(path: Path) -> dict[str, Any]:
     return loaded
 
 
+def _metadata_lines(text: str):
+    fence: str | None = None
+    for line in text.splitlines():
+        stripped = line.lstrip()
+        if fence is not None:
+            if stripped.startswith(fence):
+                fence = None
+            continue
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            fence = stripped[:3]
+            continue
+        if line == line.lstrip():
+            yield line
+
+
+def _metadata_value(text: str, pattern: re.Pattern[str]) -> str | None:
+    for line in _metadata_lines(text):
+        if line.startswith("- ") or line.startswith("* "):
+            line = line[2:]
+        match = pattern.fullmatch(line)
+        if match:
+            return match.group(1).strip()
+    return None
+
+
+def _is_negative_status(value: str) -> bool:
+    return bool(NEGATIVE_STATUS_RE.search(value))
+
+
+def _is_positive_completion(value: str) -> bool:
+    return not _is_negative_status(value) and bool(COMPLETION_RE.search(value))
+
+
 def classify_plan(path: str, text: str, progress_text: str = "") -> PlanState:
     title_match = H1_RE.search(text)
     title = title_match.group(1).strip() if title_match else Path(path).stem
     checked_boxes = len(CHECKED_RE.findall(text))
     unchecked_boxes = len(UNCHECKED_RE.findall(text))
 
-    status_match = STATUS_RE.search(text)
-    status_complete = bool(status_match) and any(
-        word in status_match.group(1).lower() for word in COMPLETION_WORDS
+    status_value = _metadata_value(text, STATUS_RE)
+    status_complete = status_value is not None and _is_positive_completion(status_value)
+    status_incomplete = status_value is not None and _is_negative_status(status_value)
+    progress_value = _metadata_value(text, PROGRESS_RE) or _metadata_value(
+        progress_text, PROGRESS_RE
     )
-    progress_complete = bool(PROGRESS_RE.search(text)) or bool(
-        PROGRESS_RE.search(progress_text)
+    progress_complete = progress_value is not None and _is_positive_completion(
+        progress_value
     )
 
     if status_complete:
         status, evidence = "complete", "plan status"
+    elif status_incomplete:
+        status, evidence = "incomplete", "plan status"
     elif progress_complete:
         status, evidence = "complete", "progress"
     elif unchecked_boxes:
@@ -131,7 +189,7 @@ def load_dashboard(root: Path) -> DashboardData:
 
 
 GENERATED_AT_RE = re.compile(
-    r'(<time datetime=")[^"]+(">)[^<]+(</time>)'
+    r'(<time id="generated-at" datetime=")[^"]+(">)[^<]+(</time>)'
 )
 
 STATUS_ORDER = {"incomplete": 0, "needs-review": 1, "complete": 2}
@@ -340,7 +398,7 @@ def render_dashboard(data: DashboardData) -> str:
         '<header class="mb-4">',
         '<h1 class="h3 mb-1">VitaTrack Factory Dashboard</h1>',
         f'<p class="text-muted mb-2">Generated '
-        f'<time datetime="{timestamp}">{timestamp}</time></p>',
+        f'<time id="generated-at" datetime="{timestamp}">{timestamp}</time></p>',
         '<p class="mb-1">Sources: '
         '<a href="../../shards.yaml">shards.yaml</a> · '
         '<a href="shard-metrics.yaml">shard-metrics.yaml</a> · '
@@ -441,6 +499,53 @@ def _load_shards(root: Path) -> list[dict[str, Any]]:
     return slices
 
 
+def _validate_ledger_entry(
+    entry: dict[str, Any], source: Path, entry_id: str
+) -> None:
+    for field in ("name", "agent"):
+        value = entry[field]
+        if not isinstance(value, str) or not value.strip():
+            raise DashboardError(
+                f"{source}: ledger entry '{entry_id}' field '{field}' must be a non-empty string"
+            )
+
+    for field in REQUIRED_INTEGER_FIELDS:
+        value = entry[field]
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise DashboardError(
+                f"{source}: ledger entry '{entry_id}' field '{field}' must be a non-negative integer"
+            )
+
+    for field in OPTIONAL_INTEGER_FIELDS:
+        if field in entry and entry[field] is not None:
+            value = entry[field]
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise DashboardError(
+                    f"{source}: ledger entry '{entry_id}' field '{field}' must be a non-negative integer or null"
+                )
+
+    for field in ("agent_model", "notes"):
+        if field in entry and entry[field] is not None and not isinstance(entry[field], str):
+            raise DashboardError(
+                f"{source}: ledger entry '{entry_id}' field '{field}' must be a string or null"
+            )
+
+    cost = entry.get("cost_usd")
+    if cost is not None:
+        if isinstance(cost, bool) or not isinstance(cost, (int, float)):
+            raise DashboardError(
+                f"{source}: ledger entry '{entry_id}' field 'cost_usd' must be a finite number or null"
+            )
+        try:
+            finite_cost = math.isfinite(cost)
+        except (OverflowError, TypeError, ValueError):
+            finite_cost = False
+        if not finite_cost:
+            raise DashboardError(
+                f"{source}: ledger entry '{entry_id}' field 'cost_usd' must be a finite number or null"
+            )
+
+
 def _load_ledger(
     root: Path, shard_ids: set[str]
 ) -> dict[str, dict[str, Any]]:
@@ -470,6 +575,7 @@ def _load_ledger(
             )
         for field in OPTIONAL_METRIC_FIELDS:
             entry.setdefault(field, None)
+        _validate_ledger_entry(entry, source, entry_id)
         ledger[entry_id] = entry
     return ledger
 

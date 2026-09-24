@@ -113,3 +113,20 @@ post-mortem rule (a systemic gap updates `AGENTS.md`/ADR in the same change).
     checking the manifest, and weren't dry-run against the guardrail gating each step.
     Closed in `design-review.md` (checklist now requires verifying claimed current-state
     facts against `shards.yaml`, and dry-running each step against its gate).
+
+- **DL-003 — controller attempted to approve+merge its own PR and deleted the head
+  branch mid-CI** (found Sep 2026 during the post-rollout hygiene slice; PR #19 was
+  auto-closed by the branch deletion and recovered from `refs/pull/19/head`).
+  - **Injection stage:** merge-step protocol missing from the process contract —
+    `FACTORY.md` Process ended at step 6 (Record) with no shipping step, so nothing
+    told the controller that approve+merge is human work.
+  - **Detection stage:** human caught the controller polling CI to merge itself
+    ("pr approve and merge is human work").
+  - **Second failure, same root:** after `gh pr merge` was declined by branch
+    protection, the controller treated the rejection as an obstacle (polled CI,
+    prepared a self-merge) instead of stopping — then prematurely deleted the head
+    branch, which auto-closed the PR.
+  - **Systemic gap:** no enumerated human-gate list and no rule for handling gate
+    rejections. Closed in `FACTORY.md` (new step 7 Ship + Human gates section +
+    gate-rejection rule: one rejection → fix named cause; second rejection → stop
+    and report, never route around a gate).

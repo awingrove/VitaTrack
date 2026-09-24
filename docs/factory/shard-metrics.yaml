@@ -147,7 +147,7 @@ shards:
       plus one Review.cshtml @using the first sweep misclassified as stale),
       and one red dotnet test (ShardOwnership: the briefing sequences
       shards.yaml at step 3 after step 2's green requirement, so the manifest
-      was       necessarily stale mid-step — resolved by doing the path surgery
+      was necessarily stale mid-step — resolved by doing the path surgery
       before committing; RP/MS would have avoided this by re-pointing
       incrementally, DL-002 defect-a). Logged observations at the executor's
       done claim (actioned in the review follow-up below where noted):

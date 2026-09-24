@@ -26,7 +26,9 @@ rollout session. All edits are pre-decided below — no design judgment required
   parenthetical containing `TD-008 in \`family-member.spec.js\` vacuous assertion
   candidate` (a phantom reference — TD-008 does not exist in the register yet).
 - `docs/factory/technical-debt.md`: open entries = TD-003 only; closed = TD-001,
-  TD-002, TD-004, TD-005, TD-006 (updated, closed), TD-007. TD-008/TD-009 absent.
+  TD-002, TD-004, TD-005, TD-006 (updated 2026-09-23), TD-007. TD-008/TD-009 absent.
+  (TD-006 sat under `## Closed entries` but its body still carried a pending Paydown —
+  misfiled; review corrected it to Open, matching plan line 124 and out-of-scope line 145.)
 - `e2e-tests/playwright/tests/family-member.spec.js:127`:
   `await expect(page.locator(\`table tbody tr:has-text("TestDose${unique}")\`)).toHaveCount(0);`
   — but the dose created by this test (line 109) carries `DoseInstr${unique}`.
@@ -60,9 +62,14 @@ schema/required-field changes).
    Features/Nutrients/SupplementNutrientDto.cs (commit 599a112, after the done
    claim), correcting the dependency direction to LLM -> Nutrients; claimed in
    shards.yaml under NT. human_interventions and fix_commits corrected from 0 per
-   metrics.md definitions (review finding that forced changes; commit after the
-   done claim).
+    metrics.md definitions (review finding that forced changes; commit after the
+    done claim).
    ```
+
+   > **Deviation (controller, 2026-09-24):** the literal substitution in step 3's first
+   > edit produced a splice defect (`…(post-review), stops: two failed…`); repaired in
+   > `93da3c3` along with observation-list claims the adjudication had superseded.
+   > Treat the committed `shard-metrics.yaml` notes as the binding end-state.
 
 4. Regenerate the dashboard snapshot: `python3 scripts/generate-factory-dashboard.py`;
    verify `python3 scripts/generate-factory-dashboard.py --check` exits 0 and

@@ -16,6 +16,21 @@ them, per the post-mortem rule in `AGENTS.md`.
   shipped (`VitaTrack.Core/Primitives/Unit.cs`). ReportingService adopted `Unit`; the
   `Dosage` adoption on `SupplementNutrient.Dosage` is pending the Nutrients slice work.
 
+### TD-006 — `ServicesLayeringTests` only scans `VitaTrack.Core.Services`
+- **Where:** `VitaTrack.ArchitectureTests/ServicesLayeringTests.cs`
+- **What:** the "business logic reaches the DB only through repositories" rule scans
+  `VitaTrack.Core.Services` only. Slice code in `VitaTrack.Core.Features.*` (e.g. the
+  moved `CsvImportService`) is outside its net — a Dapper dependency added to a slice
+  service would not be caught. Found by the MiMo MS session.
+- **Update 2026-09-23:** after the LLM conversion, `VitaTrack.Core/Services` is EMPTY —
+  the rule now passes **vacuously** and covers nothing. `Features/*` services
+  (`ReportingService`, `LlmService`, `LlmClient`, …) have no layering guard at all.
+- **Interest:** the guardrail predates slices; every slice conversion shrinks its coverage.
+- **Paydown:** retarget the rule to Core business logic at large (`VitaTrack.Core`
+  excluding `VitaTrack.Core.Data` + `VitaTrack.Core.Primitives`), or per-slice via
+  `shards.yaml` `tables` declarations. Was slated for the Family/LLM slice conversions —
+  both shipped 2026-09-24 without retargeting it; still owed.
+
 ## Closed entries
 
 ### TD-002 — `SupplementController` exceeds the type-size split trigger
@@ -56,20 +71,6 @@ them, per the post-mortem rule in `AGENTS.md`.
 - **Closed 2026-09-23:** `DeleteByFamilyMemberIdsAsync` added to `IPrescribedDoseRepository`
   and routed — same pattern as the NT fix. Remaining exposure: the invariant still has no
   machine check (tracked as the cross-slice arch test follow-up in the factory-v3 plan).
-
-### TD-006 — `ServicesLayeringTests` only scans `VitaTrack.Core.Services`
-- **Where:** `VitaTrack.ArchitectureTests/ServicesLayeringTests.cs`
-- **What:** the "business logic reaches the DB only through repositories" rule scans
-  `VitaTrack.Core.Services` only. Slice code in `VitaTrack.Core.Features.*` (e.g. the
-  moved `CsvImportService`) is outside its net — a Dapper dependency added to a slice
-  service would not be caught. Found by the MiMo MS session.
-- **Update 2026-09-23:** after the LLM conversion, `VitaTrack.Core/Services` is EMPTY —
-  the rule now passes **vacuously** and covers nothing. `Features/*` services
-  (`ReportingService`, `LlmService`, `LlmClient`, …) have no layering guard at all.
-- **Interest:** the guardrail predates slices; every slice conversion shrinks its coverage.
-- **Paydown:** retarget the rule to Core business logic at large (`VitaTrack.Core`
-  excluding `VitaTrack.Core.Data` + `VitaTrack.Core.Primitives`), or per-slice via
-  `shards.yaml` `tables` declarations. Candidate for the Family/LLM slice conversions.
 
 ### TD-007 — factory AGENTS.md docs lagged the slice moves
 - **Where:** root + `VitaTrack.Core/AGENTS.md`

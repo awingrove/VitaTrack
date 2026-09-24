@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\VitaTrack.Infrastructure\VitaTrack.Infrastructure.csproj" />
+    <ProjectReference Include="..\VitaTrack.Core\VitaTrack.Core.csproj" />
   </ItemGroup>
 
 </Project>

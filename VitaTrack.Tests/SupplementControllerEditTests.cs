@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
+using VitaTrack.Core.Features.Nutrients;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using VitaTrack.Infrastructure.Data;
-using VitaTrack.Infrastructure.Models;
-using VitaTrack.Infrastructure.Services;
+using VitaTrack.Core.Data;
+using VitaTrack.Core.Features.LlmEnrichment;
 using VitaTrack.Web.Controllers;
 using VitaTrack.Web.Models;
+
+using VitaTrack.Core.Features.Supplements;
 
 namespace VitaTrack.Tests;
 
@@ -16,7 +18,6 @@ public class SupplementControllerEditTests
     private Mock<ISupplementNutrientRepository> _nutrientRepo = null!;
     private Mock<ISupplementNutrientService> _nutrientService = null!;
     private Mock<ILlmService> _llmService = null!;
-    private Mock<ICsvImportService> _csvImportService = null!;
     private SupplementController _controller = null!;
 
     [TestInitialize]
@@ -26,10 +27,9 @@ public class SupplementControllerEditTests
         _nutrientRepo = new Mock<ISupplementNutrientRepository>();
         _nutrientService = new Mock<ISupplementNutrientService>();
         _llmService = new Mock<ILlmService>();
-        _csvImportService = new Mock<ICsvImportService>();
         _controller = new SupplementController(
             _suppRepo.Object, _nutrientRepo.Object, _nutrientService.Object,
-            _llmService.Object, _csvImportService.Object);
+            _llmService.Object);
 
         var urlHelper = new Mock<IUrlHelper>();
         urlHelper.Setup(u => u.Action(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlActionContext>()))

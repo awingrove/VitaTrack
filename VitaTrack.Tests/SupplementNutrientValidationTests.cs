@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using VitaTrack.Infrastructure.Models;
+
+using VitaTrack.Core.Features.Nutrients;
 
 namespace VitaTrack.Tests;
 
@@ -60,5 +61,38 @@ public class SupplementNutrientValidationTests
 
         Assert.IsFalse(isValid);
         Assert.IsTrue(results.Any(r => r.MemberNames.Contains(nameof(SupplementNutrient.SpecificForm))));
+    }
+
+    [TestMethod]
+    public void EmptyGenericName_IsInvalid()
+    {
+        var nutrient = new SupplementNutrient
+        {
+            SupplementId = 1,
+            GenericName = "",
+            Dosage = "500mg",
+            SpecificForm = "Ascorbic Acid"
+        };
+
+        var (isValid, results) = Validate(nutrient);
+
+        Assert.IsFalse(isValid);
+        Assert.IsTrue(results.Any(r => r.MemberNames.Contains(nameof(SupplementNutrient.GenericName))));
+    }
+
+    [TestMethod]
+    public void Child_WithBlankGenericName_IsInvalid()
+    {
+        var nutrient = new SupplementNutrient
+        {
+            SupplementId = 1,
+            GenericName = "   ",
+            ParentNutrientId = 9001,
+        };
+
+        var (isValid, results) = Validate(nutrient);
+
+        Assert.IsFalse(isValid);
+        Assert.IsTrue(results.Any(r => r.MemberNames.Contains(nameof(SupplementNutrient.GenericName))));
     }
 }

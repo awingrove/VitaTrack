@@ -241,6 +241,14 @@ Expandable detail rows use Bootstrap collapse on `<tr>` targets: a
 hides via `display: none`, so the `<tr>` reverts to its natural `table-row`
 display when shown — never JS show/hide.
 
+Expand/collapse affordance: an inline SVG chevron rides in the trigger
+(right-facing when collapsed, down-facing when expanded), wrapped in a
+`<span data-chevron="collapsed|expanded">` and flipped by
+`wwwroot/js/report-toggle.js` listening to `show`/`hide.bs.collapse`. Wrap
+chevrons in HTML `<span>`s, never toggle `hidden` on `<svg>` directly (the
+`hidden` attribute's UA `display:none` rule does not apply to SVG elements).
+No icon fonts, no custom CSS.
+
 ### Forms
 
 - Inputs: `form-control` / `form-select`, validation feedback via

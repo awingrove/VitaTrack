@@ -2,7 +2,7 @@
     ViewData["Title"] = "Supplement Nutrients";
     Layout = "_Layout";
 }
-@using VitaTrack.Infrastructure.Models
+@using VitaTrack.Core.Features.Nutrients
 @model IEnumerable<SupplementNutrient>
 @{
     var supplement = ViewData["Supplement"] as Supplement;

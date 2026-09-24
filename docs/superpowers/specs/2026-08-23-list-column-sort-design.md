@@ -18,7 +18,7 @@ by Name (server-side ORDER BY added for that initial order).
 
 ## Files
 - Create: `VitaTrack.Web/wwwroot/js/table-sort.js`
-- Modify: `VitaTrack.Infrastructure/Data/SupplementRepository.cs:16` (ORDER BY Name)
+- Modify: `VitaTrack.Core/Data/SupplementRepository.cs:16` (ORDER BY Name)
 - Modify: `VitaTrack.Web/Views/Supplement/Index.cshtml` (sortable table + headers + data-sort-value on Cost cell)
 - Modify: `VitaTrack.Web/Views/SupplementNutrient/Index.cshtml` (sortable table + headers)
 - Test: `e2e-tests/playwright/tests/supplement-crud.spec.js`, `supplement-nutrient.spec.js`

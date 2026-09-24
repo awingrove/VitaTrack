@@ -4,9 +4,15 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using VitaTrack.Infrastructure;
-using VitaTrack.Infrastructure.Data;
-using VitaTrack.Infrastructure.Services;
+using VitaTrack.Core;
+using VitaTrack.Core.Data;
+using VitaTrack.Core.Features.Dosing;
+using VitaTrack.Core.Features.Family;
+using VitaTrack.Core.Features.Reporting;
+using VitaTrack.Core.Features.LlmEnrichment;
+
+using VitaTrack.Core.Features.Nutrients;
+using VitaTrack.Core.Features.Supplements;
 
 namespace VitaTrack.Tests;
 
@@ -36,13 +42,13 @@ public class ServiceCollectionExtensionsTests
             BaseUrl = baseUrl,
             ApiKey = apiKey,
         }));
-        services.AddInfra(configuration);
+        services.AddCore(configuration);
 
         return services.BuildServiceProvider();
     }
 
     [TestMethod]
-    public void AddInfra_FileDataSource_IsRootedAgainstBaseDirectory()
+    public void AddCore_FileDataSource_IsRootedAgainstBaseDirectory()
     {
         using var provider = BuildProvider(FileDataSource);
         using var scope = provider.CreateScope();
@@ -63,7 +69,7 @@ public class ServiceCollectionExtensionsTests
     }
 
     [TestMethod]
-    public void AddInfra_MemoryMode_RegistersKeepAliveAndSharedDb()
+    public void AddCore_MemoryMode_RegistersKeepAliveAndSharedDb()
     {
         using var provider = BuildProvider(MemoryDataSource);
 
@@ -84,7 +90,7 @@ public class ServiceCollectionExtensionsTests
     }
 
     [TestMethod]
-    public void AddInfra_RegistersAllRepositoriesAndServices()
+    public void AddCore_RegistersAllRepositoriesAndServices()
     {
         using var provider = BuildProvider(FileDataSource);
         using var scope = provider.CreateScope();
@@ -129,7 +135,7 @@ public class ServiceCollectionExtensionsTests
     }
 
     [TestMethod]
-    public void AddInfra_LlmClient_HasBaseUrlAndAuthHeader()
+    public void AddCore_LlmClient_HasBaseUrlAndAuthHeader()
     {
         using (var provider = BuildProvider(MemoryDataSource))
         {
@@ -162,7 +168,7 @@ public class ServiceCollectionExtensionsTests
     }
 
     [TestMethod]
-    public void AddInfra_ScraperClient_HasUserAgentAndTimeout()
+    public void AddCore_ScraperClient_HasUserAgentAndTimeout()
     {
         using var provider = BuildProvider(MemoryDataSource);
         var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("scraper");

@@ -7,9 +7,8 @@ using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Moq.Protected;
-using VitaTrack.Infrastructure;
-using VitaTrack.Infrastructure.Models;
-using VitaTrack.Infrastructure.Services;
+using VitaTrack.Core;
+using VitaTrack.Core.Features.LlmEnrichment;
 
 namespace VitaTrack.Tests;
 
@@ -79,5 +78,41 @@ public class LlmClientHeaderTests
         Assert.IsTrue(capturedRequest!.Headers.Contains("x-opencode-session"), "Missing x-opencode-session header");
         Assert.IsFalse(string.IsNullOrWhiteSpace(capturedRequest.Headers.GetValues("x-opencode-session").First()));
         Assert.IsTrue(capturedRequest.Headers.UserAgent.ToString().Contains("VitaTrack"), "Missing User-Agent header");
+    }
+
+    [TestMethod]
+    public async Task PostChatAsync_ReturnsError_WhenApiReturnsNonSuccess()
+    {
+        var apiMock = CreateHandlerMock(HttpStatusCode.InternalServerError, "boom");
+        var client = new LlmClient(CreateHttpClientFactory(apiMock.Object), CreateOptions(), NullLogger<LlmClient>.Instance);
+
+        var result = await client.PostChatAsync("system", "user");
+
+        Assert.IsNull(result.Content);
+        Assert.IsFalse(string.IsNullOrWhiteSpace(result.Error));
+    }
+
+    [TestMethod]
+    public async Task PostChatAsync_ReturnsError_WhenChoicesEmpty()
+    {
+        var apiMock = CreateHandlerMock(HttpStatusCode.OK, @"{ ""choices"": [] }");
+        var client = new LlmClient(CreateHttpClientFactory(apiMock.Object), CreateOptions(), NullLogger<LlmClient>.Instance);
+
+        var result = await client.PostChatAsync("system", "user");
+
+        Assert.IsNull(result.Content);
+        Assert.IsTrue(result.Error!.Contains("No response"));
+    }
+
+    [TestMethod]
+    public async Task PostChatAsync_ReturnsError_WhenContentEmpty()
+    {
+        var apiMock = CreateHandlerMock(HttpStatusCode.OK, @"{ ""choices"": [{ ""message"": { ""content"": ""   "" } }] }");
+        var client = new LlmClient(CreateHttpClientFactory(apiMock.Object), CreateOptions(), NullLogger<LlmClient>.Instance);
+
+        var result = await client.PostChatAsync("system", "user");
+
+        Assert.IsNull(result.Content);
+        Assert.IsTrue(result.Error!.Contains("Empty response"));
     }
 }

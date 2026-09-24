@@ -30,11 +30,16 @@ test.describe('Prescribed Doses', () => {
     // Select first family member
     await page.selectOption('select#FamilyMemberId', { index: 1 });
 
-    // Select first supplement
+    // Select first supplement and read its label for dynamic assertions
+    // (seed supplements are not at a stable index — parallel workers mutate the DB)
     await page.selectOption('select#SupplementId', { index: 1 });
+    const selectedSupplement = await page.locator('select#SupplementId option:checked').textContent();
+    const supplementName = selectedSupplement.replace(/\s*\(.*\)\s*$/, '').trim();
 
-    // Serving size for the selected supplement is shown read-only (Fish Oil -> 1 softgel)
-    await expect(page.locator('p#ServingSize')).toHaveText('1 softgel');
+    // Serving size for the selected supplement is shown read-only
+    const servingSize = await page.locator('p#ServingSize').textContent();
+    expect(servingSize).not.toBe('');
+    expect(servingSize).not.toBe('—');
 
     // Fill in multiplier (servings per day)
     await page.fill('input#Multiplier', '1.5');
@@ -51,6 +56,7 @@ test.describe('Prescribed Doses', () => {
 
     // Should show the new dose in the table
     await expect(page.locator('table tbody tr').last()).toContainText('1.5');
+    await expect(page.locator('table tbody tr').last()).toContainText(supplementName);
     await expect(page.locator('table tbody tr').last()).toContainText('Take with food');
     await screenshot(page, testInfo, 'doses-after-create');
   });

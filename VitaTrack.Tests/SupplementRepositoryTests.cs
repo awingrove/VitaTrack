@@ -1,7 +1,11 @@
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using VitaTrack.Infrastructure.Data;
-using VitaTrack.Infrastructure.Models;
+using VitaTrack.Core.Data;
+using VitaTrack.Core.Features.Dosing;
+using VitaTrack.Core.Features.Family;
+using VitaTrack.Core.Features.Supplements;
+
+using VitaTrack.Core.Features.Nutrients;
 
 namespace VitaTrack.Tests;
 
@@ -11,7 +15,7 @@ public class SupplementRepositoryTests : SqliteTestBase
     private ISupplementRepository _repo = null!;
 
     [TestInitialize]
-    public void Setup() => _repo = new SupplementRepository(Connection);
+    public void Setup() => _repo = new SupplementRepository(Connection, new SupplementNutrientRepository(Connection), new PrescribedDoseRepository(Connection));
 
     [TestMethod]
     public async Task Crud_Works()
@@ -171,7 +175,7 @@ public class SupplementRepositoryTests : SqliteTestBase
         });
 
         // Add a family member and prescribed dose for supp1
-        var familyRepo = new FamilyRepository(Connection);
+        var familyRepo = new FamilyRepository(Connection, new PrescribedDoseRepository(Connection));
         var familyId = await familyRepo.AddAsync(new FamilyMember { Name = "Test", DisplayName = "Test" });
         await doseRepo.AddAsync(new PrescribedDose
         {

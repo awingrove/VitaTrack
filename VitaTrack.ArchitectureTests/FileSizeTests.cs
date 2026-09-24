@@ -1,10 +1,18 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
-using VitaTrack.Infrastructure.Data;
+using System.Text.RegularExpressions;
 
 namespace VitaTrack.ArchitectureTests;
 
+/// <summary>
+/// Keeps types small. The metric is the *complete type* — every partial part across
+/// files — not individual files. Splitting one class into partials in separate files
+/// to dodge a per-file cap is itself a violation: the intent is to prevent a type
+/// from mushrooming in complexity, not to enforce a gameable file count.
+/// </summary>
 [TestClass]
 public class FileSizeTests
 {
@@ -16,34 +24,84 @@ public class FileSizeTests
         var solutionRoot = FindSolutionRoot();
         Assert.IsNotNull(solutionRoot, "Could not locate VitaTrack.sln");
 
+        var violations = new List<string>();
+        foreach (var path in EnumerateCsFiles(solutionRoot))
+        {
+            var lines = File.ReadLines(path).Count();
+            if (lines > HardLimit)
+                violations.Add($"{Path.GetRelativePath(solutionRoot, path)}: {lines} lines");
+        }
+
+        Assert.AreEqual(0, violations.Count,
+            $"Files exceeding {HardLimit}-line limit (AGENTS.md split trigger):\n  " + string.Join("\n  ", violations));
+    }
+
+    [TestMethod]
+    public void NoCompleteType_Exceeds300LinesIncludingPartials()
+    {
+        var solutionRoot = FindSolutionRoot();
+        Assert.IsNotNull(solutionRoot, "Could not locate VitaTrack.sln");
+
+        var totals = new Dictionary<string, (int Lines, List<string> Files)>();
+
+        foreach (var path in EnumerateCsFiles(solutionRoot))
+        {
+            var lines = File.ReadLines(path).Count();
+            var ns = ParseNamespace(File.ReadAllText(path));
+            foreach (var typeName in ParseTypeNames(File.ReadAllText(path)))
+            {
+                var key = $"{ns}.{typeName}";
+                if (!totals.TryGetValue(key, out var entry))
+                    totals[key] = (lines, new List<string> { path });
+                else
+                {
+                    entry.Lines += lines;
+                    entry.Files.Add(path);
+                    totals[key] = entry;
+                }
+            }
+        }
+
+        var violations = new List<string>();
+        foreach (var (key, entry) in totals)
+        {
+            if (entry.Lines <= HardLimit) continue;
+            var files = string.Join(", ", entry.Files.Select(f => Path.GetRelativePath(solutionRoot, f)));
+            violations.Add($"{key}: {entry.Lines} lines across [{files}] (partials included)");
+        }
+
+        Assert.AreEqual(0, violations.Count,
+            $"Complete types (including partials) exceeding {HardLimit}-line split trigger — split responsibilities:\n  " + string.Join("\n  ", violations));
+    }
+
+    private static IEnumerable<string> EnumerateCsFiles(string root)
+    {
         var excluded = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "bin", "obj", "node_modules", "playwright-report", "test-results", "TestResults"
         };
-
-        var violations = new List<string>();
-        foreach (var path in Directory.EnumerateFiles(solutionRoot, "*.cs", SearchOption.AllDirectories))
+        foreach (var path in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))
         {
-            if (IsExcluded(path, excluded)) continue;
-
-            var lines = File.ReadLines(path).Count();
-            if (lines > HardLimit)
-            {
-                violations.Add($"{Path.GetRelativePath(solutionRoot, path)}: {lines} lines");
-            }
+            if (path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                    .Any(segment => excluded.Contains(segment)))
+                continue;
+            yield return path;
         }
-
-        Assert.AreEqual(0, violations.Count,
-            $"Files exceeding {HardLimit}-line limit (AGENTS.md hard limit):\n  " + string.Join("\n  ", violations));
     }
 
-    private static bool IsExcluded(string path, HashSet<string> excluded)
+    private static readonly Regex NamespacePattern = new(@"^\s*namespace\s+([\w.]+)", RegexOptions.Multiline | RegexOptions.Compiled);
+    private static readonly Regex TypePattern = new(@"(?:record\s+)?(?:class|interface)\s+(\w+)", RegexOptions.Compiled);
+
+    private static string ParseNamespace(string text)
     {
-        foreach (var segment in path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
-        {
-            if (excluded.Contains(segment)) return true;
-        }
-        return false;
+        var match = NamespacePattern.Match(text);
+        return match.Success ? match.Groups[1].Value : string.Empty;
+    }
+
+    private static IEnumerable<string> ParseTypeNames(string text)
+    {
+        foreach (Match m in TypePattern.Matches(text))
+            yield return m.Groups[1].Value;
     }
 
     private static string? FindSolutionRoot()

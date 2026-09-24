@@ -1,5 +1,5 @@
-using VitaTrack.Infrastructure.Data;
-using VitaTrack.Infrastructure.Models;
+using VitaTrack.Core.Data;
+using VitaTrack.Core.Features.Nutrients;
 using VitaTrack.Web.Models;
 
 namespace VitaTrack.Web.Controllers;

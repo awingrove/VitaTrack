@@ -3,9 +3,9 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using VitaTrack.Infrastructure.Data;
-using VitaTrack.Infrastructure.Models;
-using VitaTrack.Infrastructure.Services;
+using VitaTrack.Core.Data;
+using VitaTrack.Core.Features.Nutrients;
+
 
 namespace VitaTrack.Tests;
 
@@ -126,6 +126,17 @@ public class SupplementNutrientServiceHierarchyTests
                 DeletedIds.Add(id);
             }
             return Task.FromResult(count);
+        }
+
+        public Task DeleteBySupplementIdsAsync(IEnumerable<int> supplementIds)
+        {
+            var ids = supplementIds.ToHashSet();
+            foreach (var id in _byId.Values.Where(n => ids.Contains(n.SupplementId)).Select(n => n.Id).ToList())
+            {
+                DeletedIds.Add(id);
+                _byId.Remove(id);
+            }
+            return Task.CompletedTask;
         }
     }
 }

@@ -65,7 +65,7 @@ git commit -m "feat: add HTMX CDN to shared layout"
 - [ ] **Step 1: Create the Models directory and view model file**
 
 ```csharp
-using VitaTrack.Infrastructure.Models;
+using VitaTrack.Core.Models;
 
 namespace VitaTrack.Web.Models;
 
@@ -311,7 +311,7 @@ Replace the entire file with:
     ViewData["Title"] = "Create";
     Layout = "_Layout";
 }
-@using VitaTrack.Infrastructure.Models
+@using VitaTrack.Core.Models
 @model Supplement
 
 <h2>Create Supplement</h2>

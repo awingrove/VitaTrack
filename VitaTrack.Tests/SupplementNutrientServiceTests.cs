@@ -4,9 +4,9 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using VitaTrack.Infrastructure.Data;
-using VitaTrack.Infrastructure.Models;
-using VitaTrack.Infrastructure.Services;
+using VitaTrack.Core.Data;
+using VitaTrack.Core.Features.Nutrients;
+
 
 namespace VitaTrack.Tests;
 
@@ -129,6 +129,26 @@ public class SupplementNutrientServiceTests
     }
 
     [TestMethod]
+    public async Task AddAsync_PersistsRootsAndNestedChildren()
+    {
+        var repo = new MockRepo();
+        var svc = new SupplementNutrientService(repo, NullLogger);
+        var blend = new SupplementNutrientDto
+        {
+            GenericName = "Proprietary Blend",
+            SpecificForm = "Blend",
+            Dosage = "500mg",
+            Children = [new SupplementNutrientDto { GenericName = "Zinc", SpecificForm = "Picolinate" }]
+        };
+
+        var result = await svc.AddAsync(1, [blend]);
+
+        Assert.AreEqual(0, result.Failures.Count);
+        Assert.AreEqual(2, result.Saved.Count);
+        Assert.IsTrue(repo.Added.Single(n => n.GenericName == "Zinc").ParentNutrientId > 0);
+    }
+
+    [TestMethod]
     public async Task PersistHierarchy_InvalidRoots_SkippedOrFailedWithoutRepoCalls()
     {
         var repo = new MockRepo();
@@ -180,6 +200,40 @@ public class SupplementNutrientServiceTests
     }
 
     [TestMethod]
+    public async Task ReplaceAsync_ChildWithItsOwnChildren_FlattensGrandchildrenUnderSameParent()
+    {
+        var repo = new MockRepo();
+        var svc = new SupplementNutrientService(repo, NullLogger);
+
+        List<SupplementNutrientDto> flat =
+        [
+            new SupplementNutrientDto { GenericName = "Proprietary Blend", SpecificForm = "Blend", Dosage = "500mg" },
+            new SupplementNutrientDto
+            {
+                GenericName = "Inner Blend",
+                SpecificForm = "Blend",
+                ParentNutrientId = 0,
+                Children =
+                [
+                    new SupplementNutrientDto { GenericName = "Sub A", SpecificForm = "N/A" },
+                    new SupplementNutrientDto { GenericName = "Sub B", SpecificForm = "N/A" }
+                ]
+            }
+        ];
+
+        var result = await svc.ReplaceAsync(1, flat);
+
+        Assert.AreEqual(0, result.Failures.Count);
+        var root = repo.Added.Single(n => n.GenericName == "Proprietary Blend");
+        var inner = repo.Added.Single(n => n.GenericName == "Inner Blend");
+        var subA = repo.Added.Single(n => n.GenericName == "Sub A");
+        var subB = repo.Added.Single(n => n.GenericName == "Sub B");
+        Assert.AreEqual(root.Id, inner.ParentNutrientId);
+        Assert.AreEqual(root.Id, subA.ParentNutrientId);
+        Assert.AreEqual(root.Id, subB.ParentNutrientId);
+    }
+
+    [TestMethod]
     public async Task ReplaceAsync_DeletesEveryExistingRowBeforePersisting()
     {
         var repo = new MockRepo();
@@ -192,108 +246,5 @@ public class SupplementNutrientServiceTests
 
         CollectionAssert.AreEquivalent(new[] { old1, old2 }, repo.DeletedIds);
         Assert.AreEqual(1, result.Saved.Count);
-    }
-
-    private sealed class MockRepo : ISupplementNutrientRepository
-    {
-        private int _nextId = 1;
-        private readonly Dictionary<int, SupplementNutrient> _byId = new();
-        private readonly Dictionary<int, List<SupplementNutrient>> _bySupplement = new();
-        private readonly Dictionary<int, List<SupplementNutrient>> _byParent = new();
-
-        public List<SupplementNutrient> Added { get; } = new();
-        public List<int> DeletedIds { get; } = new();
-
-        public Task<IReadOnlyList<SupplementNutrient>> GetBySupplementIdAsync(int supplementId)
-        {
-            var list = _bySupplement.TryGetValue(supplementId, out var v)
-                ? v.Where(n => n.ParentNutrientId == null).ToList()
-                : new List<SupplementNutrient>();
-            return Task.FromResult<IReadOnlyList<SupplementNutrient>>(list);
-        }
-
-        public Task<IReadOnlyList<SupplementNutrient>> GetByParentIdAsync(int parentId)
-        {
-            var list = _byParent.TryGetValue(parentId, out var v)
-                ? v.ToList()
-                : new List<SupplementNutrient>();
-            return Task.FromResult<IReadOnlyList<SupplementNutrient>>(list);
-        }
-
-        public Task<IDictionary<int, int>> GetCountsBySupplementIdsAsync(IEnumerable<int> supplementIds)
-        {
-            var dict = supplementIds.ToDictionary(id => id, id =>
-                _bySupplement.TryGetValue(id, out var v) ? v.Count : 0);
-            return Task.FromResult<IDictionary<int, int>>(dict);
-        }
-
-        public Task<SupplementNutrient?> GetByIdAsync(int id)
-        {
-            _byId.TryGetValue(id, out var n);
-            return Task.FromResult(n);
-        }
-
-        public HashSet<string> ThrowFor { get; } = new();
-
-        public Task<int> AddAsync(SupplementNutrient nutrient)
-        {
-            if (ThrowFor.Contains(nutrient.GenericName))
-            {
-                throw new InvalidOperationException($"simulated failure for {nutrient.GenericName}");
-            }
-
-            nutrient.Id = _nextId++;
-            _byId[nutrient.Id] = nutrient;
-            Added.Add(nutrient);
-            if (!_bySupplement.TryGetValue(nutrient.SupplementId, out var s))
-            {
-                s = new List<SupplementNutrient>();
-                _bySupplement[nutrient.SupplementId] = s;
-            }
-            s.Add(nutrient);
-            if (nutrient.ParentNutrientId.HasValue)
-            {
-                if (!_byParent.TryGetValue(nutrient.ParentNutrientId.Value, out var p))
-                {
-                    p = new List<SupplementNutrient>();
-                    _byParent[nutrient.ParentNutrientId.Value] = p;
-                }
-                p.Add(nutrient);
-            }
-            return Task.FromResult(nutrient.Id);
-        }
-
-        public Task UpdateAsync(SupplementNutrient nutrient)
-        {
-            _byId[nutrient.Id] = nutrient;
-            return Task.CompletedTask;
-        }
-
-        public Task<int> DeleteAsync(int id)
-        {
-            DeletedIds.Add(id);
-            if (_byId.Remove(id, out var n))
-            {
-                if (_bySupplement.TryGetValue(n.SupplementId, out var s))
-                {
-                    s.RemoveAll(x => x.Id == id);
-                }
-                if (n.ParentNutrientId.HasValue && _byParent.TryGetValue(n.ParentNutrientId.Value, out var p))
-                {
-                    p.RemoveAll(x => x.Id == id);
-                }
-            }
-            return Task.FromResult(1);
-        }
-
-        public async Task<int> DeleteAsync(IEnumerable<int> ids)
-        {
-            var count = 0;
-            foreach (var id in ids)
-            {
-                count += await DeleteAsync(id);
-            }
-            return count;
-        }
     }
 }

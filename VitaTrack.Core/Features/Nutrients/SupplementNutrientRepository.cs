@@ -1,0 +1,104 @@
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Threading.Tasks;
+using Dapper;
+
+namespace VitaTrack.Core.Features.Nutrients;
+
+public class SupplementNutrientRepository(IDbConnection db) : ISupplementNutrientRepository
+{
+    private readonly IDbConnection _db = db;
+
+    public async Task<IReadOnlyList<SupplementNutrient>> GetBySupplementIdAsync(int supplementId)
+    {
+        const string sql = @"
+                SELECT Id, SupplementId, GenericName, SpecificForm, Dosage, ParentNutrientId
+                FROM SupplementNutrients
+                WHERE SupplementId = @SupplementId";
+        var rows = await _db.QueryAsync<SupplementNutrient>(sql, new { SupplementId = supplementId });
+        return rows.ToList();
+    }
+
+    public async Task<IReadOnlyList<SupplementNutrient>> GetByParentIdAsync(int parentId)
+    {
+        const string sql = @"
+                SELECT Id, SupplementId, GenericName, SpecificForm, Dosage, ParentNutrientId
+                FROM SupplementNutrients WHERE ParentNutrientId = @ParentId";
+        var rows = await _db.QueryAsync<SupplementNutrient>(sql, new { ParentId = parentId });
+        return rows.ToList();
+    }
+
+    public async Task<IDictionary<int, int>> GetCountsBySupplementIdsAsync(IEnumerable<int> supplementIds)
+    {
+        var ids = supplementIds.ToList();
+        if (ids.Count == 0) return new Dictionary<int, int>();
+
+        const string sql = @"
+                SELECT SupplementId, COUNT(*) AS Count
+                FROM SupplementNutrients
+                WHERE SupplementId IN @Ids
+                GROUP BY SupplementId";
+        var rows = await _db.QueryAsync<(int SupplementId, int Count)>(sql, new { Ids = ids });
+        return rows.ToDictionary(r => r.SupplementId, r => r.Count);
+    }
+
+    public async Task<SupplementNutrient?> GetByIdAsync(int id)
+    {
+        const string sql = @"
+                SELECT Id, SupplementId, GenericName, SpecificForm, Dosage, ParentNutrientId
+                FROM SupplementNutrients WHERE Id = @Id";
+        return await _db.QuerySingleOrDefaultAsync<SupplementNutrient>(sql, new { Id = id });
+    }
+
+    public async Task<int> AddAsync(SupplementNutrient nutrient)
+    {
+        nutrient.Dosage = DosageParser.NormalizeDosage(nutrient.Dosage);
+        const string sql = @"
+                INSERT INTO SupplementNutrients (SupplementId, GenericName, SpecificForm, Dosage, ParentNutrientId)
+                VALUES (@SupplementId, @GenericName, @SpecificForm, @Dosage, @ParentNutrientId);
+                SELECT last_insert_rowid();";
+        return await _db.ExecuteScalarAsync<int>(sql, nutrient);
+    }
+
+    public async Task UpdateAsync(SupplementNutrient nutrient)
+    {
+        nutrient.Dosage = DosageParser.NormalizeDosage(nutrient.Dosage);
+        const string sql = @"
+                UPDATE SupplementNutrients
+                SET GenericName = @GenericName,
+                    SpecificForm = @SpecificForm,
+                    Dosage = @Dosage,
+                    ParentNutrientId = @ParentNutrientId
+                WHERE Id = @Id";
+        await _db.ExecuteAsync(sql, nutrient);
+    }
+
+    public async Task<int> DeleteAsync(int id)
+    {
+        const string sql = @"
+                DELETE FROM SupplementNutrients WHERE ParentNutrientId = @Id;
+                DELETE FROM SupplementNutrients WHERE Id = @Id;";
+        return await _db.ExecuteAsync(sql, new { Id = id });
+    }
+
+    public async Task<int> DeleteAsync(IEnumerable<int> ids)
+    {
+        var idList = ids.ToList();
+        if (idList.Count == 0) return 0;
+        const string sql = @"
+                DELETE FROM SupplementNutrients WHERE ParentNutrientId IN @Ids;
+                DELETE FROM SupplementNutrients WHERE Id IN @Ids;";
+        return await _db.ExecuteAsync(sql, new { Ids = idList });
+    }
+
+    public async Task DeleteBySupplementIdsAsync(IEnumerable<int> supplementIds)
+    {
+        var idList = supplementIds.ToList();
+        if (idList.Count == 0) return;
+        const string sql = @"
+                DELETE FROM SupplementNutrients WHERE SupplementId IN @Ids AND ParentNutrientId IS NOT NULL;
+                DELETE FROM SupplementNutrients WHERE SupplementId IN @Ids;";
+        await _db.ExecuteAsync(sql, new { Ids = idList });
+    }
+}

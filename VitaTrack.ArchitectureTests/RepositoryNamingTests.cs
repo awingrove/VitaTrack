@@ -1,7 +1,8 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using NetArchTest.Rules;
 using System.Reflection;
-using VitaTrack.Infrastructure.Data;
+using VitaTrack.Core.Data;
+using VitaTrack.Core.Features.Supplements;
 using TestResult = NetArchTest.Rules.TestResult;
 
 namespace VitaTrack.ArchitectureTests;
@@ -13,7 +14,7 @@ public class RepositoryNamingTests
     public void ConcreteClassesInInfrastructureData_AreNamedRepository_OrAreKnownExceptions()
     {
         var result = Types.InAssembly(typeof(SupplementRepository).Assembly)
-            .That().ResideInNamespace("VitaTrack.Infrastructure.Data")
+            .That().ResideInNamespace("VitaTrack.Core.Data")
             .And().AreClasses()
             .And().DoNotHaveName("DbInit")
             .Should().HaveNameEndingWith("Repository")
@@ -23,14 +24,20 @@ public class RepositoryNamingTests
     }
 
     [TestMethod]
-    public void RepositoryImplementations_ResideInInfrastructureData()
+    public void RepositoryImplementations_ResideInDataOrFeatureSlice()
     {
-        var result = Types.InAssembly(typeof(SupplementRepository).Assembly)
-            .That().HaveNameEndingWith("Repository")
-            .Should().ResideInNamespace("VitaTrack.Infrastructure.Data")
-            .GetResult();
+        var asm = typeof(SupplementRepository).Assembly;
+        var allowedPrefixes = new[] { "VitaTrack.Core.Data", "VitaTrack.Core.Features" };
 
-        Assert.IsTrue(result.IsSuccessful, FormatFailures(result));
+        var failures = asm.GetTypes()
+            .Where(t => t.IsClass && !t.IsAbstract)
+            .Where(t => t.Name.EndsWith("Repository"))
+            .Where(t => !allowedPrefixes.Any(p => t.Namespace == p || (t.Namespace ?? string.Empty).StartsWith(p + ".")))
+            .Select(t => t.FullName!)
+            .ToList();
+
+        Assert.AreEqual(0, failures.Count,
+            "Repository implementations must live in VitaTrack.Core.Data or a VitaTrack.Core.Features slice:\n  " + string.Join("\n  ", failures));
     }
 
     private static string FormatFailures(TestResult result)

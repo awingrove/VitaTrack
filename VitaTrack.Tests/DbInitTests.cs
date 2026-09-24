@@ -1,7 +1,7 @@
 using Dapper;
 using Microsoft.Data.Sqlite;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using VitaTrack.Infrastructure.Data;
+using VitaTrack.Core.Data;
 
 namespace VitaTrack.Tests;
 

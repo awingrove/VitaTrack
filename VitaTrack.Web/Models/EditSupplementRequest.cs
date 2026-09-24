@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using VitaTrack.Infrastructure.Models;
+using VitaTrack.Core.Features.Supplements;
 
 namespace VitaTrack.Web.Models;
 

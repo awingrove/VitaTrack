@@ -7,9 +7,9 @@ using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Moq.Protected;
-using VitaTrack.Infrastructure;
-using VitaTrack.Infrastructure.Models;
-using VitaTrack.Infrastructure.Services;
+using VitaTrack.Core;
+using VitaTrack.Core.Features.Supplements;
+using VitaTrack.Core.Features.LlmEnrichment;
 
 namespace VitaTrack.Tests;
 
@@ -43,6 +43,7 @@ public class LlmServiceTests
             BaseAddress = new System.Uri("https://dummy.example.com/v1")
         };
         factoryMock.Setup(f => f.CreateClient("llm")).Returns(llmClient);
+
         return factoryMock.Object;
     }
 

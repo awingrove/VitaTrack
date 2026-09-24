@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using VitaTrack.Infrastructure.Data;
-using VitaTrack.Infrastructure.Models;
+using VitaTrack.Core.Data;
 using VitaTrack.Web.Controllers;
+
+using VitaTrack.Core.Features.Nutrients;
+using VitaTrack.Core.Features.Supplements;
 
 namespace VitaTrack.Tests;
 

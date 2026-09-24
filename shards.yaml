@@ -1,0 +1,243 @@
+# VitaTrack feature shard manifest
+#
+# Maps each feature slice to the files that implement it. Drives
+# VitaTrack.ArchitectureTests.ShardOwnershipTests: no orphan feature files,
+# every path resolves, no double-claim, and story-map id integrity (each
+# slice id is a prefix of at least one story-map task id, and vice versa),
+# and VitaTrack.ArchitectureTests.CrossSliceSqlTests: every SQL table
+# reference in a slice's core files must appear in that slice's `tables`
+# declaration (the ADR-0006 cross-slice invariant, machine-checked).
+#
+# Paths are repo-relative with forward slashes. `**` means "all files under
+# this directory, recursively". Cross-cutting files that belong to no single
+# slice are listed once in the `allowlist` at the bottom, not here.
+#
+# `tables` is required on every slice (declare `[]` when the slice issues no
+# SQL): the tables this slice's SQL may reference. Own table first; cross-slice
+# read dependencies (e.g. display joins) must be declared too — adding one is a
+# visible manifest diff for design review. Writes must stay on the own table
+# via the owning slice's repository (AGENTS.md FK section).
+
+slices:
+  - id: MF
+    name: Family Members
+    tables:
+      - FamilyMembers
+    controller:
+      - VitaTrack.Web/Controllers/FamilyController.cs
+    core:
+      - VitaTrack.Core/Features/Family/FamilyRepository.cs
+      - VitaTrack.Core/Features/Family/IFamilyRepository.cs
+      - VitaTrack.Core/Features/Family/FamilyMember.cs
+      - VitaTrack.Core/Features/Family/CreateFamilyMemberRequest.cs
+      - VitaTrack.Core/Features/Family/EditFamilyMemberRequest.cs
+    views:
+      - VitaTrack.Web/Views/Family/**
+    js: []
+    unit_tests:
+      - VitaTrack.Tests/FamilyRepositoryTests.cs
+    e2e_specs:
+      - e2e-tests/playwright/tests/family-member.spec.js
+
+  - id: PD
+    name: Prescribed Doses
+    tables:
+      - PrescribedDoses
+      - FamilyMembers  # read-only: display join for dose rows
+      - Supplements     # read-only: display join for dose rows
+    controller:
+      - VitaTrack.Web/Controllers/PrescribedDoseController.cs
+    core:
+      - VitaTrack.Core/Features/Dosing/PrescribedDose.cs
+      - VitaTrack.Core/Features/Dosing/IPrescribedDoseRepository.cs
+      - VitaTrack.Core/Features/Dosing/PrescribedDoseRepository.cs
+      - VitaTrack.Core/Features/Dosing/DoseMultiplier.cs
+      - VitaTrack.Core/Features/Dosing/DosePeriod.cs
+      - VitaTrack.Core/Features/Dosing/CreateDoseRequest.cs
+      - VitaTrack.Core/Features/Dosing/EditDoseRequest.cs
+      - VitaTrack.Core/Features/Dosing/DoseCommandResult.cs
+      - VitaTrack.Core/Features/Dosing/PrescribeDoseHandler.cs
+      - VitaTrack.Core/Features/Dosing/AmendDoseHandler.cs
+    views:
+      - VitaTrack.Web/Views/PrescribedDose/**
+    js:
+      - VitaTrack.Web/wwwroot/js/multiplier-stepper.js
+      - VitaTrack.Web/wwwroot/js/prescribed-dose-serving.js
+    unit_tests:
+      - VitaTrack.Tests/Features/Dosing/PrescribedDoseRepositoryTests.cs
+    e2e_specs:
+      - e2e-tests/playwright/tests/prescribed-dose.spec.js
+
+  - id: MS
+    name: Supplements (CRUD, CSV import)
+    tables:
+      - Supplements
+    controller:
+      - VitaTrack.Web/Controllers/SupplementController.cs
+      - VitaTrack.Web/Controllers/SupplementController.Editor.cs
+      - VitaTrack.Web/Controllers/SupplementImportController.cs
+    core:
+      - VitaTrack.Core/Features/Supplements/SupplementRepository.cs
+      - VitaTrack.Core/Features/Supplements/ISupplementRepository.cs
+      - VitaTrack.Core/Features/Supplements/CsvImportService.cs
+      - VitaTrack.Core/Features/Supplements/ICsvImportService.cs
+      - VitaTrack.Core/Features/Supplements/Supplement.cs
+      - VitaTrack.Core/Features/Supplements/CsvSupplementRow.cs
+      - VitaTrack.Core/Features/Supplements/CsvImportReport.cs
+      - VitaTrack.Core/Features/Supplements/CsvImportSuccess.cs
+      - VitaTrack.Core/Features/Supplements/CsvImportFailure.cs
+      - VitaTrack.Core/Features/Supplements/CsvParseResult.cs
+      - VitaTrack.Core/Features/Supplements/CsvParseError.cs
+      - VitaTrack.Core/Features/Supplements/ICsvRowRule.cs
+      - VitaTrack.Core/Features/Supplements/CsvRowContext.cs
+      - VitaTrack.Core/Features/Supplements/CsvRequiredFieldsRule.cs
+      - VitaTrack.Core/Features/Supplements/CsvLengthLimitsRule.cs
+      - VitaTrack.Core/Features/Supplements/CsvCostRule.cs
+      - VitaTrack.Core/Features/Supplements/CsvServingsRule.cs
+      - VitaTrack.Core/Features/Supplements/ImportSupplementsHandler.cs
+    views:
+      - VitaTrack.Web/Views/Supplement/**
+    js:
+      - VitaTrack.Web/wwwroot/js/create.js
+      - VitaTrack.Web/wwwroot/js/edit.js
+      - VitaTrack.Web/wwwroot/js/import-csv.js
+      - VitaTrack.Web/wwwroot/js/review.js
+    unit_tests:
+      - VitaTrack.Tests/SupplementRepositoryTests.cs
+      - VitaTrack.Tests/SupplementControllerTests.cs
+      - VitaTrack.Tests/SupplementControllerEditTests.cs
+      - VitaTrack.Tests/SupplementControllerImportCsvTests.cs
+      - VitaTrack.Tests/SupplementControllerUpdateNutrientsTests.cs
+      - VitaTrack.Tests/CsvImportServiceTests.cs
+    e2e_specs:
+      - e2e-tests/playwright/tests/supplement-crud.spec.js
+      - e2e-tests/playwright/tests/supplement-llm-flow.spec.js
+      - e2e-tests/playwright/tests/csv-import.spec.js
+      - e2e-tests/playwright/tests/enrich-without-url-roundtrip.spec.js
+
+  - id: NT
+    name: Nutrients & Blends
+    tables:
+      - SupplementNutrients
+    controller:
+      - VitaTrack.Web/Controllers/SupplementNutrientController.cs
+    core:
+      - VitaTrack.Core/Features/Nutrients/SupplementNutrient.cs
+      - VitaTrack.Core/Features/Nutrients/SupplementNutrientDto.cs
+      - VitaTrack.Core/Features/Nutrients/ISupplementNutrientRepository.cs
+      - VitaTrack.Core/Features/Nutrients/SupplementNutrientRepository.cs
+      - VitaTrack.Core/Features/Nutrients/ISupplementNutrientService.cs
+      - VitaTrack.Core/Features/Nutrients/SupplementNutrientService.cs
+      - VitaTrack.Core/Features/Nutrients/ReplaceNutrientsResult.cs
+    views:
+      - VitaTrack.Web/Views/SupplementNutrient/**
+    js:
+      - VitaTrack.Web/wwwroot/js/nutrient-editor.js
+      - VitaTrack.Web/wwwroot/js/nutrient-form.js
+    unit_tests:
+      - VitaTrack.Tests/SupplementNutrientControllerTests.cs
+      - VitaTrack.Tests/SupplementNutrientServiceTests.cs
+      - VitaTrack.Tests/SupplementNutrientServiceHierarchyTests.cs
+      - VitaTrack.Tests/SupplementNutrientValidationTests.cs
+      - VitaTrack.Tests/SupplementNutrientDosageNormalizationTests.cs
+      - VitaTrack.Tests/SupplementNutrientRepositoryTests.cs
+      - VitaTrack.Tests/SupplementNutrientRepositoryCascadeTests.cs
+      - VitaTrack.Tests/MockSupplementNutrientRepo.cs
+    e2e_specs:
+      - e2e-tests/playwright/tests/supplement-nutrient.spec.js
+      - e2e-tests/playwright/tests/supplement-blends.spec.js
+      - e2e-tests/playwright/tests/supplement-delete-cascade.spec.js
+      - e2e-tests/playwright/tests/blend-cascade-delete.spec.js
+      - e2e-tests/playwright/tests/nutrient-validation-surfaces.spec.js
+
+  - id: RP
+    name: Reports (nutrient + cost)
+    tables: []
+    controller:
+      - VitaTrack.Web/Controllers/ReportingController.cs
+    core:
+      - VitaTrack.Core/Features/Reporting/ReportingService.cs
+      - VitaTrack.Core/Features/Reporting/IReportingService.cs
+      - VitaTrack.Core/Features/Reporting/MemberCostRow.cs
+      - VitaTrack.Core/Features/Reporting/SupplementCostRow.cs
+      - VitaTrack.Core/Features/Reporting/NutrientContributionRow.cs
+      - VitaTrack.Core/Features/Reporting/NutrientReportData.cs
+      - VitaTrack.Core/Features/Reporting/CostReportData.cs
+      - VitaTrack.Core/Features/Reporting/NutrientUnitRow.cs
+      - VitaTrack.Core/Features/Reporting/NutrientTotalRow.cs
+      - VitaTrack.Core/Features/Reporting/MemberNutrientTotals.cs
+      - VitaTrack.Core/Features/Reporting/NutrientContributionsCell.cs
+      - VitaTrack.Core/Features/Reporting/MemberNutrientContributions.cs
+      - VitaTrack.Core/Features/Reporting/NutrientAggregationVisitor.cs
+    views:
+      - VitaTrack.Web/Views/Reporting/**
+    js:
+      - VitaTrack.Web/wwwroot/js/report-toggle.js
+    unit_tests:
+      - VitaTrack.Tests/ReportingServiceTests.cs
+    e2e_specs:
+      - e2e-tests/playwright/tests/nutrient-report.spec.js
+      - e2e-tests/playwright/tests/cost-report.spec.js
+      - e2e-tests/playwright/tests/daily-loop.spec.js
+
+  - id: LLM
+    name: LLM Enrichment
+    tables: []
+    controller: []
+    core:
+      - VitaTrack.Core/Features/LlmEnrichment/LlmService.cs
+      - VitaTrack.Core/Features/LlmEnrichment/ILlmService.cs
+      - VitaTrack.Core/Features/LlmEnrichment/LlmClient.cs
+      - VitaTrack.Core/Features/LlmEnrichment/ILlmClient.cs
+      - VitaTrack.Core/Features/LlmEnrichment/SupplementLabelParser.cs
+      - VitaTrack.Core/Features/LlmEnrichment/ISupplementLabelParser.cs
+      - VitaTrack.Core/Features/LlmEnrichment/HtmlScraperService.cs
+      - VitaTrack.Core/Features/LlmEnrichment/IHtmlScraperService.cs
+      - VitaTrack.Core/Features/LlmEnrichment/UrlSafetyValidator.cs
+      - VitaTrack.Core/Features/LlmEnrichment/LlmResult.cs
+    views: []
+    js: []
+    unit_tests:
+      - VitaTrack.Tests/LlmServiceTests.cs
+      - VitaTrack.Tests/LlmClientTests.cs
+      - VitaTrack.Tests/LlmClientHeaderTests.cs
+      - VitaTrack.Tests/UrlSafetyValidatorTests.cs
+      - VitaTrack.Tests/HtmlScraperServiceTests.cs
+      - VitaTrack.Tests/SupplementLabelParserTests.cs
+      - VitaTrack.Tests/BlendEnrichmentTests.cs
+    e2e_specs:
+      - e2e-tests/playwright/tests/supplement-llm-integration.spec.js
+
+  - id: SHELL
+    name: Application Shell
+    tables: []
+    controller:
+      - VitaTrack.Web/Controllers/HomeController.cs
+    core: []
+    views:
+      - VitaTrack.Web/Views/Home/**
+    js: []
+    unit_tests: []
+    e2e_specs:
+      - e2e-tests/playwright/tests/home.spec.js
+      - e2e-tests/playwright/tests/htmx-load.spec.js
+
+# Cross-cutting files that belong to no single feature slice. Listed here so
+# the ownership test does not flag them as orphans. Keep this minimal.
+allowlist:
+  - VitaTrack.Web/Program.cs
+  - VitaTrack.Web/Views/Shared/**
+  - VitaTrack.Web/Views/_ViewImports.cshtml
+  - VitaTrack.Core/Data/DbInit.cs
+  - VitaTrack.Core/DosageParser.cs
+  - VitaTrack.Core/ServiceCollectionExtensions.cs
+  - VitaTrack.Core/VitaTrackOptions.cs
+  - VitaTrack.Core/Primitives/**
+  - VitaTrack.Web/wwwroot/js/table-sort.js
+  - VitaTrack.Web/wwwroot/js/delete-confirm.js
+  - VitaTrack.Web/wwwroot/js/delete-selected.js
+  - VitaTrack.Tests/SqliteTestBase.cs
+  - VitaTrack.Tests/ServiceCollectionExtensionsTests.cs
+  - VitaTrack.Tests/DbInitTests.cs
+  - VitaTrack.Tests/DosageParserTests.cs
+  - VitaTrack.Tests/Primitives/**

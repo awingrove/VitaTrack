@@ -5,7 +5,7 @@
 
 ## Context
 
-A 3-project solution (`VitaTrack.Web → VitaTrack.Infrastructure`,
+A 3-project solution (`VitaTrack.Web → VitaTrack.Core`,
 `VitaTrack.Tests` refs both) had to be picked before any code was
 written. Forces in play:
 
@@ -26,7 +26,7 @@ Use **pragmatic ASP.NET MVC** with three projects only:
 
 - `VitaTrack.Web` — controllers, views, thin mapping. No business
   logic. ~300-line file limit per AGENTS.md.
-- `VitaTrack.Infrastructure` — Dapper repositories + services +
+- `VitaTrack.Core` — Dapper repositories + services +
   models. Service layer in `Infrastructure/Services` carries domain
   rules (e.g. `ReportingService`, `SupplementNutrientService`).
 - `VitaTrack.Tests` — MSTest unit tests + `VitaTrack.ArchitectureTests`

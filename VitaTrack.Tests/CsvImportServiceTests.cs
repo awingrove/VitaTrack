@@ -1,6 +1,6 @@
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using VitaTrack.Infrastructure.Services;
+using VitaTrack.Core.Features.Supplements;
 
 namespace VitaTrack.Tests;
 

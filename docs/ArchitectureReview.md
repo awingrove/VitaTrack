@@ -6,7 +6,7 @@ Use the Prioritized Roadmap (§3) for work order; each item maps to a finding in
 ## 1. What's already good (don't re-do)
 
 - 3-project solution (`VitaTrack.Web → Infrastructure` only; `Tests` refs both) — inter-project direction is **enforced by csproj**, no test needed.
-- Dapper + SQLite repository pattern; interfaces in `Infrastructure.Data`, no EF Core.
+- Dapper + SQLite repository pattern; interfaces in `VitaTrack.Core.Data`, no EF Core.
 - Per-project `AGENTS.md` (`Web`, `Infrastructure`, `Tests`) for context-specific rules.
 - `SqliteTestBase` gives in-memory SQLite per unit test.
 - Playwright E2E starts the real app with `--environment Test`; `global-setup.js` deletes `VitaTrack.Test.db` / `VitaTrack.db`.
@@ -24,7 +24,7 @@ Use the Prioritized Roadmap (§3) for work order; each item maps to a finding in
 |---|---|
 | "Razor Pages" | **MVC** (`Program.cs` uses `MapControllerRoute`, not Razor Pages) |
 | "Interactivity: Vanilla JavaScript" | **HTMX is load-bearing** (`Create.cshtml`, `_NutrientEditor.cshtml`, `_ValidationErrors.cshtml` use `hx-post`/`hx-target`/`hx-swap`/`hx-swap-oob`; `delete-selected.js`/`review.js` are vanilla JS *alongside*) |
-| "`/Controllers`, `/Models`, `/Services`, `/Repositories`" single-project layout | **3-project solution**; repos live in `Infrastructure/Data`, services in `Infrastructure/Services` |
+| "`/Controllers`, `/Models`, `/Services`, `/Repositories`" single-project layout | **3-project solution**; repos live in `VitaTrack.Core/Data`, services in `VitaTrack.Core/Services` |
 
 **Fix:** Make the root `AGENTS.md` match reality (MVC, HTMX+vanilla JS, 3-project layering). **Commit to HTMX** — do **not** strip it from `VitaTrack.Web/AGENTS.md`. Add a line stating per-project `AGENTS.md` files **supplement** the root; any contradiction is a defect to report, not a license to pick one.
 
@@ -38,12 +38,12 @@ Types.InAssembly(typeof(SupplementController).Assembly)
     .Check();
 ```
 
-Also assert: no EF Core assemblies referenced anywhere; repo implementations named `*Repository` and in `Infrastructure.Data`; no `.cs` file exceeds 300 lines; no `catch (Exception)` in controllers (a `Result<T>` discipline proxy — see §2.5).
+Also assert: no EF Core assemblies referenced anywhere; repo implementations named `*Repository` and in `VitaTrack.Core.Data`; no *complete type* (including partials) exceeds 300 lines; no `catch (Exception)` in controllers (a `Result<T>` discipline proxy — see §2.5).
 
 ### 2.4 No automated convention enforcement
 `.editorconfig` currently only sets `csharp_style_namespace_declarations = file_scoped`.
 
-**Fix:** Expand `.editorconfig` (naming, `dotnet_diagnostic` `CA1062`/`CA1822`/`CA2200`, treat warnings as errors in CI); add `format-check.sh`; add the 300-line file-size gate as an architecture test (§2.3); add a policy against the null-forgiving operator `!`.
+**Fix:** Expand `.editorconfig` (naming, `dotnet_diagnostic` `CA1062`/`CA1822`/`CA2200`, treat warnings as errors in CI); add `format-check.sh`; add the 300-line complete-type (including partials) size gate as an architecture test (§2.3); add a policy against the null-forgiving operator `!`.
 
 ### 2.5 Business logic in controllers — extract services, use `Result<T>`
 `ReportingController` computes nutrient/cost dicts inline (`memberTotals`, `memberCosts`). `SupplementController` swallows `Exception` per nutrient in three actions — `Enrich` (`:33`), `UpdateNutrients` (`:91`), `Edit` (`:149`):

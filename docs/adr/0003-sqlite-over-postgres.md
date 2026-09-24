@@ -24,7 +24,7 @@ executable).
 **Test** mode (`--environment Test`, `appsettings.Test.json`) uses a
 named shared in-memory DB: `Data Source=VitaTrack.Test.Memory;
 Mode=Memory;Cache=Shared`. The keep-alive singleton in
-`ServiceCollectionExtensions.AddInfra` (registered when
+`ServiceCollectionExtensions.AddCore` (registered when
 `builder.Mode == SqliteOpenMode.Memory`) holds one connection open
 for the process lifetime, so the named DB is not destroyed when
 scoped connections dispose.

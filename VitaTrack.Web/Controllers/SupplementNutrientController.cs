@@ -1,7 +1,9 @@
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
-using VitaTrack.Infrastructure.Data;
-using VitaTrack.Infrastructure.Models;
+using VitaTrack.Core.Data;
+
+using VitaTrack.Core.Features.Nutrients;
+using VitaTrack.Core.Features.Supplements;
 
 namespace VitaTrack.Web.Controllers;
 

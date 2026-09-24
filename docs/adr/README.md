@@ -26,3 +26,4 @@ Conventions here:
 | 0003 | SQLite (file + in-memory shared cache) over PostgreSQL | Accepted |
 | 0004 | No authentication | Accepted |
 | 0005 | HTMX + vanilla JS for UI interactivity | Accepted |
+| 0006 | Vertical Slice Architecture within Pragmatic MVC | Accepted |

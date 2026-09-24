@@ -91,6 +91,7 @@ activities:
             tests:
               - e2e: supplement-llm-flow::should show nutrient editor inline when creating a supplement without a URL
               - e2e: supplement-llm-flow::should allow adding nutrients in the inline editor and saving
+              - e2e: enrich-without-url-roundtrip::inline editor saves nutrients that appear on the nutrient index
       - id: MS-3
         name: Edit a supplement
         entry_point: Supplements index row -> Edit button
@@ -126,6 +127,7 @@ activities:
               - unit: SupplementControllerTests.DeleteSelected_DeletesCheckedSupplementsAndRedirects
               - unit: SupplementRepositoryTests.DeleteMultiple_RemovesSupplementsWithNutrients
               - e2e: supplement-crud::should delete multiple supplements via checkboxes
+              - e2e: supplement-delete-cascade::deleting a supplement also removes its nutrients and prescribed doses
       - id: MS-5
         name: Import supplements from CSV
         entry_point: Supplements index -> Import CSV
@@ -145,7 +147,7 @@ activities:
               - e2e: csv-import::should open import modal and download sample CSV
 
       - name: Manage supplement nutrients
-        id: MS-6
+        id: NT-1
         entry_point: Supplements index row -> Nutrients; Supplement Edit -> Manage All Nutrients
         stories:
           - title: View nutrients for a supplement
@@ -158,6 +160,7 @@ activities:
             priority: high
             tests:
               - e2e: supplement-nutrient::should add a new nutrient
+              - e2e: nutrient-validation-surfaces::standalone Add Nutrient rejects empty GenericName without 500
           - title: Add a sub-nutrient under a blend without a dosage
             status: done
             priority: high
@@ -184,7 +187,7 @@ activities:
               - e2e: supplement-nutrient::should show multiple supplements with their own nutrients
 
       - name: Build and manage nutrient blends
-        id: MS-7
+        id: NT-2
         entry_point: Supplement Edit -> Edit Nutrient Breakdown; Nutrient index -> Edit Breakdown (Blends)
         stories:
           - title: Create a blend parent row in the breakdown editor
@@ -217,7 +220,8 @@ activities:
             status: done
             priority: medium
             tests:
-              - unit: SupplementNutrientRepositoryTests.Delete_ParentBlend_AlsoDeletesChildren
+              - unit: SupplementNutrientRepositoryCascadeTests.Delete_ParentBlend_AlsoDeletesChildren
+              - e2e: blend-cascade-delete::deleting a blend parent removes its children
 
   - name: Track Prescribed Doses
     tasks:
@@ -301,6 +305,7 @@ activities:
               - e2e: nutrient-report::should arrive via nav bar Report link
               - e2e: nutrient-report::should show supplements in report table
               - e2e: nutrient-report::should show units for per-family-member nutrient totals
+              - e2e: daily-loop::member + supplement + nutrient + dose appears in report
           - title: See concise amounts (decimals only when needed) with a supplement-count pill
             status: done
             priority: medium

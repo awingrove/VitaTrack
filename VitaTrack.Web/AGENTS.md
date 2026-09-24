@@ -42,7 +42,7 @@
 - Bootstrap 5 loaded from `cdn.jsdelivr.net` in `_Layout.cshtml`.
 
 ## Dependencies
-- References: `VitaTrack.Infrastructure` (projects), Dapper, SQLite, Microsoft.AspNetCore.Mvc, etc.
+- References: `VitaTrack.Core` (projects), Dapper, SQLite, Microsoft.AspNetCore.Mvc, etc.
 - Do **not** add direct data‑access code here; use repositories via constructor injection.
 
 ## Error Handling

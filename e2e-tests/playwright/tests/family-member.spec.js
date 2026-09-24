@@ -124,7 +124,7 @@ test.describe('Family Members', () => {
 
     // Verify the prescribed dose is also gone
     await page.goto('/PrescribedDose');
-    await expect(page.locator(`table tbody tr:has-text("TestDose${unique}")`)).toHaveCount(0);
+    await expect(page.locator(`table tbody tr:has-text("DoseInstr${unique}")`)).toHaveCount(0);
     await screenshot(page, testInfo, 'family-with-dose-after-delete');
   });
 });

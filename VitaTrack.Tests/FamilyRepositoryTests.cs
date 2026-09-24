@@ -57,6 +57,26 @@ public class FamilyRepositoryTests : SqliteTestBase
     }
 
     [TestMethod]
+    public async Task GetAll_ReturnsStableNameOrder()
+    {
+        // Arrange – insert in non-alphabetical order
+        await _repo.AddAsync(new FamilyMember { Name = "Zulu", DisplayName = "Z" });
+        await _repo.AddAsync(new FamilyMember { Name = "Alpha", DisplayName = "A" });
+        await _repo.AddAsync(new FamilyMember { Name = "Mike", DisplayName = "M" });
+
+        // Act
+        var all = await _repo.GetAllAsync();
+
+        // Assert – alphabetical (Name) order regardless of insertion order
+        var names = new List<string>();
+        foreach (var member in all)
+        {
+            names.Add(member.Name);
+        }
+        CollectionAssert.AreEqual(new List<string> { "Alpha", "Mike", "Zulu" }, names);
+    }
+
+    [TestMethod]
     public async Task Delete_RemovesEntity()
     {
         // Arrange

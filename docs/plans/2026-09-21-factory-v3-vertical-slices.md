@@ -257,7 +257,7 @@ machine with no instruments, and guardrails check conformance but not design cor
   gates independently and refreshed the ledger tokens from the full session
   (in 95,652 / out 9,979 / cache-read 3.2M / $0). Debt candidates recorded: vacuous
   cascade-delete e2e assertion in `family-member.spec.js` (TestDose vs DoseInstr string),
-  missing `ORDER BY` in `FamilyRepository.GetAllAsync`.
+  missing `ORDER BY` in `FamilyRepository.GetAllAsync`. (filed as TD-008/TD-009 — closed in docs/plans/2026-09-24-post-rollout-hygiene.md)
 - **LLM rollout shipped** (mimo-flash executed, PR #20). All nine Services files +
   `LlmResult` moved to `VitaTrack.Core/Features/LlmEnrichment/` — `VitaTrack.Core/Services`
   and `Core/Models` are now EMPTY and retired; every slice owns its home. Pure namespace
@@ -275,8 +275,7 @@ machine with no instruments, and guardrails check conformance but not design cor
 - **Factory-v3 rollout COMPLETE.** All seven slices (PD, NT, RP, MS, MF, LLM + SHELL)
   live under `VitaTrack.Core/Features/`. Six ledger entries; every slice verified by
   `verify-shard` + independent controller re-run + scoped review. Remaining open items
-  live in `docs/factory/technical-debt.md` (TD-002 closed; TD-006 open — layering-rule
-  retarget; TD-008 in `family-member.spec.js` vacuous assertion candidate) and the
+  live in `docs/factory/technical-debt.md` (TD-003 + TD-006 open; TD-001/002/004/005/007/008/009 closed — see the register) and the
   briefing-derived candidates reported by each executor.
 
 ## Risks / Guardrails

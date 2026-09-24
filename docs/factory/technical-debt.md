@@ -81,6 +81,20 @@ them, per the post-mortem rule in `AGENTS.md`.
 - **Closed 2026-09-23:** conventions updated to the ADR-0006 slice layout in the same
   change that paid TD-002.
 
+### TD-008 — vacuous cascade-delete e2e assertion
+- **Where:** `family-member.spec.js:127`
+- **What:** asserted `TestDose${unique}` gone but the test creates `DoseInstr${unique}` →
+  trivially true, cascade regression would pass.
+- **Interest:** family FK-cascade invariant had no real e2e check.
+- **Closed 2026-09-24:** asserts `DoseInstr${unique}`.
+
+### TD-009 — `FamilyRepository.GetAllAsync` missing `ORDER BY`
+- **Where:** `FamilyRepository.cs:17`
+- **What:** nondeterministic row order; list UI and relative-position assertions could
+  flake.
+- **Interest:** order-dependent tests pass/fail nondeterministically.
+- **Closed 2026-09-24:** `ORDER BY Name, Id` + `GetAll_ReturnsStableNameOrder`.
+
 ## Defect log
 
 Escaped defects are recorded here with **injection stage** + **root cause**, feeding the

@@ -190,7 +190,7 @@ machine with no instruments, and guardrails check conformance but not design cor
       (`Result.cs:23`); `Money` value object.
 - [x] **Supplements / CSV** — **Chain of Responsibility** for row validation; split `SupplementController`
       (263 + 50 partial).
-- [ ] **Family**, **LLM** — remaining slices.
+- [x] **Family**, **LLM** — remaining slices. *(Family done — LLM remains.)*
 - [x] Split `Result.cs` (6 concepts: `NutrientFailure`, `ReplaceNutrientsResult`, `MemberCostRow`,
       `SupplementCostRow`, `NutrientContributionRow`, report data records) — one file per concept.
       *(Completed across NT + RP slices.)*
@@ -244,6 +244,17 @@ machine with no instruments, and guardrails check conformance but not design cor
   independently: format/build clean, 15 arch + 210 unit, MS e2e 21/21, executor ran full
   e2e 77/77. Ledger entry MS (fourth): mimo-v2.6-flash-free, 0 interventions, 1 guardrail
   failure, $0.
+- **MF (Family Members) rollout shipped** (mimo-flash executed, PR #19). Files moved to
+  `VitaTrack.Core/Features/Family/` (repo + `FamilyMember`); `CreateFamilyMemberRequest` /
+  `EditFamilyMemberRequest` end entity binding at `FamilyController` (§2.6 / pilot lesson
+  #6); views swap `@model` on Create/Edit only; Index keeps entity; cross-slice delete
+  routing untouched. Zero red gates, zero interventions. Reviewer approved with 2 minors
+  parked (dead `@using` in two views; one deviations-vs-brief note — Edit GET projects
+  entity → DTO, forced by the view swap, matches the Dosing pilot). Controller re-verified
+  gates independently and refreshed the ledger tokens from the full session
+  (in 95,652 / out 9,979 / cache-read 3.2M / $0). Debt candidates recorded: vacuous
+  cascade-delete e2e assertion in `family-member.spec.js` (TestDose vs DoseInstr string),
+  missing `ORDER BY` in `FamilyRepository.GetAllAsync`.
 
 ## Risks / Guardrails
 

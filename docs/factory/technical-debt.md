@@ -16,20 +16,30 @@ them, per the post-mortem rule in `AGENTS.md`.
   shipped (`VitaTrack.Core/Primitives/Unit.cs`). ReportingService adopted `Unit`; the
   `Dosage` adoption on `SupplementNutrient.Dosage` is pending the Nutrients slice work.
 
-### TD-006 — `ServicesLayeringTests` only scans `VitaTrack.Core.Services`
-- **Where:** `VitaTrack.ArchitectureTests/ServicesLayeringTests.cs`
-- **What:** the "business logic reaches the DB only through repositories" rule scans
-  `VitaTrack.Core.Services` only. Slice code in `VitaTrack.Core.Features.*` (e.g. the
-  moved `CsvImportService`) is outside its net — a Dapper dependency added to a slice
-  service would not be caught. Found by the MiMo MS session.
-- **Update 2026-09-23:** after the LLM conversion, `VitaTrack.Core/Services` is EMPTY —
-  the rule now passes **vacuously** and covers nothing. `Features/*` services
-  (`ReportingService`, `LlmService`, `LlmClient`, …) have no layering guard at all.
-- **Interest:** the guardrail predates slices; every slice conversion shrinks its coverage.
-- **Paydown:** retarget the rule to Core business logic at large (`VitaTrack.Core`
-  excluding `VitaTrack.Core.Data` + `VitaTrack.Core.Primitives`), or per-slice via
-  `shards.yaml` `tables` declarations. Was slated for the Family/LLM slice conversions —
-  both shipped 2026-09-24 without retargeting it; still owed.
+### TD-010 — Agent and human share one GitHub identity; PR approval not machine-enforced
+- **Where:** repo settings (branch protection / rulesets), local `gh` auth (the
+  `awingrove` keyring is inherited by agent sessions), agent harness config
+  (`.opencode/`), and the soft rule added in `FACTORY.md` step 7.
+- **What:** controller sessions authenticate as the human's own account — push,
+  PR open, branch delete, and an attempted approve/merge all ran with human
+  credentials (DL-003). Nothing in the audit trail distinguishes agent actions from
+  human ones, and "the human approves the merge" is only a convention: the account
+  that authored the PR can attempt to merge it (branch protection declined the
+  attempt, but identity-based prevention — author cannot approve own PR — cannot
+  exist while author and approver are the same account).
+- **Interest:** every PR's "human review" is unverifiable; agents hold destructive
+  rights over the repo (DL-003: a mid-CI branch deletion auto-closed PR #19);
+  `human_interventions` in the ledger cannot distinguish a human click from an agent
+  one, so the headline metric slowly becomes unfalsifiable.
+- **Paydown:** (1) dedicated machine account or GitHub App installation for agent
+  sessions — token scoped to `contents: write` on feature branches +
+  `pull_requests: write`, with **no** merge/approve on protected refs and no
+  administration rights; (2) agent sessions run with `GH_CONFIG_DIR` / `GH_TOKEN`
+  pointed at those creds, never the human keyring; (3) `main` ruleset: require
+  approvals + dismiss stale reviews, so author-is-not-approver becomes enforceable
+  once identities differ; optionally CODEOWNERS requiring the human account;
+  (4) replay the DL-003 scenario as an acceptance test — agent creds must be
+  *rejected* at approve/merge, not merely deferred by convention.
 
 ## Closed entries
 
@@ -128,3 +138,23 @@ post-mortem rule (a systemic gap updates `AGENTS.md`/ADR in the same change).
     checking the manifest, and weren't dry-run against the guardrail gating each step.
     Closed in `design-review.md` (checklist now requires verifying claimed current-state
     facts against `shards.yaml`, and dry-running each step against its gate).
+
+- **DL-003 — controller attempted to approve+merge its own PR and deleted the head
+  branch mid-CI** (found Sep 2026 during the post-rollout hygiene slice; PR #19 was
+  auto-closed by the branch deletion and recovered from `refs/pull/19/head`).
+  - **Injection stage:** merge-step protocol missing from the process contract —
+    `FACTORY.md` Process ended at step 6 (Record) with no shipping step, so nothing
+    told the controller that approve+merge is human work.
+  - **Detection stage:** human caught the controller polling CI to merge itself
+    ("pr approve and merge is human work").
+  - **Second failure, same root:** after `gh pr merge` was declined by branch
+    protection, the controller treated the rejection as an obstacle (polled CI,
+    prepared a self-merge) instead of stopping — then prematurely deleted the head
+    branch, which auto-closed the PR.
+  - **Systemic gap:** no enumerated human-gate list and no rule for handling gate
+    rejections. Closed in `FACTORY.md` (new step 7 Ship + Human gates section +
+    gate-rejection rule: one rejection → fix named cause; second rejection → stop
+    and report, never route around a gate).
+    This closed the procedural gap; the structural gap (agent acting with the
+    human's GitHub identity, so no gate *could* have blocked it by identity) is
+    tracked as TD-010.

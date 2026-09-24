@@ -29,6 +29,29 @@ the code-level rules live in `AGENTS.md` (root) and the per-project `AGENTS.md` 
    green → Definition of Done.
 6. **Record** — update metrics, log escaped defects, and (for the pilot) write a Lessons
    Learnt section that gates rollout.
+7. **Ship** — agent pushes the branch, opens the PR, and reports it ready with green
+   checks. **The human approves and merges.** An agent never approves, merges, closes,
+   or force-drives a PR into `main` — that approval is the last human review before
+   the trust boundary (see Human gates).
+
+## Human gates
+
+Points where the agent MUST stop and hand the decision to a human. Enumerated here
+because every one of them has been skipped at least once:
+
+- **Design-before-code gate** — new ADR, slice boundary, or plan-mandated review
+  finding that conflicts with the plan's text. The agent surfaces options; the human
+  decides (`docs/factory/design-review.md`).
+- **PR approve + merge to `main`** — the human's final review. Agents prepare
+  (branch, commits, PR, gate report); humans approve and merge.
+- **Reviewer findings marked plan-mandated or Important** — adjudication is the
+  human's unless the finding is unambiguous mechanical compliance with the plan
+  (`docs/factory/verify-shard.md`, ledger gate).
+
+**Gate-rejection rule:** a gate that rejects the work (branch protection, failing
+required check, declined push) is the system working, not an obstacle. One rejection
+→ fix the named cause. A second rejection of the same gate → **stop and report to
+the human** — never hunt for another route around a gate.
 
 ## Skills
 
@@ -57,5 +80,5 @@ the code-level rules live in `AGENTS.md` (root) and the per-project `AGENTS.md` 
   enforced by `ShardMetricsLedgerTests`). Warn-only until 3 shards have entries, then hard.
 - Static analysis: Roslyn analyzers + warnings-as-errors in CI.
 - Non-functional requirements: `docs/quality/nfr.md`.
-- Technical debt register: `docs/technical-debt.md` (each entry with an interest rate).
+- Technical debt register: `docs/factory/technical-debt.md` (each entry with an interest rate).
 - Defect log: escaped defects with injection stage + root cause → post-mortem rule.

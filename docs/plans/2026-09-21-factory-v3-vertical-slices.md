@@ -87,8 +87,11 @@ deletes (`AGENTS.md`) + the `design-review.md` human gate.
       keeps its 3-project boundary. Defines: slice shape; explicit handlers over MediatR
       (rationale: 7 controllers, zero deps); cross-slice read-only-via-interface invariant;
       handler-per-operation threshold = *extract when the operation carries a rule*, not for CRUD passthrough.
-- [ ] `FACTORY.md` at root: the process (shard → exemplar copy → tracer bullet → verify → ship)
+- [x] `FACTORY.md` at root: the process (shard → exemplar copy → tracer bullet → verify → ship)
       + Definition of Done per shard + capability ladder (mechanical steps cheap-model-safe).
+      Verified present (exists since `b07958b`: Process / Definition of Done / Capability ladder
+      sections) — checkbox was stale, not superseded. Hierarchy: `FACTORY.md` = process contract,
+      `VISION.md` = aspirational directions, `docs/factory/` = recipe/gate detail.
 - [ ] Update `docs/adr/README.md` table.
 - [ ] Add factory ADRs for: VSA, explicit-handlers-vs-MediatR, metadata shards, tracing.
 

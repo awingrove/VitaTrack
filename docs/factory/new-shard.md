@@ -36,6 +36,10 @@ feature. Read it before adding or extracting a slice.
 
 ## Recipe (tracer-bullet, then fill)
 
+Origin of the factory terms in this recipe (tracer bullet, shard, verify-shard gate,
+cross-slice invariant) and their governing principles: `BIBLIOGRAPHY.md` — consult its
+LLM Prompt Triggers when a step involves a design, refactoring, or gate judgment call.
+
 1. **Claim the slice.** Add an entry to `shards.yaml` under `slices:` with `id`
    (2-letter, also a `storymap.yaml` task-id prefix), `name`, `tables` (the SQL tables
    this slice's core files may reference — `[]` if it issues no SQL), `controller`,

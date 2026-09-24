@@ -29,6 +29,8 @@ slices:
       - VitaTrack.Core/Features/Family/FamilyRepository.cs
       - VitaTrack.Core/Features/Family/IFamilyRepository.cs
       - VitaTrack.Core/Features/Family/FamilyMember.cs
+      - VitaTrack.Core/Features/Family/CreateFamilyMemberRequest.cs
+      - VitaTrack.Core/Features/Family/EditFamilyMemberRequest.cs
     views:
       - VitaTrack.Web/Views/Family/**
     js: []

@@ -188,7 +188,7 @@ machine with no instruments, and guardrails check conformance but not design cor
       blend hierarchy deferred — flat iteration is behaviorally correct today; see RP progress log entry.)*
 - [x] **Reporting** — **Visitor** over the blend tree; kill `IReadOnlyList<Dictionary<string,string>>`
       (`Result.cs:23`); `Money` value object.
-- [ ] **Supplements / CSV** — **Chain of Responsibility** for row validation; split `SupplementController`
+- [x] **Supplements / CSV** — **Chain of Responsibility** for row validation; split `SupplementController`
       (263 + 50 partial).
 - [ ] **Family**, **LLM** — remaining slices.
 - [x] Split `Result.cs` (6 concepts: `NutrientFailure`, `ReplaceNutrientsResult`, `MemberCostRow`,
@@ -230,6 +230,20 @@ machine with no instruments, and guardrails check conformance but not design cor
   parked (visitor+bucket co-located is brief-mandated shape; ledger text fixed in e76d7c4).
   Controller re-verified gates independently: format/build clean, 15 arch + 210 unit, report
   e2e 13/13, executor ran full e2e 77/77. Ledger entry RP (third; ledger ratchet now active).
+- **MS (Supplements/CSV) rollout shipped** (mimo-flash executed, PR #18). Files moved to
+  `VitaTrack.Core/Features/Supplements/` (repos, CSV service + records, `Supplement` model —
+  one record per file); CSV row validation is now an explicit Chain of Responsibility
+  (`ICsvRowRule` + `CsvRowContext` + four sealed rules, order: RequiredFields →
+  LengthLimits → Cost → Servings; `CsvImportServiceTests` untouched as the behavior proof);
+  the import loop moved out of the controller into `ImportSupplementsHandler`;
+  `SupplementImportController` owns `/SupplementImport/ImportCsv` and `KnownTypeDebt` is
+  deleted — `SupplementController` at 248 lines total (TD-002 closed). One red gate
+  (PartialView lookup under the new controller folder) self-corrected with an explicit
+  path; reviewer approved with 5 minors parked (AGENTS.md staleness + layering-scope gap
+  recorded as TD-007 closed / TD-006 open in the same merge). Controller re-verified gates
+  independently: format/build clean, 15 arch + 210 unit, MS e2e 21/21, executor ran full
+  e2e 77/77. Ledger entry MS (fourth): mimo-v2.6-flash-free, 0 interventions, 1 guardrail
+  failure, $0.
 
 ## Risks / Guardrails
 

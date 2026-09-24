@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VitaTrack.Core;
 
-namespace VitaTrack.Core.Services;
+namespace VitaTrack.Core.Features.LlmEnrichment;
 
 public class LlmClient : ILlmClient
 {

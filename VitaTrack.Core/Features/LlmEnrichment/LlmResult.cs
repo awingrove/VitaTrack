@@ -1,4 +1,4 @@
-namespace VitaTrack.Core.Models;
+namespace VitaTrack.Core.Features.LlmEnrichment;
 
 public class LlmResult
 {

@@ -1,4 +1,4 @@
-using VitaTrack.Core.Models;
+using VitaTrack.Core.Features.LlmEnrichment;
 
 namespace VitaTrack.Web.Models;
 

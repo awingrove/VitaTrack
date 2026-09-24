@@ -1,8 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using VitaTrack.Core.Models;
-using VitaTrack.Core.Services;
+using VitaTrack.Core.Features.LlmEnrichment;
 
 namespace VitaTrack.Tests;
 

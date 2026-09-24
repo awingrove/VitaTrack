@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
-using VitaTrack.Core.Models;
 
-namespace VitaTrack.Core.Services;
+namespace VitaTrack.Core.Features.LlmEnrichment;
 
 public interface ISupplementLabelParser
 {

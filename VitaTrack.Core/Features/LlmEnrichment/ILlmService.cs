@@ -1,8 +1,7 @@
 using VitaTrack.Core.Features.Supplements;
-using VitaTrack.Core.Models;
 using System.Threading.Tasks;
 
-namespace VitaTrack.Core.Services;
+namespace VitaTrack.Core.Features.LlmEnrichment;
 
 public interface ILlmService
 {

@@ -2,7 +2,6 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using NetArchTest.Rules;
 using System.Reflection;
 using VitaTrack.Core.Features.Nutrients;
-using VitaTrack.Core.Services;
 using TestResult = NetArchTest.Rules.TestResult;
 
 namespace VitaTrack.ArchitectureTests;

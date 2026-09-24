@@ -4,8 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using VitaTrack.Core.Data;
-using VitaTrack.Core.Models;
-using VitaTrack.Core.Services;
+using VitaTrack.Core.Features.LlmEnrichment;
 
 using VitaTrack.Core.Features.Nutrients;
 

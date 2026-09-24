@@ -9,7 +9,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Moq.Protected;
 using VitaTrack.Core;
-using VitaTrack.Core.Services;
+using VitaTrack.Core.Features.LlmEnrichment;
 
 namespace VitaTrack.Tests;
 

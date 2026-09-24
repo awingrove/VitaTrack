@@ -1,6 +1,6 @@
 using System.Threading.Tasks;
 
-namespace VitaTrack.Core.Services;
+namespace VitaTrack.Core.Features.LlmEnrichment;
 
 public record LlmCompletion(string? Content, string? Error);
 

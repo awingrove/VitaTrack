@@ -9,7 +9,7 @@ using VitaTrack.Core.Data;
 using VitaTrack.Core.Features.Dosing;
 using VitaTrack.Core.Features.Family;
 using VitaTrack.Core.Features.Reporting;
-using VitaTrack.Core.Services;
+using VitaTrack.Core.Features.LlmEnrichment;
 
 using VitaTrack.Core.Features.Nutrients;
 using VitaTrack.Core.Features.Supplements;

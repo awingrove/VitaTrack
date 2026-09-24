@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using VitaTrack.Core.Features.Supplements;
-using VitaTrack.Core.Services;
 
 namespace VitaTrack.Web.Controllers;
 

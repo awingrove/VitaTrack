@@ -82,20 +82,6 @@ them, per the post-mortem rule in `AGENTS.md`.
   and routed — same pattern as the NT fix. Remaining exposure: the invariant still has no
   machine check (tracked as the cross-slice arch test follow-up in the factory-v3 plan).
 
-### TD-006 — `ServicesLayeringTests` only scans `VitaTrack.Core.Services`
-- **Where:** `VitaTrack.ArchitectureTests/ServicesLayeringTests.cs`
-- **What:** the "business logic reaches the DB only through repositories" rule scans
-  `VitaTrack.Core.Services` only. Slice code in `VitaTrack.Core.Features.*` (e.g. the
-  moved `CsvImportService`) is outside its net — a Dapper dependency added to a slice
-  service would not be caught. Found by the MiMo MS session.
-- **Update 2026-09-23:** after the LLM conversion, `VitaTrack.Core/Services` is EMPTY —
-  the rule now passes **vacuously** and covers nothing. `Features/*` services
-  (`ReportingService`, `LlmService`, `LlmClient`, …) have no layering guard at all.
-- **Interest:** the guardrail predates slices; every slice conversion shrinks its coverage.
-- **Paydown:** retarget the rule to Core business logic at large (`VitaTrack.Core`
-  excluding `VitaTrack.Core.Data` + `VitaTrack.Core.Primitives`), or per-slice via
-  `shards.yaml` `tables` declarations. Candidate for the Family/LLM slice conversions.
-
 ### TD-007 — factory AGENTS.md docs lagged the slice moves
 - **Where:** root + `VitaTrack.Core/AGENTS.md`
 - **What:** still said interfaces live in `VitaTrack.Core.Data` and models belong in
@@ -105,6 +91,20 @@ them, per the post-mortem rule in `AGENTS.md`.
   conventions reinvent the old layout.
 - **Closed 2026-09-23:** conventions updated to the ADR-0006 slice layout in the same
   change that paid TD-002.
+
+### TD-008 — vacuous cascade-delete e2e assertion
+- **Where:** `family-member.spec.js:127`
+- **What:** asserted `TestDose${unique}` gone but the test creates `DoseInstr${unique}` →
+  trivially true, cascade regression would pass.
+- **Interest:** family FK-cascade invariant had no real e2e check.
+- **Closed 2026-09-24:** asserts `DoseInstr${unique}`.
+
+### TD-009 — `FamilyRepository.GetAllAsync` missing `ORDER BY`
+- **Where:** `FamilyRepository.cs:17`
+- **What:** nondeterministic row order; list UI and relative-position assertions could
+  flake.
+- **Interest:** order-dependent tests pass/fail nondeterministically.
+- **Closed 2026-09-24:** `ORDER BY Name, Id` + `GetAll_ReturnsStableNameOrder`.
 
 ## Defect log
 

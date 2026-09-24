@@ -32,3 +32,11 @@ A shipped slice needs an entry in `docs/factory/shard-metrics.yaml` (`ShardMetri
 enforces schema integrity in CI). Warn-only until three shards have entries; afterward a
 missing entry fails the gate, and `human_interventions` above the ratchet target
 (start: ≤ 1 per shard) fails review. See `metrics.md`.
+
+Before merging, reconcile the entry against the review outcome:
+
+- A review finding that forced changes ⇒ `human_interventions ≥ 1`.
+- Any commit after the executor's first done claim ⇒ `fix_commits ≥ 1`.
+- A plan-mandated Important finding (or any finding that conflicts with the
+  plan's text) is the human's decision — surface it; do not self-adjudicate
+  (design-before-code gate, `BIBLIOGRAPHY.md` glossary).

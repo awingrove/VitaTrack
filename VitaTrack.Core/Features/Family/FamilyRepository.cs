@@ -14,7 +14,7 @@ public class FamilyRepository(IDbConnection db, IPrescribedDoseRepository prescr
 
     public async Task<IReadOnlyList<FamilyMember>> GetAllAsync()
     {
-        const string sql = "SELECT Id, Name, DisplayName, AvatarUrl FROM FamilyMembers";
+        const string sql = "SELECT Id, Name, DisplayName, AvatarUrl FROM FamilyMembers ORDER BY Name, Id";
         var rows = await _db.QueryAsync<FamilyMember>(sql);
         return rows.ToList();
     }

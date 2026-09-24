@@ -9,9 +9,9 @@
 - No direct HTTP or UI concerns; keep pure C#.
 
 ## Conventions
-- Interfaces: prefix `I`, located in `VitaTrack.Core.Data`.
+- Interfaces: prefix `I`, co-located with their implementation — feature slices own theirs under `VitaTrack.Core/Features/<Slice>/` (ADR-0006); shared infrastructure ones live in `VitaTrack.Core.Data` or `VitaTrack.Core.Services`.
 - Implementations: suffix `Repository` or `Service`, same namespace.
-- Models: plain POCOs with public get/set; default string values `string.Empty`.
+- Models: plain POCOs with public get/set; default string values `string.Empty`. Feature-owned models live in their slice folder, not `VitaTrack.Core/Models`.
 - Constructor injection: receive `IDbConnection` (repositories) or `HttpClient` + `IConfiguration` (LLM service).
 - All I/O methods are `async` and return `Task<T>` or `Task<IReadOnlyList<T>>`.
 - Use `await _db.QueryAsync<T>(sql)` for reads.
@@ -64,7 +64,7 @@ When adding new tables (or FK-like columns, via `CREATE TABLE` or `ALTER TABLE` 
 - Mock `HttpClient` (with Moq) for `OpenRouterLlmService` tests.
 
 ## Adding New Features
-1. Add model (if needed) to `VitaTrack.Core.Models`.
+1. Add model (if needed) to the owning feature slice under `VitaTrack.Core/Features/<Slice>/` (or `VitaTrack.Core/Models` only for cross-slice shared types like `FamilyMember`/`LlmResult`).
 2. Extend repository interface (if new entity) and implement.
 3. Register new interface/implementation in `VitaTrack.Web/Program.cs` via `builder.Services.AddScoped<...>()`.
 4. If external service, add to `VitaTrack.Core.Services` and register via `AddHttpClient<TInterface, TImplementation>()` (you may also need to register `HttpClient` separately if not already).

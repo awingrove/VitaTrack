@@ -57,6 +57,27 @@ them, per the post-mortem rule in `AGENTS.md`.
   and routed — same pattern as the NT fix. Remaining exposure: the invariant still has no
   machine check (tracked as the cross-slice arch test follow-up in the factory-v3 plan).
 
+### TD-006 — `ServicesLayeringTests` only scans `VitaTrack.Core.Services`
+- **Where:** `VitaTrack.ArchitectureTests/ServicesLayeringTests.cs`
+- **What:** the "business logic reaches the DB only through repositories" rule scans
+  `VitaTrack.Core.Services` only. Slice code in `VitaTrack.Core.Features.*` (e.g. the
+  moved `CsvImportService`) is outside its net — a Dapper dependency added to a slice
+  service would not be caught. Found by the MiMo MS session.
+- **Interest:** the guardrail predates slices; every slice conversion shrinks its coverage.
+- **Paydown:** retarget the rule to Core business logic at large (`VitaTrack.Core`
+  excluding `VitaTrack.Core.Data` + `VitaTrack.Core.Primitives`), or per-slice via
+  `shards.yaml` `tables` declarations. Candidate for the Family/LLM slice conversions.
+
+### TD-007 — factory AGENTS.md docs lagged the slice moves
+- **Where:** root + `VitaTrack.Core/AGENTS.md`
+- **What:** still said interfaces live in `VitaTrack.Core.Data` and models belong in
+  `VitaTrack.Core/Models` after every feature model had moved into `Features/<Slice>/`.
+  Found by the MiMo MS session (its notice, correctly not fixed in-scope).
+- **Interest:** "docs must not lie" (ArchitectureReview §2.2); agents reading stale
+  conventions reinvent the old layout.
+- **Closed 2026-09-23:** conventions updated to the ADR-0006 slice layout in the same
+  change that paid TD-002.
+
 ## Defect log
 
 Escaped defects are recorded here with **injection stage** + **root cause**, feeding the

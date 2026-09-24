@@ -129,6 +129,64 @@ class PlanClassificationTests(unittest.TestCase):
         self.assertEqual("needs-review", state.status)
         self.assertEqual("no status, progress, or checkbox evidence", state.evidence)
 
+    def test_nested_mixed_fences_ignore_metadata_and_checkboxes(self):
+        state = classify_plan(
+            "docs/plans/fenced.md",
+            "# Fenced\n\n"
+            "````markdown\n"
+            "```markdown\n"
+            "~~~text\n"
+            "Status: done\n"
+            "- [x] fenced task\n"
+            "- [ ] fenced task\n"
+            "~~~\n"
+            "Status: done\n"
+            "- [x] mixed fenced task\n"
+            "````\n\n"
+            "Status: pending\n"
+            "- [ ] real task\n",
+        )
+
+        self.assertEqual("incomplete", state.status)
+        self.assertEqual("plan status", state.evidence)
+        self.assertEqual(0, state.checked_boxes)
+        self.assertEqual(1, state.unchecked_boxes)
+
+    def test_fenced_progress_metadata_is_ignored(self):
+        state = classify_plan(
+            "docs/plans/fenced-progress.md",
+            "# Fenced progress\n",
+            "````markdown\n"
+            "```markdown\n"
+            "~~~text\n"
+            "Overall status: plan is complete\n"
+            "~~~\n"
+            "Status: done\n"
+            "- [x] fenced task\n"
+            "````\n",
+        )
+
+        self.assertEqual("needs-review", state.status)
+        self.assertEqual("no status, progress, or checkbox evidence", state.evidence)
+
+    def test_status_progress_matches_only_whole_plan_completion(self):
+        cases = (
+            ("Status: plan is complete", "complete"),
+            ("Status: plan is not complete", "needs-review"),
+            ("Status: child task complete", "needs-review"),
+            ("Overall status: child task complete", "needs-review"),
+        )
+
+        for progress_line, expected_status in cases:
+            with self.subTest(progress_line=progress_line):
+                state = classify_plan(
+                    "docs/plans/progress.md",
+                    "# Progress\n",
+                    f"{progress_line}\n",
+                )
+
+                self.assertEqual(expected_status, state.status)
+
     def test_negated_status_values_do_not_complete_plan(self):
         for status_line in (
             "Status: Incomplete",

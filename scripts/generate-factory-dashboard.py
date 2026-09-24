@@ -41,13 +41,16 @@ STATUS_RE = re.compile(
     r"^(?:\*\*)?status(?:\*\*:|:\*\*|:)\s*(.+?)\s*$", re.IGNORECASE
 )
 PROGRESS_RE = re.compile(
-    r"^(?:\*\*)?(?:overall\s+status|plan\s+status)(?:\*\*:|:\*\*|:)\s*(.+?)\s*$",
+    r"^(?:\*\*)?(?:overall\s+status|plan\s+status|status)(?:\*\*:|:\*\*|:)\s*(.+?)\s*$",
     re.IGNORECASE,
 )
 COMPLETION_RE = re.compile(r"\b(done|complete|completed|shipped)\b", re.IGNORECASE)
 NEGATIVE_STATUS_RE = re.compile(
     r"\b(?:not|incomplete|pending|blocked|open|unfinished|in\s+progress)\b",
     re.IGNORECASE,
+)
+CHILD_PROGRESS_RE = re.compile(
+    r"\b(?:child|item|task|phase|story|subtask)\b", re.IGNORECASE
 )
 CHECKED_RE = re.compile(r"(?m)^\s*- \[x\]\s+", re.IGNORECASE)
 UNCHECKED_RE = re.compile(r"(?m)^\s*- \[ \]\s+")
@@ -100,17 +103,42 @@ def read_yaml(path: Path) -> dict[str, Any]:
     return loaded
 
 
-def _metadata_lines(text: str):
-    fence: str | None = None
+def _fence_marker(line: str) -> tuple[str, int] | None:
+    stripped = line.lstrip()
+    for marker in ("`", "~"):
+        if stripped.startswith(marker * 3):
+            length = len(stripped) - len(stripped.lstrip(marker))
+            return marker, length
+    return None
+
+
+def _is_fence_close(
+    line: str, fence_marker: str, fence_length: int
+) -> bool:
+    stripped = line.lstrip()
+    if not stripped.startswith(fence_marker * fence_length):
+        return False
+    length = len(stripped) - len(stripped.lstrip(fence_marker))
+    return length >= fence_length and not stripped[length:].strip()
+
+
+def _outside_fence_lines(text: str):
+    fence: tuple[str, int] | None = None
     for line in text.splitlines():
         stripped = line.lstrip()
         if fence is not None:
-            if stripped.startswith(fence):
+            if _is_fence_close(stripped, *fence):
                 fence = None
             continue
-        if stripped.startswith("```") or stripped.startswith("~~~"):
-            fence = stripped[:3]
+        marker = _fence_marker(stripped)
+        if marker is not None:
+            fence = marker
             continue
+        yield line
+
+
+def _metadata_lines(text: str):
+    for line in _outside_fence_lines(text):
         if line == line.lstrip():
             yield line
 
@@ -133,11 +161,16 @@ def _is_positive_completion(value: str) -> bool:
     return not _is_negative_status(value) and bool(COMPLETION_RE.search(value))
 
 
+def _is_positive_progress(value: str) -> bool:
+    return not CHILD_PROGRESS_RE.search(value) and _is_positive_completion(value)
+
+
 def classify_plan(path: str, text: str, progress_text: str = "") -> PlanState:
     title_match = H1_RE.search(text)
     title = title_match.group(1).strip() if title_match else Path(path).stem
-    checked_boxes = len(CHECKED_RE.findall(text))
-    unchecked_boxes = len(UNCHECKED_RE.findall(text))
+    evidence_text = "\n".join(_outside_fence_lines(text))
+    checked_boxes = len(CHECKED_RE.findall(evidence_text))
+    unchecked_boxes = len(UNCHECKED_RE.findall(evidence_text))
 
     status_value = _metadata_value(text, STATUS_RE)
     status_complete = status_value is not None and _is_positive_completion(status_value)
@@ -145,7 +178,7 @@ def classify_plan(path: str, text: str, progress_text: str = "") -> PlanState:
     progress_value = _metadata_value(text, PROGRESS_RE) or _metadata_value(
         progress_text, PROGRESS_RE
     )
-    progress_complete = progress_value is not None and _is_positive_completion(
+    progress_complete = progress_value is not None and _is_positive_progress(
         progress_value
     )
 

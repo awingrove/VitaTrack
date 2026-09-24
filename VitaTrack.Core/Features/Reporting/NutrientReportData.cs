@@ -1,3 +1,4 @@
+using VitaTrack.Core.Features.Supplements;
 using VitaTrack.Core.Models;
 using VitaTrack.Core.Primitives;
 

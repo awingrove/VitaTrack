@@ -73,14 +73,26 @@ slices:
     controller:
       - VitaTrack.Web/Controllers/SupplementController.cs
       - VitaTrack.Web/Controllers/SupplementController.Editor.cs
+      - VitaTrack.Web/Controllers/SupplementImportController.cs
     core:
-      - VitaTrack.Core/Data/SupplementRepository.cs
-      - VitaTrack.Core/Data/ISupplementRepository.cs
-      - VitaTrack.Core/Services/CsvImportService.cs
-      - VitaTrack.Core/Services/ICsvImportService.cs
-      - VitaTrack.Core/Models/Supplement.cs
-      - VitaTrack.Core/Models/CsvSupplementRow.cs
-      - VitaTrack.Core/Models/CsvImportReport.cs
+      - VitaTrack.Core/Features/Supplements/SupplementRepository.cs
+      - VitaTrack.Core/Features/Supplements/ISupplementRepository.cs
+      - VitaTrack.Core/Features/Supplements/CsvImportService.cs
+      - VitaTrack.Core/Features/Supplements/ICsvImportService.cs
+      - VitaTrack.Core/Features/Supplements/Supplement.cs
+      - VitaTrack.Core/Features/Supplements/CsvSupplementRow.cs
+      - VitaTrack.Core/Features/Supplements/CsvImportReport.cs
+      - VitaTrack.Core/Features/Supplements/CsvImportSuccess.cs
+      - VitaTrack.Core/Features/Supplements/CsvImportFailure.cs
+      - VitaTrack.Core/Features/Supplements/CsvParseResult.cs
+      - VitaTrack.Core/Features/Supplements/CsvParseError.cs
+      - VitaTrack.Core/Features/Supplements/ICsvRowRule.cs
+      - VitaTrack.Core/Features/Supplements/CsvRowContext.cs
+      - VitaTrack.Core/Features/Supplements/CsvRequiredFieldsRule.cs
+      - VitaTrack.Core/Features/Supplements/CsvLengthLimitsRule.cs
+      - VitaTrack.Core/Features/Supplements/CsvCostRule.cs
+      - VitaTrack.Core/Features/Supplements/CsvServingsRule.cs
+      - VitaTrack.Core/Features/Supplements/ImportSupplementsHandler.cs
     views:
       - VitaTrack.Web/Views/Supplement/**
     js:

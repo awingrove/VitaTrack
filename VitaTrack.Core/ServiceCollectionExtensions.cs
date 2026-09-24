@@ -9,6 +9,7 @@ using VitaTrack.Core.Services;
 
 using VitaTrack.Core.Features.Nutrients;
 using VitaTrack.Core.Features.Reporting;
+using VitaTrack.Core.Features.Supplements;
 
 namespace VitaTrack.Core;
 
@@ -51,6 +52,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPrescribedDoseRepository, PrescribedDoseRepository>();
         services.AddScoped<PrescribeDoseHandler>();
         services.AddScoped<AmendDoseHandler>();
+        services.AddScoped<ImportSupplementsHandler>();
 
         services.AddScoped<ISupplementNutrientService, SupplementNutrientService>();
         services.AddScoped<IReportingService, ReportingService>();

@@ -1,13 +1,24 @@
-using System.Globalization;
 using System.Text;
-using VitaTrack.Core.Models;
 
-namespace VitaTrack.Core.Services;
+namespace VitaTrack.Core.Features.Supplements;
 
 public class CsvImportService : ICsvImportService
 {
     private const int MaxRows = 20;
     private static readonly string[] ExpectedHeaders = ["Name", "Brand", "DailyDose", "ManufacturerUrl", "Cost", "ServingsPerBottle"];
+
+    private readonly ICsvRowRule[] _rules;
+
+    public CsvImportService()
+    {
+        _rules =
+        [
+            new CsvRequiredFieldsRule(),
+            new CsvLengthLimitsRule(),
+            new CsvCostRule(),
+            new CsvServingsRule()
+        ];
+    }
 
     public async Task<CsvParseResult> ParseAsync(Stream csvStream)
     {
@@ -73,66 +84,27 @@ public class CsvImportService : ICsvImportService
         return null;
     }
 
-    private const int MaxNameLength = 200;
-    private const int MaxBrandLength = 200;
-    private const int MaxDailyDoseLength = 200;
-    private const int MaxManufacturerUrlLength = 500;
-
-    private static (CsvSupplementRow? Row, CsvParseError? Error) ParseRow(int lineNumber, string[] fields)
+    private (CsvSupplementRow? Row, CsvParseError? Error) ParseRow(int lineNumber, string[] fields)
     {
-        var name = fields.Length > 0 ? fields[0].Trim() : string.Empty;
-        var brand = fields.Length > 1 ? fields[1].Trim() : string.Empty;
-        var dailyDose = fields.Length > 2 ? fields[2].Trim() : string.Empty;
-        var manufacturerUrl = fields.Length > 3 ? fields[3].Trim() : null;
-        var costStr = fields.Length > 4 ? fields[4].Trim() : null;
-        var servingsStr = fields.Length > 5 ? fields[5].Trim() : null;
+        var context = new CsvRowContext(
+            lineNumber,
+            fields.Length > 0 ? fields[0].Trim() : string.Empty,
+            fields.Length > 1 ? fields[1].Trim() : string.Empty,
+            fields.Length > 2 ? fields[2].Trim() : string.Empty,
+            fields.Length > 3 ? fields[3].Trim() : string.Empty,
+            fields.Length > 4 ? fields[4].Trim() : string.Empty,
+            fields.Length > 5 ? fields[5].Trim() : string.Empty);
 
-        if (string.IsNullOrWhiteSpace(name))
-            return (null, new CsvParseError(lineNumber, "Missing required field: Name"));
-        if (string.IsNullOrWhiteSpace(brand))
-            return (null, new CsvParseError(lineNumber, "Missing required field: Brand"));
-        if (string.IsNullOrWhiteSpace(dailyDose))
-            return (null, new CsvParseError(lineNumber, "Missing required field: DailyDose"));
-
-        if (name.Length > MaxNameLength)
-            return (null, new CsvParseError(lineNumber, $"Name exceeds {MaxNameLength} characters"));
-        if (brand.Length > MaxBrandLength)
-            return (null, new CsvParseError(lineNumber, $"Brand exceeds {MaxBrandLength} characters"));
-        if (dailyDose.Length > MaxDailyDoseLength)
-            return (null, new CsvParseError(lineNumber, $"DailyDose exceeds {MaxDailyDoseLength} characters"));
-        if (!string.IsNullOrWhiteSpace(manufacturerUrl) && manufacturerUrl.Length > MaxManufacturerUrlLength)
-            return (null, new CsvParseError(lineNumber, $"ManufacturerUrl exceeds {MaxManufacturerUrlLength} characters"));
-
-        decimal? cost = null;
-        if (!string.IsNullOrWhiteSpace(costStr))
+        foreach (var rule in _rules)
         {
-            if (decimal.TryParse(costStr, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
-            {
-                if (parsed <= 0)
-                    return (null, new CsvParseError(lineNumber, "Cost must be positive"));
-                cost = parsed;
-            }
-            else
-                return (null, new CsvParseError(lineNumber, $"Invalid Cost value: '{costStr}'"));
+            var error = rule.Apply(context);
+            if (error != null)
+                return (null, error);
         }
 
-        decimal? servingsPerBottle = null;
-        if (!string.IsNullOrWhiteSpace(servingsStr))
-        {
-            if (decimal.TryParse(servingsStr, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedServings))
-            {
-                if (parsedServings <= 0)
-                    return (null, new CsvParseError(lineNumber, "ServingsPerBottle must be positive"));
-                servingsPerBottle = parsedServings;
-            }
-            else
-                return (null, new CsvParseError(lineNumber, $"Invalid ServingsPerBottle value: '{servingsStr}'"));
-        }
-
-        if (string.IsNullOrWhiteSpace(manufacturerUrl))
-            manufacturerUrl = null;
-
-        var row = new CsvSupplementRow(lineNumber, name, brand, dailyDose, manufacturerUrl, cost, servingsPerBottle);
+        var manufacturerUrl = string.IsNullOrWhiteSpace(context.ManufacturerUrl) ? null : context.ManufacturerUrl;
+        var row = new CsvSupplementRow(lineNumber, context.Name, context.Brand, context.DailyDose,
+            manufacturerUrl, context.Cost, context.ServingsPerBottle);
         return (row, null);
     }
 

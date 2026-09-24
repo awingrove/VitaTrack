@@ -67,3 +67,29 @@ shards:
       ShardOwnershipTests — NT lesson DL-002 defect a), and the controller's
       ViewData projections were adapted mid-sequence so step 3 compiles before the
       step-5 view swap kills the round-trip.
+
+  - id: MS
+    name: Supplements (CRUD, CSV import)
+    agent: cheap
+    human_interventions: 0
+    guardrail_failures: 1
+    fix_commits: 0
+    defects_escaped: 0
+    agent_model: opencode/mimo-v2.6-flash-free
+    tokens_input: 153824
+    tokens_output: 25924
+    tokens_reasoning: 20532
+    tokens_cache_read: 9601664
+    cost_usd: 0
+    notes: >
+      Slice conversion from Data/Services/Models into Features/Supplements per
+      docs/plans/2026-09-23-supplements-csv-slice.md (CoR row validation,
+      ImportSupplementsHandler, SupplementImportController split, TD-002 closed).
+      Six commits, one red gate run (step-5 e2e: PartialView("_ImportReport")
+      resolves under the controller's view folder, so the new controller 500'd;
+      fixed with the explicit ~/Views/Supplement/_ImportReport.cshtml path —
+      lookup mechanics, not behavior). No human stops. Logged mechanical
+      deviations: shards.yaml paths re-pointed incrementally in each
+      file-changing commit (pre-commit runs ShardOwnershipTests — DL-002
+      defect-a lesson), and the using-line update in CsvImportServiceTests
+      (step-2 solution-wide namespace move; assertions untouched).

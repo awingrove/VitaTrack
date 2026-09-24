@@ -14,7 +14,7 @@ This document defines the coding standards, architectural guidelines, testing ph
 
 ## 🏗️ Architecture & Project Structure
 *   **Paradigm:** Pragmatic ASP.NET MVC. Avoid over-engineering and strict Clean Architecture dogmas.
-*   **Structure:** 3-project solution (`VitaTrack.Web → VitaTrack.Core`; `VitaTrack.Tests` refs both). Inter-project direction is enforced by csproj. Web layer handles HTTP, views, and thin mapping; business logic lives in `VitaTrack.Core/Services` and `VitaTrack.Core/Data` (Dapper repositories; reorganizing into feature slices per ADR-0006).
+*   **Structure:** 3-project solution (`VitaTrack.Web → VitaTrack.Core`; `VitaTrack.Tests` refs both). Inter-project direction is enforced by csproj. Web layer handles HTTP, views, and thin mapping; business logic lives in `VitaTrack.Core/Features/<Slice>/` handlers + repositories, with remaining shared services in `VitaTrack.Core/Services` and `VitaTrack.Core/Data` (Dapper repositories; slices per ADR-0006).
 *   **Type Size & Organization:** 
     *   Proactively extract classes/interfaces into separate files if a file exceeds 20-30 lines. Keep methods small (< 30 lines) and focused.
     *   **Split trigger (not a gameable cap):** a *complete type* — counting every partial part across files — must be reviewed for splitting into separate responsibilities once it exceeds **300 lines**. The intent is to stop a type from mushrooming in complexity, not to cap individual files. Splitting one type into partials in separate files to dodge the limit is itself a violation. `FileSizeTests` enforces the complete-type size, partials included.

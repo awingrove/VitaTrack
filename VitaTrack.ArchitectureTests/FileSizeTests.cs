@@ -18,13 +18,6 @@ public class FileSizeTests
 {
     private const int HardLimit = 300;
 
-    // Pre-existing debt already tracked in the rollout backlog (split SupplementController
-    // into the Supplements slice's handlers). Remove this entry when that slice lands.
-    private static readonly HashSet<string> KnownTypeDebt = new(StringComparer.Ordinal)
-    {
-        "VitaTrack.Web.Controllers.SupplementController"
-    };
-
     [TestMethod]
     public void NoCsFile_Exceeds300Lines()
     {
@@ -73,7 +66,6 @@ public class FileSizeTests
         foreach (var (key, entry) in totals)
         {
             if (entry.Lines <= HardLimit) continue;
-            if (KnownTypeDebt.Contains(key)) continue; // tracked debt; not a new regression
             var files = string.Join(", ", entry.Files.Select(f => Path.GetRelativePath(solutionRoot, f)));
             violations.Add($"{key}: {entry.Lines} lines across [{files}] (partials included)");
         }

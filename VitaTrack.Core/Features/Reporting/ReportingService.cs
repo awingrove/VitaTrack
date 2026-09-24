@@ -4,6 +4,7 @@ using VitaTrack.Core.Models;
 using VitaTrack.Core.Primitives;
 
 using VitaTrack.Core.Features.Nutrients;
+using VitaTrack.Core.Features.Supplements;
 
 namespace VitaTrack.Core.Features.Reporting;
 

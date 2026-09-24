@@ -6,16 +6,6 @@ them, per the post-mortem rule in `AGENTS.md`.
 
 ## Open entries
 
-### TD-002 — `SupplementController` exceeds the type-size split trigger
-- **Where:** `VitaTrack.Web/Controllers/SupplementController.cs` (263) +
-  `SupplementController.Editor.cs` (50) = 313 lines across partials.
-- **What:** controller owns CRUD, CSV import, and nutrient editing; `KnownTypeDebt`
-  allowlist in `FileSizeTests` currently suppresses the violation.
-- **Interest:** the largest, most-edited controller; new endpoints pile on.
-- **Paydown:** split into `SupplementController` (CRUD), `SupplementImportController`
-  (CSV), `SupplementNutrientController` (already separate). Removes the `KnownTypeDebt`
-  entry. Candidate for the Supplements/CSV slice conversion.
-
 ### TD-003 — `DosageParser` should be a `Dosage` value object
 - **Where:** `VitaTrack.Core/DosageParser.cs`
 - **What:** parsing of free-text `"500 mg"` lives in static helpers; callers recombine
@@ -27,6 +17,15 @@ them, per the post-mortem rule in `AGENTS.md`.
   `Dosage` adoption on `SupplementNutrient.Dosage` is pending the Nutrients slice work.
 
 ## Closed entries
+
+### TD-002 — `SupplementController` exceeds the type-size split trigger
+- **Where:** was `VitaTrack.Web/Controllers/SupplementController.cs` (263) +
+  `SupplementController.Editor.cs` (50) = 313 lines across partials.
+- **What:** controller owned CRUD, CSV import, and nutrient editing; `KnownTypeDebt`
+  allowlist in `FileSizeTests` suppressed the violation.
+- **Closed 2026-09-23:** CSV import extracted to `SupplementImportController` +
+  `ImportSupplementsHandler`; controller is back to 190 + 52 partial lines and the
+  `KnownTypeDebt` set is deleted from `FileSizeTests`. MS slice conversion.
 
 ### TD-001 — `Result.cs` is six concepts in one file
 - **Where:** was `VitaTrack.Core/Models/Result.cs`
@@ -57,6 +56,27 @@ them, per the post-mortem rule in `AGENTS.md`.
 - **Closed 2026-09-23:** `DeleteByFamilyMemberIdsAsync` added to `IPrescribedDoseRepository`
   and routed — same pattern as the NT fix. Remaining exposure: the invariant still has no
   machine check (tracked as the cross-slice arch test follow-up in the factory-v3 plan).
+
+### TD-006 — `ServicesLayeringTests` only scans `VitaTrack.Core.Services`
+- **Where:** `VitaTrack.ArchitectureTests/ServicesLayeringTests.cs`
+- **What:** the "business logic reaches the DB only through repositories" rule scans
+  `VitaTrack.Core.Services` only. Slice code in `VitaTrack.Core.Features.*` (e.g. the
+  moved `CsvImportService`) is outside its net — a Dapper dependency added to a slice
+  service would not be caught. Found by the MiMo MS session.
+- **Interest:** the guardrail predates slices; every slice conversion shrinks its coverage.
+- **Paydown:** retarget the rule to Core business logic at large (`VitaTrack.Core`
+  excluding `VitaTrack.Core.Data` + `VitaTrack.Core.Primitives`), or per-slice via
+  `shards.yaml` `tables` declarations. Candidate for the Family/LLM slice conversions.
+
+### TD-007 — factory AGENTS.md docs lagged the slice moves
+- **Where:** root + `VitaTrack.Core/AGENTS.md`
+- **What:** still said interfaces live in `VitaTrack.Core.Data` and models belong in
+  `VitaTrack.Core/Models` after every feature model had moved into `Features/<Slice>/`.
+  Found by the MiMo MS session (its notice, correctly not fixed in-scope).
+- **Interest:** "docs must not lie" (ArchitectureReview §2.2); agents reading stale
+  conventions reinvent the old layout.
+- **Closed 2026-09-23:** conventions updated to the ADR-0006 slice layout in the same
+  change that paid TD-002.
 
 ## Defect log
 

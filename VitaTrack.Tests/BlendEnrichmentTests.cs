@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using VitaTrack.Core;
+using VitaTrack.Core.Features.Supplements;
 using VitaTrack.Core.Models;
 using VitaTrack.Core.Services;
 

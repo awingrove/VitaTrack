@@ -16,6 +16,31 @@ them, per the post-mortem rule in `AGENTS.md`.
   shipped (`VitaTrack.Core/Primitives/Unit.cs`). ReportingService adopted `Unit`; the
   `Dosage` adoption on `SupplementNutrient.Dosage` is pending the Nutrients slice work.
 
+### TD-010 — Agent and human share one GitHub identity; PR approval not machine-enforced
+- **Where:** repo settings (branch protection / rulesets), local `gh` auth (the
+  `awingrove` keyring is inherited by agent sessions), agent harness config
+  (`.opencode/`), and the soft rule added in `FACTORY.md` step 7.
+- **What:** controller sessions authenticate as the human's own account — push,
+  PR open, branch delete, and an attempted approve/merge all ran with human
+  credentials (DL-003). Nothing in the audit trail distinguishes agent actions from
+  human ones, and "the human approves the merge" is only a convention: the account
+  that authored the PR can attempt to merge it (branch protection declined the
+  attempt, but identity-based prevention — author cannot approve own PR — cannot
+  exist while author and approver are the same account).
+- **Interest:** every PR's "human review" is unverifiable; agents hold destructive
+  rights over the repo (DL-003: a mid-CI branch deletion auto-closed PR #19);
+  `human_interventions` in the ledger cannot distinguish a human click from an agent
+  one, so the headline metric slowly becomes unfalsifiable.
+- **Paydown:** (1) dedicated machine account or GitHub App installation for agent
+  sessions — token scoped to `contents: write` on feature branches +
+  `pull_requests: write`, with **no** merge/approve on protected refs and no
+  administration rights; (2) agent sessions run with `GH_CONFIG_DIR` / `GH_TOKEN`
+  pointed at those creds, never the human keyring; (3) `main` ruleset: require
+  approvals + dismiss stale reviews, so author-is-not-approver becomes enforceable
+  once identities differ; optionally CODEOWNERS requiring the human account;
+  (4) replay the DL-003 scenario as an acceptance test — agent creds must be
+  *rejected* at approve/merge, not merely deferred by convention.
+
 ## Closed entries
 
 ### TD-002 — `SupplementController` exceeds the type-size split trigger
@@ -130,3 +155,6 @@ post-mortem rule (a systemic gap updates `AGENTS.md`/ADR in the same change).
     rejections. Closed in `FACTORY.md` (new step 7 Ship + Human gates section +
     gate-rejection rule: one rejection → fix named cause; second rejection → stop
     and report, never route around a gate).
+    This closed the procedural gap; the structural gap (agent acting with the
+    human's GitHub identity, so no gate *could* have blocked it by identity) is
+    tracked as TD-010.

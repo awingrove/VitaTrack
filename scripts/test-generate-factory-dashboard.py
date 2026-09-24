@@ -1,5 +1,6 @@
 import importlib.util
 import re
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -21,6 +22,7 @@ def _load_generator():
             name="generate_factory_dashboard",
         )
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 

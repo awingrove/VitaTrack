@@ -11,13 +11,6 @@ from typing import Any
 
 import yaml
 
-# CPython dataclasses resolve PEP 563 string annotations through
-# sys.modules[cls.__module__] (_is_type); importlib spec loaders that
-# exec_module without registering the module first leave that lookup None.
-# Register a shell so @dataclass decoration works under both real imports
-# and the test harness's direct exec.
-sys.modules.setdefault(__name__, type(sys)(__name__))
-
 
 class DashboardError(RuntimeError):
     pass

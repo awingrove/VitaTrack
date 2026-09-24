@@ -98,7 +98,7 @@ python3 scripts/test-generate-factory-dashboard.py
 - The first command rewrites `docs/factory/dashboard.html` from current sources —
   run it after any change to the manifest, ledger, or plan files, and commit the
   result in the same change.
-- `--check` regenerates to a temp file and exits non-zero if the committed snapshot
+- `--check` regenerates in memory and exits non-zero if the committed snapshot
   is stale (CI-style freshness gate); it never writes.
 - The third command runs the generator's unit tests.
 

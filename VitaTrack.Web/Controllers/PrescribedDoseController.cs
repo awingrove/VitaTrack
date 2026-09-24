@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using VitaTrack.Core.Data;
 using VitaTrack.Core.Features.Dosing;
+using VitaTrack.Core.Features.Family;
 using VitaTrack.Core.Features.Supplements;
 
 namespace VitaTrack.Web.Controllers;

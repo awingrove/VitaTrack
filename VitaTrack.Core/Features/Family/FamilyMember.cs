@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace VitaTrack.Core.Models;
+namespace VitaTrack.Core.Features.Family;
 
 public class FamilyMember
 {

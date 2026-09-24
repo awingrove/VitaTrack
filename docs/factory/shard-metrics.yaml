@@ -102,10 +102,10 @@ shards:
     fix_commits: 0
     defects_escaped: 0
     agent_model: opencode/mimo-v2.6-flash-free
-    tokens_input: 90958
-    tokens_output: 8207
-    tokens_reasoning: 12818
-    tokens_cache_read: 2650880
+    tokens_input: 95652
+    tokens_output: 9979
+    tokens_reasoning: 14037
+    tokens_cache_read: 3216640
     cost_usd: 0
     notes: >
       Slice conversion from Data/Models into Features/Family per
@@ -113,7 +113,8 @@ shards:
       ending entity binding at FamilyController). Three commits, zero red
       gate runs (every format/build/test/e2e gate passed first try,
       including baseline). No human stops. Session ses_f2cb18f06ffe9ZEw7ZnZUqsqNE
-      (executor tokens extracted at ledger write; final turns not counted).
+      (executor tokens re-extracted by the controller after completion,
+      full session).
       Logged mechanical deviations: shards.yaml MF paths re-pointed
       incrementally in each file-changing commit (pre-commit runs
       ShardOwnershipTests — RP/MS DL-002 defect-a lesson), and Edit GET

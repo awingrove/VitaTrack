@@ -1,11 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace VitaTrack.Core.Models;
+namespace VitaTrack.Core.Features.Family;
 
-public class FamilyMember
+public class CreateFamilyMemberRequest
 {
-    public int Id { get; set; }
-
     [Required]
     [StringLength(200)]
     public string Name { get; set; } = string.Empty;

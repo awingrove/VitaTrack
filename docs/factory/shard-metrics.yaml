@@ -93,3 +93,32 @@ shards:
       file-changing commit (pre-commit runs ShardOwnershipTests — DL-002
       defect-a lesson), and the using-line update in CsvImportServiceTests
       (step-2 solution-wide namespace move; assertions untouched).
+
+  - id: MF
+    name: Family Members
+    agent: cheap
+    human_interventions: 0
+    guardrail_failures: 0
+    fix_commits: 0
+    defects_escaped: 0
+    agent_model: opencode/mimo-v2.6-flash-free
+    tokens_input: 95652
+    tokens_output: 9979
+    tokens_reasoning: 14037
+    tokens_cache_read: 3216640
+    cost_usd: 0
+    notes: >
+      Slice conversion from Data/Models into Features/Family per
+      docs/plans/2026-09-23-family-slice.md (namespace move + request DTOs
+      ending entity binding at FamilyController). Three commits, zero red
+      gate runs (every format/build/test/e2e gate passed first try,
+      including baseline). No human stops. Session ses_f2cb18f06ffe9ZEw7ZnZUqsqNE
+      (executor tokens re-extracted by the controller after completion,
+      full session).
+      Logged mechanical deviations: shards.yaml MF paths re-pointed
+      incrementally in each file-changing commit (pre-commit runs
+      ShardOwnershipTests — RP/MS DL-002 defect-a lesson), and Edit GET
+      projects the entity to EditFamilyMemberRequest (briefing said GET
+      keeps the entity, but the mandated Edit.cshtml @model swap to the
+      DTO would 500 on a FamilyMember model item — same projection the
+      Dosing pilot's Edit GET uses; rendered output identical).

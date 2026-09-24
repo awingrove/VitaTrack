@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using VitaTrack.Core.Data;
-using VitaTrack.Core.Models;
+using VitaTrack.Core.Features.Family;
 
 namespace VitaTrack.Web.Controllers;
 
@@ -24,14 +23,19 @@ public class FamilyController(IFamilyRepository familyRepo) : Controller
     // POST: /Family/Create
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(FamilyMember member)
+    public async Task<IActionResult> Create(CreateFamilyMemberRequest request)
     {
         if (ModelState.IsValid)
         {
-            await _familyRepo.AddAsync(member);
+            await _familyRepo.AddAsync(new FamilyMember
+            {
+                Name = request.Name,
+                DisplayName = request.DisplayName,
+                AvatarUrl = request.AvatarUrl,
+            });
             return RedirectToAction(nameof(Index));
         }
-        return View(member);
+        return View(request);
     }
 
     // GET: /Family/Edit/5
@@ -42,24 +46,36 @@ public class FamilyController(IFamilyRepository familyRepo) : Controller
         {
             return NotFound();
         }
-        return View(member);
+        return View(new EditFamilyMemberRequest
+        {
+            Id = member.Id,
+            Name = member.Name,
+            DisplayName = member.DisplayName,
+            AvatarUrl = member.AvatarUrl,
+        });
     }
 
     // POST: /Family/Edit/5
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, FamilyMember member)
+    public async Task<IActionResult> Edit(int id, EditFamilyMemberRequest request)
     {
-        if (id != member.Id)
+        if (id != request.Id)
         {
             return NotFound();
         }
         if (ModelState.IsValid)
         {
-            await _familyRepo.UpdateAsync(member);
+            await _familyRepo.UpdateAsync(new FamilyMember
+            {
+                Id = request.Id,
+                Name = request.Name,
+                DisplayName = request.DisplayName,
+                AvatarUrl = request.AvatarUrl,
+            });
             return RedirectToAction(nameof(Index));
         }
-        return View(member);
+        return View(request);
     }
 
     // POST: /Family/Delete/5

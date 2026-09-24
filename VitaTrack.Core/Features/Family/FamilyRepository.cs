@@ -4,9 +4,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Dapper;
 using VitaTrack.Core.Features.Dosing;
-using VitaTrack.Core.Models;
 
-namespace VitaTrack.Core.Data;
+namespace VitaTrack.Core.Features.Family;
 
 public class FamilyRepository(IDbConnection db, IPrescribedDoseRepository prescribedDoseRepository) : IFamilyRepository
 {

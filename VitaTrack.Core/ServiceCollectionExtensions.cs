@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using VitaTrack.Core.Data;
 using VitaTrack.Core.Features.Dosing;
+using VitaTrack.Core.Features.Family;
 using VitaTrack.Core.Services;
 
 using VitaTrack.Core.Features.Nutrients;

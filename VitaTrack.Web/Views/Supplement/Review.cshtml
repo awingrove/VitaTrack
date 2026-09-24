@@ -2,8 +2,8 @@
     ViewData["Title"] = "Review Supplement";
     Layout = "_Layout";
 }
-@using VitaTrack.Core.Models
 @model Supplement
+@using VitaTrack.Core.Features.Nutrients
 @{
     var nutrients = ViewData["ExtractedNutrients"] as List<SupplementNutrientDto>;
     var extractionError = ViewData["ExtractionError"] as string;

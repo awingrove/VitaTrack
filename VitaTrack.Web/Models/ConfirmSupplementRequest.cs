@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using VitaTrack.Core.Features.Supplements;
-using VitaTrack.Core.Models;
+using VitaTrack.Core.Features.Nutrients;
 
 namespace VitaTrack.Web.Models;
 

@@ -3,7 +3,6 @@ using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using Dapper;
-using VitaTrack.Core.Models;
 
 namespace VitaTrack.Core.Features.Nutrients;
 

@@ -1,6 +1,5 @@
 using VitaTrack.Core.Features.Nutrients;
-using VitaTrack.Core.Models;
-using VitaTrack.Core.Services;
+using VitaTrack.Core.Features.LlmEnrichment;
 
 namespace VitaTrack.Core.Features.Supplements;
 

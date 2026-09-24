@@ -1,13 +1,7 @@
-namespace VitaTrack.Core.Models;
+namespace VitaTrack.Core.Features.Nutrients;
 
-public class LlmResult
-{
-    public string NutritionJson { get; set; } = string.Empty;
-    public string? SwapSuggestion { get; set; }
-    public List<SupplementNutrientDto> Nutrients { get; set; } = [];
-    public string? ExtractionError { get; set; }
-}
-
+// Nutrient-editing contract shared across slices: parsed by LLM enrichment,
+// persisted by the Nutrients service, bound by the Web editor flows.
 public class SupplementNutrientDto
 {
     public string GenericName { get; set; } = string.Empty;

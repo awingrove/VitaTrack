@@ -1,8 +1,6 @@
 using VitaTrack.Core.Data;
-using VitaTrack.Core.Models;
-using VitaTrack.Web.Models;
-
 using VitaTrack.Core.Features.Nutrients;
+using VitaTrack.Web.Models;
 
 namespace VitaTrack.Web.Controllers;
 

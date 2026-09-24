@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using VitaTrack.Core.Models;
 
 namespace VitaTrack.Core.Features.Nutrients;
 

@@ -2,7 +2,7 @@ using System.Net.Http;
 using AngleSharp.Html.Parser;
 using Microsoft.Extensions.Logging;
 
-namespace VitaTrack.Core.Services;
+namespace VitaTrack.Core.Features.LlmEnrichment;
 
 public class HtmlScraperService(
     IHttpClientFactory httpClientFactory,

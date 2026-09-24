@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace VitaTrack.Core.Services;
+namespace VitaTrack.Core.Features.LlmEnrichment;
 
 internal static class UrlSafetyValidator
 {

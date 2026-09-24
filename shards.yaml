@@ -123,6 +123,7 @@ slices:
       - VitaTrack.Web/Controllers/SupplementNutrientController.cs
     core:
       - VitaTrack.Core/Features/Nutrients/SupplementNutrient.cs
+      - VitaTrack.Core/Features/Nutrients/SupplementNutrientDto.cs
       - VitaTrack.Core/Features/Nutrients/ISupplementNutrientRepository.cs
       - VitaTrack.Core/Features/Nutrients/SupplementNutrientRepository.cs
       - VitaTrack.Core/Features/Nutrients/ISupplementNutrientService.cs
@@ -184,16 +185,16 @@ slices:
     tables: []
     controller: []
     core:
-      - VitaTrack.Core/Services/LlmService.cs
-      - VitaTrack.Core/Services/ILlmService.cs
-      - VitaTrack.Core/Services/LlmClient.cs
-      - VitaTrack.Core/Services/ILlmClient.cs
-      - VitaTrack.Core/Services/SupplementLabelParser.cs
-      - VitaTrack.Core/Services/ISupplementLabelParser.cs
-      - VitaTrack.Core/Services/HtmlScraperService.cs
-      - VitaTrack.Core/Services/IHtmlScraperService.cs
-      - VitaTrack.Core/Services/UrlSafetyValidator.cs
-      - VitaTrack.Core/Models/LlmResult.cs
+      - VitaTrack.Core/Features/LlmEnrichment/LlmService.cs
+      - VitaTrack.Core/Features/LlmEnrichment/ILlmService.cs
+      - VitaTrack.Core/Features/LlmEnrichment/LlmClient.cs
+      - VitaTrack.Core/Features/LlmEnrichment/ILlmClient.cs
+      - VitaTrack.Core/Features/LlmEnrichment/SupplementLabelParser.cs
+      - VitaTrack.Core/Features/LlmEnrichment/ISupplementLabelParser.cs
+      - VitaTrack.Core/Features/LlmEnrichment/HtmlScraperService.cs
+      - VitaTrack.Core/Features/LlmEnrichment/IHtmlScraperService.cs
+      - VitaTrack.Core/Features/LlmEnrichment/UrlSafetyValidator.cs
+      - VitaTrack.Core/Features/LlmEnrichment/LlmResult.cs
     views: []
     js: []
     unit_tests:

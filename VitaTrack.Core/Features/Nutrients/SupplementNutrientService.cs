@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using VitaTrack.Core.Data;
-using VitaTrack.Core.Models;
 
 namespace VitaTrack.Core.Features.Nutrients;
 

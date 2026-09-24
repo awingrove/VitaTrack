@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using VitaTrack.Core.Data;
-using VitaTrack.Core.Models;
-using VitaTrack.Core.Services;
+using VitaTrack.Core.Features.LlmEnrichment;
 using VitaTrack.Web.Models;
 
 using VitaTrack.Core.Features.Nutrients;

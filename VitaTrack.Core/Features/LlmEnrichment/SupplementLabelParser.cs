@@ -1,8 +1,8 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using VitaTrack.Core.Models;
+using VitaTrack.Core.Features.Nutrients;
 
-namespace VitaTrack.Core.Services;
+namespace VitaTrack.Core.Features.LlmEnrichment;
 
 public class SupplementLabelParser(
     ILlmClient llmClient,

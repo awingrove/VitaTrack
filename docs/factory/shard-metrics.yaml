@@ -139,23 +139,25 @@ shards:
     notes: >
       Slice conversion from Services/Models into Features/LlmEnrichment per
       docs/plans/2026-09-23-llm-slice.md (pure namespace move of ten files,
-      no behavior change). Three commits, three red gate runs, one human stop (post-review),
-      stops: two failed Release builds while solution-wide using fallout was
+      no behavior change). Three commits, three red gate runs, one human stop (post-review).
+      Red gates: two failed Release builds while solution-wide using fallout was
       still being fixed (Services and Models namespaces emptied, so every
       stale using in Core/Web/Tests/Views became CS0234 — fixed by repointing
       LLM/DTO consumers to Features.LlmEnrichment and removing dead lines,
       plus one Review.cshtml @using the first sweep misclassified as stale),
       and one red dotnet test (ShardOwnership: the briefing sequences
       shards.yaml at step 3 after step 2's green requirement, so the manifest
-      was necessarily stale mid-step — resolved by doing the path surgery
+      was       necessarily stale mid-step — resolved by doing the path surgery
       before committing; RP/MS would have avoided this by re-pointing
-      incrementally, DL-002 defect-a). Logged observations not acted on:
+      incrementally, DL-002 defect-a). Logged observations at the executor's
+      done claim (actioned in the review follow-up below where noted):
       ServicesLayeringTests still filters namespace "VitaTrack.Core.Services",
       now empty so the rule passes vacuously (briefing forbids test edits
-      beyond using lines); VitaTrack.Core/AGENTS.md still says LlmResult
-      remains in Models; SupplementNutrientDto (a nutrient-editing DTO) now
-      lives in the LlmEnrichment folder because it shares LlmResult.cs —
-      candidate debt-register entries. Token numbers captured just before the
+      beyond using lines); VitaTrack.Core/AGENTS.md still said LlmResult
+      remains in Models (since corrected in 599a112); SupplementNutrientDto
+      (a nutrient-editing DTO) lived in the LlmEnrichment folder because it
+      shares LlmResult.cs — since re-homed to Features/Nutrients (see
+      adjudication below). Token numbers captured just before the
       final ledger commit; negligible growth after (commit hook + push only).
       Reviewer adjudication (2026-09-24): approved with one Important plan-mandated
       finding — SupplementNutrientDto, a Nutrients-owned contract bundled in

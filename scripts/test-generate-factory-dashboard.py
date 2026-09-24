@@ -1,8 +1,10 @@
 import importlib.util
+import io
 import re
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr
 from pathlib import Path
 
 _GENERATOR_PATH = Path(__file__).resolve().with_name("generate-factory-dashboard.py")
@@ -44,6 +46,7 @@ PlanState = _require(_generator, "PlanState")
 check_dashboard = _require(_generator, "check_dashboard")
 classify_plan = _require(_generator, "classify_plan")
 load_dashboard = _require(_generator, "load_dashboard")
+main = _require(_generator, "main")
 render_dashboard = _require(_generator, "render_dashboard")
 update_dashboard = _require(_generator, "update_dashboard")
 
@@ -227,6 +230,55 @@ class SnapshotTests(unittest.TestCase):
         output.write_text(shifted, encoding="utf-8")
 
         self.assertEqual(0, check_dashboard(root))
+
+
+class CliModeTests(unittest.TestCase):
+    def test_default_mode_writes_dashboard_and_returns_zero(self):
+        temporary, root = make_valid_root()
+        self.addCleanup(temporary.cleanup)
+
+        self.assertEqual(0, main([], root=root))
+        self.assertTrue((root / "docs/factory/dashboard.html").is_file())
+
+    def test_check_mode_returns_zero_for_current_snapshot(self):
+        temporary, root = make_valid_root()
+        self.addCleanup(temporary.cleanup)
+        self.assertEqual(0, main([], root=root))
+
+        self.assertEqual(0, main(["--check"], root=root))
+
+    def test_check_mode_returns_one_for_stale_snapshot(self):
+        temporary, root = make_valid_root()
+        self.addCleanup(temporary.cleanup)
+        (root / "docs/factory/dashboard.html").write_text(
+            "<html>stale</html>", encoding="utf-8"
+        )
+
+        self.assertEqual(1, main(["--check"], root=root))
+
+    def test_dashboard_error_prints_to_stderr_and_returns_one(self):
+        temporary, root = make_valid_root()
+        self.addCleanup(temporary.cleanup)
+        (root / "shards.yaml").write_text("slices: [", encoding="utf-8")
+        stderr = io.StringIO()
+
+        with redirect_stderr(stderr):
+            result = main([], root=root)
+
+        self.assertEqual(1, result)
+        self.assertIn("invalid YAML", stderr.getvalue())
+
+    def test_dashboard_error_returns_one_in_check_mode(self):
+        temporary, root = make_valid_root()
+        self.addCleanup(temporary.cleanup)
+        (root / "shards.yaml").write_text("slices: [", encoding="utf-8")
+        stderr = io.StringIO()
+
+        with redirect_stderr(stderr):
+            result = main(["--check"], root=root)
+
+        self.assertEqual(1, result)
+        self.assertIn("invalid YAML", stderr.getvalue())
 
 
 if __name__ == "__main__":

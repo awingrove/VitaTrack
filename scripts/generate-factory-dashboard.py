@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import html
+import os
 import re
 import sys
 from dataclasses import dataclass
@@ -264,11 +265,25 @@ def render_dashboard(data: DashboardData) -> str:
         for shard in data.shards
         if shard["id"] in ledger
     )
-    recorded_spend = sum(
+    fix_commits = sum(
+        int(ledger[shard["id"]].get("fix_commits") or 0)
+        for shard in data.shards
+        if shard["id"] in ledger
+    )
+    escaped_defects = sum(
+        int(ledger[shard["id"]].get("defects_escaped") or 0)
+        for shard in data.shards
+        if shard["id"] in ledger
+    )
+    cheap_records = sum(
+        1 for entry in ledger.values() if entry.get("agent") == "cheap"
+    )
+    cost_values = [
         float(entry["cost_usd"])
         for entry in ledger.values()
         if entry.get("cost_usd") is not None
-    )
+    ]
+    recorded_spend = format_cost(sum(cost_values)) if cost_values else "—"
     incomplete_plans = sum(1 for plan in data.plans if plan.status == "incomplete")
     review_plans = sum(1 for plan in data.plans if plan.status == "needs-review")
     ordered_plans = sorted(
@@ -287,7 +302,10 @@ def render_dashboard(data: DashboardData) -> str:
         )
         + _summary_card("Human interventions", str(interventions))
         + _summary_card("Guardrail failures", str(guardrail_failures))
-        + _summary_card("Recorded spend", format_cost(recorded_spend))
+        + _summary_card("Fix commits", str(fix_commits))
+        + _summary_card("Escaped defects", str(escaped_defects))
+        + _summary_card("Cheap-agent records", str(cheap_records))
+        + _summary_card("Recorded spend", recorded_spend)
         + _summary_card("Incomplete plans", str(incomplete_plans))
         + _summary_card("Needs-review plans", str(review_plans))
     )
@@ -362,7 +380,12 @@ def normalized_for_check(document: str) -> str:
 
 def write_dashboard(root: Path, document: str) -> None:
     output = root / "docs/factory/dashboard.html"
-    output.write_text(document, encoding="utf-8")
+    temporary = output.with_name(output.name + ".tmp")
+    try:
+        temporary.write_text(document, encoding="utf-8")
+        os.replace(temporary, output)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def generate_dashboard(root: Path) -> str:
@@ -470,7 +493,7 @@ def _classify_plan_file(root: Path, plan_path: Path) -> PlanState:
     return classify_plan(relative, text, progress_text)
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, root: Path | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Generate the VitaTrack factory dashboard snapshot."
     )
@@ -480,7 +503,8 @@ def main(argv: list[str] | None = None) -> int:
         help="exit 1 when the committed dashboard differs from current sources",
     )
     args = parser.parse_args(argv)
-    root = Path(__file__).resolve().parents[1]
+    if root is None:
+        root = Path(__file__).resolve().parents[1]
     try:
         if args.check:
             return check_dashboard(root)

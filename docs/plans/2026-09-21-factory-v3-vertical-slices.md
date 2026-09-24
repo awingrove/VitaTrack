@@ -190,7 +190,7 @@ machine with no instruments, and guardrails check conformance but not design cor
       (`Result.cs:23`); `Money` value object.
 - [x] **Supplements / CSV** — **Chain of Responsibility** for row validation; split `SupplementController`
       (263 + 50 partial).
-- [x] **Family**, **LLM** — remaining slices. *(Family done — LLM remains.)*
+- [x] **Family**, **LLM** — remaining slices. *(Both done — rollout complete.)*
 - [x] Split `Result.cs` (6 concepts: `NutrientFailure`, `ReplaceNutrientsResult`, `MemberCostRow`,
       `SupplementCostRow`, `NutrientContributionRow`, report data records) — one file per concept.
       *(Completed across NT + RP slices.)*
@@ -255,6 +255,26 @@ machine with no instruments, and guardrails check conformance but not design cor
   (in 95,652 / out 9,979 / cache-read 3.2M / $0). Debt candidates recorded: vacuous
   cascade-delete e2e assertion in `family-member.spec.js` (TestDose vs DoseInstr string),
   missing `ORDER BY` in `FamilyRepository.GetAllAsync`.
+- **LLM rollout shipped** (mimo-flash executed, PR #20). All nine Services files +
+  `LlmResult` moved to `VitaTrack.Core/Features/LlmEnrichment/` — `VitaTrack.Core/Services`
+  and `Core/Models` are now EMPTY and retired; every slice owns its home. Pure namespace
+  move, 3 red gates (build fallout ×2, manifest timing — DL-002 lesson recurs: shards.yaml
+  surgery must ride the move commit), 0 interventions. Reviewer approved with one
+  **Important plan-mandated finding**: `SupplementNutrientDto` (bundled in `LlmResult.cs`)
+  is a Nutrients-owned contract; the pure move stranded it in LLM, baking
+  `Nutrients → LlmEnrichment` coupling into the layout. Fixed in the merge follow-up
+  (599a112): DTO now lives in `Features/Nutrients/`, dependency direction corrected to
+  LLM → Nutrients. TD-006 updated: `ServicesLayeringTests` now passes vacuously (empty
+  namespace) — retargeting is the standing paydown item. `Core/AGENTS.md` slice-layout
+  text finalized. Controller re-verified gates independently and ran the FULL e2e suite
+  post-merge: 77/77. Ledger entry LLM (sixth): mimo-v2.6-flash-free, 0 interventions,
+  3 guardrail failures, $0.
+- **Factory-v3 rollout COMPLETE.** All seven slices (PD, NT, RP, MS, MF, LLM + SHELL)
+  live under `VitaTrack.Core/Features/`. Six ledger entries; every slice verified by
+  `verify-shard` + independent controller re-run + scoped review. Remaining open items
+  live in `docs/factory/technical-debt.md` (TD-002 closed; TD-006 open — layering-rule
+  retarget; TD-008 in `family-member.spec.js` vacuous assertion candidate) and the
+  briefing-derived candidates reported by each executor.
 
 ## Risks / Guardrails
 

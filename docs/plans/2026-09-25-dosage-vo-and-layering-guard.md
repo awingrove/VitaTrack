@@ -198,9 +198,21 @@ rule (`technical-debt.md:136-138`) applied to a formatter.
 
 **A5. `DosageParser.cs` and `DosageParserTests.cs` are deleted.** No shim, no
 `[Obsolete]` — a one-method static class that no longer parses is a name that lies.
+`DosageParserTests.cs` currently holds **20 assertions across 11 methods** (`grep -c 'Assert\.'`),
+not 18 — all 20 must survive the move with their intent intact.
 
-**A6. Tests first (TDD), and the error edges get the most assertions** (DL-001).
-- `VitaTrack.Tests/Primitives/DosageTests.cs` (exists, 5 assertions) gains: the full
+**A6. Tests first, and the error edges get the most assertions** (DL-001).
+
+> **Authorized contract change.** `VitaTrack.Tests/Primitives/UnitTests.cs` already exists
+> (6 methods, 14 assertions, added in `0bfbb92`) — it is **not** a new file. Its
+> `Parse_UnknownUnitPassesThrough` (`:42-47`) asserts
+> `Unit.Parse("nonsense").Symbol == "nonsense"`, i.e. it pins **exactly the pass-through behavior
+> A1 removes**. Deleting it and replacing it with the rejection table below is **authorized by
+> this design**, not a test weakened to make a build pass: rejecting unrecognized tokens is the
+> approved contract, and that assertion encodes the defect. The other five methods use only
+> recognized tokens and stay untouched. Do not re-license the pass-through under another name.
+
+- `VitaTrack.Tests/Primitives/DosageTests.cs` (exists, 7 assertions / 4 methods) gains: the full
   `TryParse` truth table; the `IsDefined` matrix — `""`→false, `"0"`→false, `"0mg"`→true,
   `"500 mg"`→true, `"3 capsules"`→true-with-undefined-unit and `"3 tablets"`→true-with-`tab`
   (pin both, so the zero/absent asymmetry is executable rather than folklore, and so nobody
@@ -209,13 +221,15 @@ rule (`technical-debt.md:136-138`) applied to a formatter.
   unchanged, `"2 x 500mg"` unchanged); and **`ToString` under `de-DE`** — set
   `CultureInfo.CurrentCulture` in a `try/finally`, assert `Dosage.Parse("1.5 mg").ToString()`
   is `"1.5 mg"`. That test is red before A3 and green after.
-- `VitaTrack.Tests/Primitives/UnitTests.cs` (**new**): the **acceptance** table — all eight
-  canonical symbols plus every alias in the A1 table resolve `IsDefined == true` and carry the
-  expected `Symbol` (so `tablet`, `tablets` and `tab` all yield `tab`); the **rejection** table —
-  `"3 capsules"`, `"one tablet"`, `"500 mg with food"`, `"50 mg/kg"`, `"20%DV"`, `""`, `null`
-  all yield `!IsDefined`; `ToString`; and a test pinning the accepted set to exactly the eight
-  symbols of the A1 table, so a later unit addition cannot land in the switch without a test
-  noticing.
+- `VitaTrack.Tests/Primitives/UnitTests.cs` (**extend, do not recreate**): the **acceptance**
+  table — all eight canonical symbols plus every alias in the A1 table resolve `IsDefined == true`
+  and carry the expected `Symbol` (so `tablet`, `tablets` and `tab` all yield `tab`; the existing
+  `Parse_PassesThroughKnownUnits` becomes a misnomer once the fall-through is retired, so rename
+  it — e.g. `Parse_RecognizesCanonicalSymbols` — and extend it with `tbsp`/`TBSP` and `tab`); the
+  **rejection** table — `"3 capsules"`, `"one tablet"`, `"500 mg with food"`, `"50 mg/kg"`,
+  `"20%DV"`, `""`, `null` all yield `!IsDefined`; and a test pinning the accepted set to exactly
+  the eight symbols of the A1 table, so a later unit addition cannot land in the switch without a
+  test noticing.
 - `VitaTrack.Tests/ReportingServiceTests.cs` (owned by slice RP; content change only) gains the
   regression, **both directions** — this is the test that proves the fix and pins the
   count-noun decision at the same time:
@@ -227,10 +241,19 @@ rule (`technical-debt.md:136-138`) applied to a formatter.
 - `VitaTrack.Tests/LlmServiceTests.cs` is **not edited**; it passing unmodified is the
   proof that A4 preserved behavior.
 
-**A7. `FileSizeTests` learns about `struct`s.** Add `|struct` to `TypePattern` (`:93`).
-Dry-run this step against the gate: after the edit, `dotnet test VitaTrack.ArchitectureTests`
-must be green. If it goes red, that is a **finding to report** (a VO has genuinely exceeded
-300 lines) — do **not** revert the regex to force green.
+**A7. `FileSizeTests` learns about `struct`s.** Add `|struct` to `TypePattern` (`:93`), then run
+the arch suite. **Dry-run result, already verified — do not re-derive: 0 violations with *and*
+without the change.** The five structs that become countable are `Money` 53, `DoseMultiplier` 42,
+`Unit` 31, `Dosage` 26, `DosePeriod` 22 lines — max 53 against a 300 limit, so no allowlist
+entry is needed. If the arch suite nonetheless goes red, that is a **finding to report** (a VO
+has genuinely exceeded 300 lines) — do **not** revert the regex, and do **not** add an allowlist
+entry to force green.
+
+**Also verified for this dispatch:** no nutrient dosage literal anywhere (seed, unit test, e2e
+spec) contains a compound or unrecognized unit. The free-text literals that do exist —
+`'1 capsule'`, `'1 tablet'`, `'1 scoop (5g)'`, `'1 serving'` — are all `Supplements.DailyDose`,
+and `Supplement` has no `ParsedDosage` (only `SupplementNutrient` does,
+`SupplementNutrient.cs:31`), so they never reach `Unit.Parse`. This dispatch must not change them.
 
 ### Part B — TD-006
 
@@ -347,10 +370,11 @@ Running C before A would produce a predicate that accepts `"3 capsules"`.
 1. Commit 1 — `test+fix`: the new `UnitTests.cs` rejection table and the `de-DE` `ToString` test,
    red first, then A1–A3 green. Nothing deleted yet, and `Normalize` deliberately stays put so
    no duplicate implementation exists even for one commit.
-2. Commit 2 — `refactor`: re-point the 3 call sites (A4), delete `DosageParser.cs` +
-   `DosageParserTests.cs`, remove `shards.yaml:232` and `:242` **in the same commit** (the
-   pre-commit hook runs `ShardOwnershipTests` on every commit — DL-002 defect a), migrate the
-   18 `DosageParserTests` assertions into `Primitives/DosageTests.cs` + `Primitives/UnitTests.cs`.
+2. Commit 2 — `refactor: delete DosageParser in favour of Dosage.Normalize`: re-point the 3 call
+   sites (A4), delete `DosageParser.cs` + `DosageParserTests.cs`, remove `shards.yaml:232` and
+   `:242` **in the same commit** (the pre-commit hook runs `ShardOwnershipTests` on every commit
+   — DL-002 defect a), migrate all **20** `DosageParserTests` assertions into
+   `Primitives/DosageTests.cs` + `Primitives/UnitTests.cs`.
 3. Commit 3 — `test`: the `ReportingServiceTests` regression for the free-text unit leak, and the
    `FileSizeTests` `|struct` fix.
 
@@ -405,6 +429,11 @@ Running C before A would produce a predicate that accepts `"3 capsules"`.
   - **TD-015** — stale `VitaTrack.Core/Services` references are back in the live docs — a TD-007
     regression: `VitaTrack.Core/AGENTS.md:8`, `:12`, `:70`, root `AGENTS.md:17`,
     `docs/ArchitectureReview.md:27`.
+  - **TD-016** — `FileSizeTests` attributes a file's **entire** line count to every type
+    declared in it, and is order-blind. Once A7 lands, a file declaring a 5-line struct and a
+    300-line class fails on the *struct* key with a nonsensical message. Cheap today (largest
+    struct is `Money` at 53 lines), but it will produce a confusing failure the day a large
+    controller file also declares a small struct.
 - `AGENTS.md:48` (the "Dosage Unit Normalization" bullet) — re-point from
   `DosageParser.NormalizeDosage` to `Dosage.Normalize` / `Unit.Parse`, and state the new
   rule in full: the eight recognized symbols are `mg`, `µg` (U+00B5), `g`, `ml`, `tsp`, `tbsp`,

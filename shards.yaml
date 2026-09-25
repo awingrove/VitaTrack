@@ -139,6 +139,7 @@ slices:
       - VitaTrack.Tests/SupplementNutrientServiceTests.cs
       - VitaTrack.Tests/SupplementNutrientServiceHierarchyTests.cs
       - VitaTrack.Tests/SupplementNutrientValidationTests.cs
+      - VitaTrack.Tests/SupplementNutrientDosageShapeTests.cs
       - VitaTrack.Tests/SupplementNutrientDosageNormalizationTests.cs
       - VitaTrack.Tests/SupplementNutrientRepositoryTests.cs
       - VitaTrack.Tests/SupplementNutrientRepositoryCascadeTests.cs

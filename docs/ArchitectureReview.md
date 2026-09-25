@@ -24,7 +24,7 @@ Use the Prioritized Roadmap (§3) for work order; each item maps to a finding in
 |---|---|
 | "Razor Pages" | **MVC** (`Program.cs` uses `MapControllerRoute`, not Razor Pages) |
 | "Interactivity: Vanilla JavaScript" | **HTMX is load-bearing** (`Create.cshtml`, `_NutrientEditor.cshtml`, `_ValidationErrors.cshtml` use `hx-post`/`hx-target`/`hx-swap`/`hx-swap-oob`; `delete-selected.js`/`review.js` are vanilla JS *alongside*) |
-| "`/Controllers`, `/Models`, `/Services`, `/Repositories`" single-project layout | **3-project solution**; repos live in `VitaTrack.Core/Data`, services in `VitaTrack.Core/Services` |
+| "`/Controllers`, `/Models`, `/Services`, `/Repositories`" single-project layout | **3-project solution**; repos live in `VitaTrack.Core/Data`, business logic in `VitaTrack.Core/Features/<Slice>/` (ADR-0006) |
 
 **Fix:** Make the root `AGENTS.md` match reality (MVC, HTMX+vanilla JS, 3-project layering). **Commit to HTMX** — do **not** strip it from `VitaTrack.Web/AGENTS.md`. Add a line stating per-project `AGENTS.md` files **supplement** the root; any contradiction is a defect to report, not a license to pick one.
 

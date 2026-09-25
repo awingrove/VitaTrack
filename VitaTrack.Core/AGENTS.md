@@ -5,11 +5,12 @@
 - Define repository interfaces (`IFamilyRepository`, `ISupplementRepository`, `ISupplementNutrientRepository`, `IPrescribedDoseRepository`).
 - Implement repositories with async CRUD methods.
 - Provide access to external services (LLM) via `ILlmService`.
-- Contain models used across layers; every slice owns its models under `Features/<Slice>/` (`Supplement`, `FamilyMember`, `SupplementNutrient`, `PrescribedDose`, `LlmResult`, report records) — `VitaTrack.Core/Models` and the flat `VitaTrack.Core/Services` namespace are retired.
+- Contain models used across layers; every slice owns its models under `Features/<Slice>/` (`Supplement`, `FamilyMember`, `SupplementNutrient`, `PrescribedDose`, `LlmResult`, report records). `VitaTrack.Core/Models` and the flat `VitaTrack.Core/Services` namespace are retired — neither exists.
+- Shared value objects live in `VitaTrack.Core/Primitives/` (`Dosage`, `Unit`, `Money`, and the Dosing objects). All dosage parsing and unit recognition lives there; see the root `AGENTS.md` dosage rules.
 - No direct HTTP or UI concerns; keep pure C#.
 
 ## Conventions
-- Interfaces: prefix `I`, co-located with their implementation — feature slices own theirs under `VitaTrack.Core/Features/<Slice>/` (ADR-0006); shared infrastructure ones live in `VitaTrack.Core.Data` or `VitaTrack.Core.Services`.
+- Interfaces: prefix `I`, co-located with their implementation — feature slices own theirs under `VitaTrack.Core/Features/<Slice>/` (ADR-0006); shared infrastructure interfaces live in `VitaTrack.Core.Data`. There is no `VitaTrack.Core.Services` (retired).
 - Implementations: suffix `Repository` or `Service`, same namespace.
 - Models: plain POCOs with public get/set; default string values `string.Empty`. Feature-owned models live in their slice folder, not `VitaTrack.Core/Models`.
 - Constructor injection: receive `IDbConnection` (repositories) or `HttpClient` + `IConfiguration` (LLM service).
@@ -67,7 +68,7 @@ When adding new tables (or FK-like columns, via `CREATE TABLE` or `ALTER TABLE` 
 1. Add model (if needed) to the owning feature slice under `VitaTrack.Core/Features/<Slice>/`.
 2. Extend repository interface (if new entity) and implement.
 3. Register new interface/implementation in `VitaTrack.Web/Program.cs` via `builder.Services.AddScoped<...>()`.
-4. If external service, add to `VitaTrack.Core.Services` and register via `AddHttpClient<TInterface, TImplementation>()` (you may also need to register `HttpClient` separately if not already).
+4. If external service, add it to the owning slice folder (e.g. `Features/LlmEnrichment/`) and register via `AddHttpClient<TInterface, TImplementation>()` (you may also need to register `HttpClient` separately if not already).
 5. Write unit tests in `VitaTrack.Tests` before or after implementation (TDD encouraged).
 
 ## Build

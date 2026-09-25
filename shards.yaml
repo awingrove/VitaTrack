@@ -175,6 +175,7 @@ slices:
       - VitaTrack.Web/wwwroot/js/report-toggle.js
     unit_tests:
       - VitaTrack.Tests/ReportingServiceTests.cs
+      - VitaTrack.Tests/NutrientReportUnitTests.cs
     e2e_specs:
       - e2e-tests/playwright/tests/nutrient-report.spec.js
       - e2e-tests/playwright/tests/cost-report.spec.js

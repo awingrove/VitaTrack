@@ -90,7 +90,7 @@ public class FileSizeTests
     }
 
     private static readonly Regex NamespacePattern = new(@"^\s*namespace\s+([\w.]+)", RegexOptions.Multiline | RegexOptions.Compiled);
-    private static readonly Regex TypePattern = new(@"(?:record\s+)?(?:class|interface)\s+(\w+)", RegexOptions.Compiled);
+    private static readonly Regex TypePattern = new(@"(?:record\s+)?(?:class|interface|struct)\s+(\w+)", RegexOptions.Compiled);
 
     private static string ParseNamespace(string text)
     {

@@ -28,6 +28,16 @@ public readonly record struct Unit
 
     private static readonly Regex UnitTokenPattern = new(@"[^\d.]+", RegexOptions.Compiled);
 
+    /// <summary>
+    /// Whether <paramref name="raw"/> carries a unit token at all, as decided by
+    /// <see cref="UnitTokenPattern"/>. Lets a caller tell "no unit at all" (which is
+    /// legal — a bare "500") apart from "a unit that is not one of ours" (which is
+    /// not) without re-deriving the pattern. <see cref="Parse"/> collapses both cases
+    /// onto an undefined <see cref="Unit"/>, so this is the only way to separate them.
+    /// </summary>
+    internal static bool HasUnitToken(string? raw)
+        => !string.IsNullOrWhiteSpace(raw) && UnitTokenPattern.IsMatch(raw);
+
     public static Unit Parse(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return default;

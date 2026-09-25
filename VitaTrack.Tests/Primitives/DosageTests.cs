@@ -182,6 +182,57 @@ public class DosageTests
     }
 
     [TestMethod]
+    public void IsWellFormed_AcceptsBlankInput()
+    {
+        // A blank dosage is legal: a blend child carries no dosage of its own. The
+        // "required" rules live with the surfaces that impose them, not here.
+        Assert.IsTrue(Dosage.IsWellFormed(null), "null is not malformed");
+        Assert.IsTrue(Dosage.IsWellFormed(string.Empty), "an empty dosage is not malformed");
+        Assert.IsTrue(Dosage.IsWellFormed("   "), "whitespace is not malformed");
+    }
+
+    [TestMethod]
+    public void IsWellFormed_RejectsInputWithNoAmount()
+    {
+        Assert.IsFalse(Dosage.IsWellFormed("one tablet"), "a spelled-out number is not an amount");
+        Assert.IsFalse(Dosage.IsWellFormed("abc"), "no digits and no meaning is not a dosage");
+    }
+
+    [TestMethod]
+    public void IsWellFormed_RejectsAnUnrecognizedUnitToken()
+    {
+        Assert.IsFalse(Dosage.IsWellFormed("3 capsules"), "a count-noun is not a unit");
+        Assert.IsFalse(Dosage.IsWellFormed("500 mg with food"), "free text after the unit is not a unit");
+        Assert.IsFalse(Dosage.IsWellFormed("5mg x2"), "a multiplier is not part of a dosage");
+        Assert.IsFalse(Dosage.IsWellFormed("50 mg/kg"), "a compound unit is not a single unit");
+        Assert.IsFalse(Dosage.IsWellFormed("20%DV"), "a percent daily value is not a unit");
+    }
+
+    [TestMethod]
+    public void IsWellFormed_AcceptsAmountOnly()
+    {
+        // A bare number stays legal on purpose: the defect this closes is a *wrong* unit,
+        // not a missing one, and a bare number is not reinterpreted as tablets.
+        Assert.IsTrue(Dosage.IsWellFormed("500"), "an amount with no unit is still a dosage");
+        Assert.IsTrue(Dosage.IsWellFormed("1.5"), "a decimal amount with no unit is still a dosage");
+        Assert.IsTrue(Dosage.IsWellFormed("1"), "the amount alone is a dosage, not one tablet");
+    }
+
+    [TestMethod]
+    public void IsWellFormed_AcceptsARecognizedUnit()
+    {
+        Assert.IsTrue(Dosage.IsWellFormed("0mg"), "a zero amount still has a defined unit");
+        Assert.IsTrue(Dosage.IsWellFormed("500 mg"), "spaced and unspaced are both fine");
+        Assert.IsTrue(Dosage.IsWellFormed("500mg"));
+        Assert.IsTrue(Dosage.IsWellFormed("200IU"));
+        Assert.IsTrue(Dosage.IsWellFormed("900µg"));
+        Assert.IsTrue(Dosage.IsWellFormed("1 tbsp"), "an alias is as good as its canonical symbol");
+        Assert.IsTrue(Dosage.IsWellFormed("500mcg"), "an alias is as good as its canonical symbol");
+        Assert.IsTrue(Dosage.IsWellFormed("1 tablet"), "'tablet' canonicalizes to 'tab'; it is 'one tablet' that fails, on the missing amount");
+        Assert.IsTrue(Dosage.IsWellFormed("3 tablets"));
+    }
+
+    [TestMethod]
     public void TryParse_ReadsAStoredDecimalAmount_UnderAnyCulture()
     {
         var original = CultureInfo.CurrentCulture;

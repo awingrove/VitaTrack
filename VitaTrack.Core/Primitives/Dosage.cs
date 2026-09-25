@@ -50,6 +50,29 @@ public readonly record struct Dosage
     }
 
     /// <summary>
+    /// Whether <paramref name="raw"/> is a dosage shape the app will accept: it must
+    /// carry an amount, and any unit it carries must be one of the recognized symbols.
+    /// The single predicate both write surfaces enforce, so a form and the LLM/Review
+    /// path cannot disagree about what a dosage is.
+    /// <para>
+    /// Blank is well-formed — a blend child legitimately has no dosage of its own — so
+    /// the "required" rules stay with the surfaces that impose them. An amount with no
+    /// unit is also well-formed: the defect this closes is a <em>wrong</em> unit, not a
+    /// missing one. What it rejects is an amount with a unit token that
+    /// <see cref="Unit.Canonicalize"/> does not recognize ("3 capsules", "50 mg/kg",
+    /// "20%DV"), and text with no amount at all ("one tablet") — the same two shapes
+    /// <see cref="Unit.Parse"/> reports as an undefined unit, which is why the two
+    /// cannot drift.
+    /// </para>
+    /// </summary>
+    public static bool IsWellFormed(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return true;
+        if (!TryParseAmount(raw, out _)) return false;
+        return !Unit.HasUnitToken(raw) || Unit.Parse(raw).IsDefined;
+    }
+
+    /// <summary>
     /// Tolerant parse for best-effort callers: false when the text carries no amount
     /// at all. The unit may still be undefined — "3 capsules" parses to 3 with no unit.
     /// </summary>

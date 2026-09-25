@@ -719,6 +719,12 @@ def _split_debt_sections(
     for heading in DEBT_SECTION_HEADINGS:
         if heading not in positions:
             raise DashboardError(f"{path}: missing section heading '{heading}'")
+    order = [positions[heading] for heading in DEBT_SECTION_HEADINGS]
+    if order != sorted(order):
+        raise DashboardError(
+            f"{path}: section headings must appear in order: "
+            + ", ".join(DEBT_SECTION_HEADINGS)
+        )
     return (
         lines[positions["## Open entries"] + 1 : positions["## Closed entries"]],
         lines[positions["## Closed entries"] + 1 : positions["## Defect log"]],
@@ -779,8 +785,9 @@ def _load_debt(root: Path) -> DebtRegister:
     path = root / "docs/factory/technical-debt.md"
     if not path.is_file():
         raise DashboardError(f"{path}: file not found")
+    register_lines = list(_outside_fence_lines(path.read_text(encoding="utf-8")))
     open_lines, closed_lines, defect_lines = _split_debt_sections(
-        path, path.read_text(encoding="utf-8").splitlines()
+        path, register_lines
     )
     return DebtRegister(
         open_entries=_parse_open_debt_entries(open_lines),

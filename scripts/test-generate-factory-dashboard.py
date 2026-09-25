@@ -758,6 +758,58 @@ class DebtLoadingTests(unittest.TestCase):
         self.assertEqual(1, data.debt.closed_count)
         self.assertEqual(["DL-31337"], [e.id for e in data.debt.defects])
 
+    def test_fenced_entry_lines_are_ignored_for_rows_and_counts(self):
+        temporary, root = make_valid_root()
+        self.addCleanup(temporary.cleanup)
+        _write_debt(
+            root,
+            _debt_document(
+                open_section=(
+                    "### TD-100 — Real open entry\n"
+                    "- **Interest:** real interest\n\n"
+                    "```markdown\n"
+                    "### TD-999 — Fenced\n"
+                    "- **DL-999 — Fenced**\n"
+                    "```"
+                ),
+                closed_section=(
+                    "### TD-700 — Real closed entry\n"
+                    "- **Closed 2026-09-01:** shipped.\n\n"
+                    "```markdown\n"
+                    "### TD-998 — Fenced closed\n"
+                    "```"
+                ),
+                defect_section=(
+                    "- **DL-42 — Real defect** (found Sep 2026).\n\n"
+                    "```markdown\n"
+                    "- **DL-999 — Fenced**\n"
+                    "```"
+                ),
+            ),
+        )
+
+        data = load_dashboard(root)
+
+        self.assertEqual(["TD-100"], [e.id for e in data.debt.open_entries])
+        self.assertEqual(1, data.debt.closed_count)
+        self.assertEqual(["DL-42"], [e.id for e in data.debt.defects])
+
+    def test_out_of_order_section_headings_raise_dashboard_error(self):
+        documents = (
+            "# Technical Debt Register\n\n## Defect log\n\n## Open entries\n\n"
+            "## Closed entries\n",
+            "# Technical Debt Register\n\n## Closed entries\n\n## Open entries\n\n"
+            "## Defect log\n",
+        )
+        for document in documents:
+            with self.subTest(document=document):
+                temporary, root = make_valid_root()
+                self.addCleanup(temporary.cleanup)
+                _write_debt(root, document)
+
+                with self.assertRaises(DashboardError):
+                    load_dashboard(root)
+
 
 class DebtRenderingTests(unittest.TestCase):
     def test_debt_section_sits_between_shards_and_plans(self):

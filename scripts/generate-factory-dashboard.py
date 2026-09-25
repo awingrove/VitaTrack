@@ -6,7 +6,7 @@ import math
 import os
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -30,11 +30,32 @@ class PlanState:
 
 
 @dataclass(frozen=True)
+class DebtEntry:
+    id: str
+    title: str
+    interest: str
+
+
+@dataclass(frozen=True)
+class DefectEntry:
+    id: str
+    title: str
+
+
+@dataclass(frozen=True)
+class DebtRegister:
+    open_entries: list[DebtEntry] = field(default_factory=list)
+    closed_count: int = 0
+    defects: list[DefectEntry] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class DashboardData:
     shards: list[dict[str, Any]]
     ledger_by_id: dict[str, dict[str, Any]]
     plans: list[PlanState]
     generated_at: str
+    debt: DebtRegister = field(default_factory=DebtRegister)
 
 
 STATUS_RE = re.compile(
@@ -55,6 +76,9 @@ CHILD_PROGRESS_RE = re.compile(
 CHECKED_RE = re.compile(r"(?m)^\s*- \[x\]\s+", re.IGNORECASE)
 UNCHECKED_RE = re.compile(r"(?m)^\s*- \[ \]\s+")
 H1_RE = re.compile(r"(?m)^#\s+(.+?)\s*$")
+DEBT_ENTRY_RE = re.compile(r"^### (TD-\S+) — (.+)$")
+INTEREST_BULLET_RE = re.compile(r"^- \*\*Interest:\*\* ?(.*)$")
+DEFECT_ENTRY_RE = re.compile(r"^- \*\*(DL-\S+) — (.*)$")
 
 REQUIRED_LEDGER_FIELDS = (
     "id",
@@ -212,12 +236,14 @@ def load_dashboard(root: Path) -> DashboardData:
     shard_ids = {shard["id"] for shard in shards}
     ledger_by_id = _load_ledger(root, shard_ids)
     plans = [_classify_plan_file(root, plan) for plan in _collect_plan_paths(root)]
+    debt = _load_debt(root)
     generated_at = datetime.now(timezone.utc).isoformat()
     return DashboardData(
         shards=shards,
         ledger_by_id=ledger_by_id,
         plans=plans,
         generated_at=generated_at,
+        debt=debt,
     )
 
 
@@ -252,6 +278,15 @@ PLAN_COLUMNS = (
     "Evidence",
     "Checkboxes",
     "Stale evidence",
+)
+DEBT_COLUMNS = (
+    "ID",
+    "Debt",
+    "Interest",
+)
+DEFECT_COLUMNS = (
+    "ID",
+    "Defect",
 )
 
 
@@ -342,6 +377,25 @@ def _plan_row(plan: PlanState) -> str:
     )
 
 
+def _debt_row(entry: DebtEntry) -> str:
+    return (
+        "<tr>"
+        f"<td>{display_metric(entry.id)}</td>"
+        f"<td>{display_metric(entry.title)}</td>"
+        f"<td>{display_metric(entry.interest)}</td>"
+        "</tr>"
+    )
+
+
+def _defect_row(entry: DefectEntry) -> str:
+    return (
+        "<tr>"
+        f"<td>{display_metric(entry.id)}</td>"
+        f"<td>{display_metric(entry.title)}</td>"
+        "</tr>"
+    )
+
+
 def render_dashboard(data: DashboardData) -> str:
     ledger = data.ledger_by_id
     missing_ids = [shard["id"] for shard in data.shards if shard["id"] not in ledger]
@@ -395,6 +449,12 @@ def render_dashboard(data: DashboardData) -> str:
         + _summary_card("Guardrail failures", str(guardrail_failures))
         + _summary_card("Fix commits", str(fix_commits))
         + _summary_card("Escaped defects", str(escaped_defects))
+        + _summary_card(
+            "Open debt",
+            str(len(data.debt.open_entries)),
+            f"{data.debt.closed_count} closed",
+        )
+        + _summary_card("Defect log entries", str(len(data.debt.defects)))
         + _summary_card("Cheap-agent records", str(cheap_records))
         + _summary_card("Recorded spend", recorded_spend)
         + _summary_card("Incomplete plans", str(incomplete_plans))
@@ -409,12 +469,26 @@ def render_dashboard(data: DashboardData) -> str:
         f'<th scope="col">{html.escape(column, quote=True)}</th>'
         for column in PLAN_COLUMNS
     )
+    debt_head = "".join(
+        f'<th scope="col">{html.escape(column, quote=True)}</th>'
+        for column in DEBT_COLUMNS
+    )
+    defect_head = "".join(
+        f'<th scope="col">{html.escape(column, quote=True)}</th>'
+        for column in DEFECT_COLUMNS
+    )
     shard_rows = "".join(
         _shard_row(shard, ledger.get(shard["id"])) for shard in data.shards
     ) or '<tr><td colspan="11" class="text-muted">No shards declared.</td></tr>'
     plan_rows = "".join(_plan_row(plan) for plan in ordered_plans) or (
         '<tr><td colspan="5" class="text-muted">No plan files found.</td></tr>'
     )
+    debt_rows = "".join(
+        _debt_row(entry) for entry in data.debt.open_entries
+    ) or '<tr><td colspan="3" class="text-muted">No open technical debt.</td></tr>'
+    defect_rows = "".join(
+        _defect_row(entry) for entry in data.debt.defects
+    ) or '<tr><td colspan="2" class="text-muted">No defects logged.</td></tr>'
 
     parts = [
         "<!DOCTYPE html>",
@@ -436,7 +510,8 @@ def render_dashboard(data: DashboardData) -> str:
         '<a href="../../shards.yaml">shards.yaml</a> · '
         '<a href="shard-metrics.yaml">shard-metrics.yaml</a> · '
         '<a href="../plans/">docs/plans</a> · '
-        '<a href="../superpowers/plans/">docs/superpowers/plans</a></p>',
+        '<a href="../superpowers/plans/">docs/superpowers/plans</a> · '
+        '<a href="technical-debt.md">technical-debt.md</a></p>',
         '<p class="mb-0"><code>python3 scripts/generate-factory-dashboard.py</code></p>',
         "</header>",
         f'<div class="row g-3 mb-4">{cards}</div>',
@@ -446,6 +521,23 @@ def render_dashboard(data: DashboardData) -> str:
         '<table class="table table-striped table-bordered bg-white align-middle mb-0">',
         f"<thead><tr>{shard_head}</tr></thead>",
         f"<tbody>{shard_rows}</tbody>",
+        "</table>",
+        "</div>",
+        "</section>",
+        '<section class="mb-4">',
+        '<h2 class="h5 mb-3">Technical Debt</h2>',
+        '<div class="table-responsive">',
+        '<table class="table table-striped table-bordered bg-white align-middle mb-0">',
+        f"<thead><tr>{debt_head}</tr></thead>",
+        f"<tbody>{debt_rows}</tbody>",
+        "</table>",
+        "</div>",
+        f'<p class="mt-2 mb-3 text-muted">{data.debt.closed_count} closed entries '
+        '— see <a href="technical-debt.md">technical-debt.md</a></p>',
+        '<div class="table-responsive">',
+        '<table class="table table-striped table-bordered bg-white align-middle mb-0">',
+        f"<thead><tr>{defect_head}</tr></thead>",
+        f"<tbody>{defect_rows}</tbody>",
         "</table>",
         "</div>",
         "</section>",
@@ -611,6 +703,97 @@ def _load_ledger(
         _validate_ledger_entry(entry, source, entry_id)
         ledger[entry_id] = entry
     return ledger
+
+
+DEBT_SECTION_HEADINGS = ("## Open entries", "## Closed entries", "## Defect log")
+
+
+def _split_debt_sections(
+    path: Path, lines: list[str]
+) -> tuple[list[str], list[str], list[str]]:
+    positions: dict[str, int] = {}
+    for index, line in enumerate(lines):
+        heading = line.strip()
+        if heading in DEBT_SECTION_HEADINGS and heading not in positions:
+            positions[heading] = index
+    for heading in DEBT_SECTION_HEADINGS:
+        if heading not in positions:
+            raise DashboardError(f"{path}: missing section heading '{heading}'")
+    order = [positions[heading] for heading in DEBT_SECTION_HEADINGS]
+    if order != sorted(order):
+        raise DashboardError(
+            f"{path}: section headings must appear in order: "
+            + ", ".join(DEBT_SECTION_HEADINGS)
+        )
+    return (
+        lines[positions["## Open entries"] + 1 : positions["## Closed entries"]],
+        lines[positions["## Closed entries"] + 1 : positions["## Defect log"]],
+        lines[positions["## Defect log"] + 1 :],
+    )
+
+
+def _parse_open_debt_entries(lines: list[str]) -> list[DebtEntry]:
+    parsed: list[list[Any]] = []
+    collecting_interest = False
+    for line in lines:
+        heading = DEBT_ENTRY_RE.match(line)
+        if heading:
+            parsed.append([heading.group(1), heading.group(2).strip(), []])
+            collecting_interest = False
+            continue
+        if not parsed:
+            continue
+        interest = INTEREST_BULLET_RE.match(line)
+        if interest:
+            if interest.group(1).strip():
+                parsed[-1][2].append(interest.group(1).strip())
+            collecting_interest = True
+            continue
+        if collecting_interest and line.startswith("  "):
+            parsed[-1][2].append(line.strip())
+            continue
+        collecting_interest = False
+    return [
+        DebtEntry(entry_id, title, " ".join(part for part in interest if part))
+        for entry_id, title, interest in parsed
+    ]
+
+
+def _parse_defect_entries(lines: list[str]) -> list[DefectEntry]:
+    entries: list[DefectEntry] = []
+    index = 0
+    while index < len(lines):
+        match = DEFECT_ENTRY_RE.match(lines[index])
+        if match is None:
+            index += 1
+            continue
+        entry_id, title_text = match.group(1), match.group(2)
+        while "**" not in title_text and index + 1 < len(lines):
+            following = lines[index + 1]
+            if not following.startswith("  ") or following.lstrip().startswith(
+                ("-", "#")
+            ):
+                break
+            index += 1
+            title_text += " " + following.strip()
+        entries.append(DefectEntry(entry_id, title_text.split("**", 1)[0].strip()))
+        index += 1
+    return entries
+
+
+def _load_debt(root: Path) -> DebtRegister:
+    path = root / "docs/factory/technical-debt.md"
+    if not path.is_file():
+        raise DashboardError(f"{path}: file not found")
+    register_lines = list(_outside_fence_lines(path.read_text(encoding="utf-8")))
+    open_lines, closed_lines, defect_lines = _split_debt_sections(
+        path, register_lines
+    )
+    return DebtRegister(
+        open_entries=_parse_open_debt_entries(open_lines),
+        closed_count=sum(1 for line in closed_lines if line.startswith("### TD-")),
+        defects=_parse_defect_entries(defect_lines),
+    )
 
 
 def _collect_plan_paths(root: Path) -> list[Path]:

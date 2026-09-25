@@ -49,6 +49,9 @@ _generator = _load_generator()
 
 DashboardData = _require(_generator, "DashboardData")
 DashboardError = _require(_generator, "DashboardError")
+DebtEntry = _require(_generator, "DebtEntry")
+DebtRegister = _require(_generator, "DebtRegister")
+DefectEntry = _require(_generator, "DefectEntry")
 PlanState = _require(_generator, "PlanState")
 check_dashboard = _require(_generator, "check_dashboard")
 classify_plan = _require(_generator, "classify_plan")
@@ -68,6 +71,11 @@ def make_valid_root() -> tuple[tempfile.TemporaryDirectory, Path]:
     (root / "docs/factory/shard-metrics.yaml").write_text(
         f"shards:\n{_VALID_LEDGER_ENTRY}", encoding="utf-8"
     )
+    (root / "docs/factory/technical-debt.md").write_text(
+        "# Technical Debt Register\n\n## Open entries\n\n## Closed entries\n\n"
+        "## Defect log\n",
+        encoding="utf-8",
+    )
     (root / "docs/plans/example.md").write_text("# Example\n", encoding="utf-8")
     return temporary, root
 
@@ -84,6 +92,32 @@ def _replace_ledger_field(entry: str, field: str, value: str) -> str:
     return "\n".join(
         replacement if line.startswith(prefix) else line for line in entry.splitlines()
     ) + "\n"
+
+
+def _write_debt(root: Path, content: str) -> None:
+    (root / "docs/factory/technical-debt.md").write_text(content, encoding="utf-8")
+
+
+def _debt_document(
+    open_section: str, closed_section: str, defect_section: str
+) -> str:
+    return (
+        "# Technical Debt Register\n\n"
+        f"## Open entries\n\n{open_section}\n\n"
+        f"## Closed entries\n\n{closed_section}\n\n"
+        f"## Defect log\n\n{defect_section}\n"
+    )
+
+
+def _render_with_debt(debt) -> str:
+    data = DashboardData(
+        shards=[{"id": "X1", "name": "Example"}],
+        ledger_by_id={},
+        plans=[],
+        generated_at="2026-09-24T00:00:00+00:00",
+        debt=debt,
+    )
+    return render_dashboard(data)
 
 
 class PlanClassificationTests(unittest.TestCase):
@@ -569,6 +603,311 @@ class CliModeTests(unittest.TestCase):
 
         self.assertEqual(1, result)
         self.assertIn("invalid YAML", stderr.getvalue())
+
+
+class DebtLoadingTests(unittest.TestCase):
+    def test_open_entries_parse_with_multiline_interest(self):
+        temporary, root = make_valid_root()
+        self.addCleanup(temporary.cleanup)
+        _write_debt(
+            root,
+            _debt_document(
+                open_section=(
+                    "### TD-777 — `Alpha` open item\n"
+                    "- **Where:** `path/one.cs`\n"
+                    "  second where line\n"
+                    "- **Interest:** first interest line\n"
+                    "  wrapped interest line\n"
+                    "- **Paydown:** fix it later"
+                ),
+                closed_section=(
+                    "### TD-700 — Closed item\n"
+                    "- **Closed 2026-09-01:** shipped."
+                ),
+                defect_section="Escaped defects go here.",
+            ),
+        )
+
+        data = load_dashboard(root)
+
+        self.assertEqual(1, len(data.debt.open_entries))
+        entry = data.debt.open_entries[0]
+        self.assertEqual("TD-777", entry.id)
+        self.assertEqual("`Alpha` open item", entry.title)
+        self.assertEqual("first interest line wrapped interest line", entry.interest)
+
+    def test_open_entry_without_interest_bullet_has_empty_interest(self):
+        temporary, root = make_valid_root()
+        self.addCleanup(temporary.cleanup)
+        _write_debt(
+            root,
+            _debt_document(
+                open_section="### TD-778 — No interest line\n- **Where:** `path`",
+                closed_section="",
+                defect_section="",
+            ),
+        )
+
+        data = load_dashboard(root)
+
+        self.assertEqual("", data.debt.open_entries[0].interest)
+
+    def test_closed_entries_are_counted(self):
+        temporary, root = make_valid_root()
+        self.addCleanup(temporary.cleanup)
+        _write_debt(
+            root,
+            _debt_document(
+                open_section="### TD-777 — Only open entry",
+                closed_section=(
+                    "### TD-700 — First closed\n"
+                    "- **Closed 2026-09-01:** shipped.\n\n"
+                    "### TD-701 — Second closed\n"
+                    "- **Closed 2026-09-02:** shipped."
+                ),
+                defect_section="",
+            ),
+        )
+
+        data = load_dashboard(root)
+
+        self.assertEqual(2, data.debt.closed_count)
+        self.assertEqual(1, len(data.debt.open_entries))
+
+    def test_defect_entries_strip_markers_and_trailing_parenthetical(self):
+        temporary, root = make_valid_root()
+        self.addCleanup(temporary.cleanup)
+        _write_debt(
+            root,
+            _debt_document(
+                open_section="",
+                closed_section="",
+                defect_section=(
+                    "Escaped defects are recorded here.\n\n"
+                    "- **DL-42 — Defect title** (found Sep 2026 in review).\n"
+                    "  - **Injection stage:** design."
+                ),
+            ),
+        )
+
+        data = load_dashboard(root)
+
+        self.assertEqual(1, len(data.debt.defects))
+        self.assertEqual("DL-42", data.debt.defects[0].id)
+        self.assertEqual("Defect title", data.debt.defects[0].title)
+
+    def test_wrapped_defect_title_is_joined_from_continuation_line(self):
+        temporary, root = make_valid_root()
+        self.addCleanup(temporary.cleanup)
+        _write_debt(
+            root,
+            _debt_document(
+                open_section="",
+                closed_section="",
+                defect_section=(
+                    "- **DL-201 — title starts on the first line\n"
+                    "  and finishes on the next** (found Sep 2026 during review).\n"
+                    "  - **Injection stage:** design."
+                ),
+            ),
+        )
+
+        data = load_dashboard(root)
+
+        self.assertEqual(1, len(data.debt.defects))
+        self.assertEqual("DL-201", data.debt.defects[0].id)
+        self.assertEqual(
+            "title starts on the first line and finishes on the next",
+            data.debt.defects[0].title,
+        )
+
+    def test_missing_register_file_raises_dashboard_error(self):
+        temporary, root = make_valid_root()
+        self.addCleanup(temporary.cleanup)
+        (root / "docs/factory/technical-debt.md").unlink()
+
+        with self.assertRaises(DashboardError):
+            load_dashboard(root)
+
+    def test_missing_section_heading_raises_dashboard_error(self):
+        temporary, root = make_valid_root()
+        self.addCleanup(temporary.cleanup)
+        _write_debt(
+            root,
+            "# Technical Debt Register\n\n## Open entries\n\n## Closed entries\n",
+        )
+
+        with self.assertRaises(DashboardError):
+            load_dashboard(root)
+
+    def test_entry_ids_are_discovered_not_hardcoded(self):
+        temporary, root = make_valid_root()
+        self.addCleanup(temporary.cleanup)
+        _write_debt(
+            root,
+            _debt_document(
+                open_section="### TD-4242 — Novel open id",
+                closed_section="### TD-0007 — Novel closed id",
+                defect_section="- **DL-31337 — Novel defect id** (found Sep 2026).",
+            ),
+        )
+
+        data = load_dashboard(root)
+
+        self.assertEqual(["TD-4242"], [e.id for e in data.debt.open_entries])
+        self.assertEqual(1, data.debt.closed_count)
+        self.assertEqual(["DL-31337"], [e.id for e in data.debt.defects])
+
+    def test_fenced_entry_lines_are_ignored_for_rows_and_counts(self):
+        temporary, root = make_valid_root()
+        self.addCleanup(temporary.cleanup)
+        _write_debt(
+            root,
+            _debt_document(
+                open_section=(
+                    "### TD-100 — Real open entry\n"
+                    "- **Interest:** real interest\n\n"
+                    "```markdown\n"
+                    "### TD-999 — Fenced\n"
+                    "- **DL-999 — Fenced**\n"
+                    "```"
+                ),
+                closed_section=(
+                    "### TD-700 — Real closed entry\n"
+                    "- **Closed 2026-09-01:** shipped.\n\n"
+                    "```markdown\n"
+                    "### TD-998 — Fenced closed\n"
+                    "```"
+                ),
+                defect_section=(
+                    "- **DL-42 — Real defect** (found Sep 2026).\n\n"
+                    "```markdown\n"
+                    "- **DL-999 — Fenced**\n"
+                    "```"
+                ),
+            ),
+        )
+
+        data = load_dashboard(root)
+
+        self.assertEqual(["TD-100"], [e.id for e in data.debt.open_entries])
+        self.assertEqual(1, data.debt.closed_count)
+        self.assertEqual(["DL-42"], [e.id for e in data.debt.defects])
+
+    def test_out_of_order_section_headings_raise_dashboard_error(self):
+        documents = (
+            "# Technical Debt Register\n\n## Defect log\n\n## Open entries\n\n"
+            "## Closed entries\n",
+            "# Technical Debt Register\n\n## Closed entries\n\n## Open entries\n\n"
+            "## Defect log\n",
+        )
+        for document in documents:
+            with self.subTest(document=document):
+                temporary, root = make_valid_root()
+                self.addCleanup(temporary.cleanup)
+                _write_debt(root, document)
+
+                with self.assertRaises(DashboardError):
+                    load_dashboard(root)
+
+
+class DebtRenderingTests(unittest.TestCase):
+    def test_debt_section_sits_between_shards_and_plans(self):
+        document = _render_with_debt(
+            DebtRegister(
+                open_entries=[DebtEntry("TD-001", "Debt one", "interest one")],
+                closed_count=1,
+                defects=[DefectEntry("DL-001", "Defect one")],
+            )
+        )
+
+        self.assertLess(document.index(">Shards</h2>"), document.index(">Technical Debt</h2>"))
+        self.assertLess(document.index(">Technical Debt</h2>"), document.index(">Plans</h2>"))
+
+    def test_open_and_defect_rows_render_with_counts(self):
+        document = _render_with_debt(
+            DebtRegister(
+                open_entries=[
+                    DebtEntry("TD-001", "First debt", "first interest"),
+                    DebtEntry("TD-002", "Second debt", ""),
+                ],
+                closed_count=3,
+                defects=[DefectEntry("DL-001", "First defect")],
+            )
+        )
+
+        self.assertIn("First debt", document)
+        self.assertIn("first interest", document)
+        self.assertIn("Second debt", document)
+        self.assertIn("First defect", document)
+        self.assertEqual(2, document.count("<td>TD-"))
+        self.assertEqual(1, document.count("<td>DL-"))
+        self.assertIn("3 closed entries", document)
+        self.assertIn('<a href="technical-debt.md">technical-debt.md</a>', document)
+
+    def test_debt_values_are_escaped(self):
+        document = _render_with_debt(
+            DebtRegister(
+                open_entries=[
+                    DebtEntry(
+                        "TD-001",
+                        "<script>alert(1)</script>",
+                        "<script>interest</script>",
+                    )
+                ],
+                closed_count=0,
+                defects=[DefectEntry("DL-001", "<script>defect</script>")],
+            )
+        )
+
+        self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", document)
+        self.assertIn("&lt;script&gt;interest&lt;/script&gt;", document)
+        self.assertIn("&lt;script&gt;defect&lt;/script&gt;", document)
+        self.assertNotIn("<script>alert(1)</script>", document)
+
+    def test_summary_cards_show_debt_counts(self):
+        document = _render_with_debt(
+            DebtRegister(
+                open_entries=[
+                    DebtEntry(f"TD-{number:03d}", f"Debt {number}", "")
+                    for number in range(4)
+                ],
+                closed_count=1,
+                defects=[DefectEntry("DL-001", "One"), DefectEntry("DL-002", "Two")],
+            )
+        )
+
+        self.assertIn(">Open debt</p>", document)
+        self.assertIn('class="card-title fs-4 mb-1">4</p>', document)
+        self.assertIn(">1 closed</p>", document)
+        self.assertIn(">Defect log entries</p>", document)
+        self.assertIn('class="card-title fs-4 mb-1">2</p>', document)
+
+    def test_empty_debt_state_renders_placeholder_rows(self):
+        document = _render_with_debt(DebtRegister(open_entries=[], closed_count=0, defects=[]))
+
+        self.assertIn(
+            '<tr><td colspan="3" class="text-muted">No open technical debt.</td></tr>',
+            document,
+        )
+        self.assertIn(
+            '<tr><td colspan="2" class="text-muted">No defects logged.</td></tr>',
+            document,
+        )
+
+    def test_debt_rendering_emits_no_inline_script_or_style(self):
+        document = _render_with_debt(
+            DebtRegister(
+                open_entries=[
+                    DebtEntry("TD-001", "<style>body{}</style>", "<script>x</script>")
+                ],
+                closed_count=0,
+                defects=[DefectEntry("DL-001", "<script>y</script>")],
+            )
+        )
+
+        self.assertNotIn("<script", document)
+        self.assertNotIn("<style", document)
 
 
 if __name__ == "__main__":

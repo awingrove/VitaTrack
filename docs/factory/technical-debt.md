@@ -16,6 +16,21 @@ them, per the post-mortem rule in `AGENTS.md`.
   shipped (`VitaTrack.Core/Primitives/Unit.cs`). ReportingService adopted `Unit`; the
   `Dosage` adoption on `SupplementNutrient.Dosage` is pending the Nutrients slice work.
 
+### TD-006 — `ServicesLayeringTests` only scans `VitaTrack.Core.Services`
+- **Where:** `VitaTrack.ArchitectureTests/ServicesLayeringTests.cs`
+- **What:** the "business logic reaches the DB only through repositories" rule scans
+  `VitaTrack.Core.Services` only. Slice code in `VitaTrack.Core.Features.*` (e.g. the
+  moved `CsvImportService`) is outside its net — a Dapper dependency added to a slice
+  service would not be caught. Found by the MiMo MS session.
+- **Update 2026-09-23:** after the LLM conversion, `VitaTrack.Core/Services` is EMPTY —
+  the rule now passes **vacuously** and covers nothing. `Features/*` services
+  (`ReportingService`, `LlmService`, `LlmClient`, …) have no layering guard at all.
+- **Interest:** the guardrail predates slices; every slice conversion shrinks its coverage.
+- **Paydown:** retarget the rule to Core business logic at large (`VitaTrack.Core`
+  excluding `VitaTrack.Core.Data` + `VitaTrack.Core.Primitives`), or per-slice via
+  `shards.yaml` `tables` declarations. Was slated for the Family/LLM slice conversions —
+  both shipped 2026-09-24 without retargeting it; still owed.
+
 ### TD-010 — Agent and human share one GitHub identity; PR approval not machine-enforced
 - **Where:** repo settings (branch protection / rulesets), local `gh` auth (the
   `awingrove` keyring is inherited by agent sessions), agent harness config
@@ -158,3 +173,20 @@ post-mortem rule (a systemic gap updates `AGENTS.md`/ADR in the same change).
     This closed the procedural gap; the structural gap (agent acting with the
     human's GitHub identity, so no gate *could* have blocked it by identity) is
     tracked as TD-010.
+
+- **DL-004 — open debt entry TD-006 silently dropped during an out-of-order PR merge**
+  (found Sep 2026 when the human questioned the merge order of PRs #19/#20; no code
+  damage — register content lost).
+  - **What:** PR #20 (TD-010 inserted after TD-003) merged before PR #19 (TD-006
+    moved to the same insertion point). The branch-update merge `7b8283e` resolved the
+    same-anchor insert conflict by keeping TD-010 and discarding TD-006 — an open
+    entry with a pending paydown vanished from the register while plan line 278 still
+    claimed "TD-003 + TD-006 open".
+  - **Injection stage:** merge resolution — two PRs inserting at one anchor point, no
+    integrity check on the merged register.
+  - **Detection stage:** human suspicion of merge order; audit showed 0 occurrences of
+    TD-006 on main.
+  - **Systemic gap:** the register has no machine check (`ShardMetricsLedgerTests`
+    guards `shard-metrics.yaml`, nothing guards `technical-debt.md`). Closes with the
+    self-verifying-docs direction in `VISION.md`: register ids should be resolvable by
+    a test (every referenced TD/DL id must exist). Restored in this change.

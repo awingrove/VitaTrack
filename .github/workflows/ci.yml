@@ -30,6 +30,22 @@ jobs:
       - name: Design system lint
         run: npx -y @google/design.md lint DESIGN.md
 
+      - name: Dashboard tests
+        run: |
+          python3 -m pip install --quiet pyyaml
+          python3 scripts/test-generate-factory-dashboard.py || {
+            echo "::error::Dashboard tests failed. Run 'python3 scripts/test-generate-factory-dashboard.py' locally.";
+            exit 1;
+          }
+
+      - name: Dashboard freshness
+        run: |
+          python3 -m pip install --quiet pyyaml
+          python3 scripts/generate-factory-dashboard.py --check || {
+            echo "::error::docs/factory/dashboard.html is stale. Run 'python3 scripts/generate-factory-dashboard.py' and commit the result.";
+            exit 1;
+          }
+
       - name: Format check
         run: |
           dotnet format VitaTrack.sln --verify-no-changes --no-restore || {

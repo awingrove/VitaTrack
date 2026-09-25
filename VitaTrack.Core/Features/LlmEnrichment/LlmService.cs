@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using VitaTrack.Core;
 using VitaTrack.Core.Features.Supplements;
+using VitaTrack.Core.Primitives;
 
 namespace VitaTrack.Core.Features.LlmEnrichment;
 
@@ -62,13 +63,15 @@ public class LlmService(
                 var nutritionDict = new Dictionary<string, decimal>();
                 foreach (var nutrient in parsed.Nutrients)
                 {
-                    nutritionDict[nutrient.GenericName] = DosageParser.ParseAmount(nutrient.Dosage);
+                    // Best-effort: a malformed legacy dosage contributes 0 rather than throwing.
+                    nutritionDict[nutrient.GenericName] =
+                        Dosage.TryParse(nutrient.Dosage, out var dose) ? dose.Amount : 0m;
                     if (nutrient.Children is { Count: > 0 })
                     {
                         foreach (var child in nutrient.Children)
                         {
                             nutritionDict[$"{nutrient.GenericName} > {child.GenericName}"] =
-                                DosageParser.ParseAmount(child.Dosage);
+                                Dosage.TryParse(child.Dosage, out var childDose) ? childDose.Amount : 0m;
                         }
                     }
                 }

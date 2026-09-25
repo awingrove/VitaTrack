@@ -1,5 +1,6 @@
 using System.Data;
 using Dapper;
+using VitaTrack.Core.Primitives;
 
 namespace VitaTrack.Core.Data;
 
@@ -106,7 +107,7 @@ public static class DbInit
         // measure has one designation in the database. Idempotent; runs each startup.
         foreach (var row in db.Query("SELECT Id, Dosage FROM SupplementNutrients WHERE Dosage IS NOT NULL AND Dosage <> '';"))
         {
-            var normalized = DosageParser.NormalizeDosage((string)row.Dosage);
+            var normalized = Dosage.Normalize((string)row.Dosage);
             if (normalized != (string)row.Dosage)
             {
                 db.Execute("UPDATE SupplementNutrients SET Dosage = @Dosage WHERE Id = @Id;",

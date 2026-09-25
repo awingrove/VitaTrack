@@ -89,6 +89,52 @@ public class DosageTests
     }
 
     [TestMethod]
+    public void Normalize_CanonicalizesMicrogramAliasesToMicroSign()
+    {
+        Assert.AreEqual("500µg", Dosage.Normalize("500mcg"), "no space is invented");
+        Assert.AreEqual("1.5 µg", Dosage.Normalize("1.5 ug"));
+        Assert.AreEqual("900µg", Dosage.Normalize("900μg"));
+        Assert.AreEqual("20µg", Dosage.Normalize("20µg"), "an already-canonical unit is untouched");
+    }
+
+    [TestMethod]
+    public void Normalize_IsCaseInsensitive()
+    {
+        Assert.AreEqual("200IU", Dosage.Normalize("200iu"));
+        Assert.AreEqual("500mg", Dosage.Normalize("500MG"));
+    }
+
+    [TestMethod]
+    public void Normalize_PreservesSpacingStyle()
+    {
+        Assert.AreEqual("500µg", Dosage.Normalize("500mcg"));
+        Assert.AreEqual("1.5 µg", Dosage.Normalize("1.5 ug"));
+    }
+
+    [TestMethod]
+    public void Normalize_LeavesUnrecognizedAndFreeTextUnchanged()
+    {
+        Assert.AreEqual("one tablet", Dosage.Normalize("one tablet"), "no amount to anchor a rebuild");
+        Assert.AreEqual("500 mg with food", Dosage.Normalize("500 mg with food"), "free text is not a unit");
+        Assert.AreEqual("50 mg/kg", Dosage.Normalize("50 mg/kg"), "a compound unit is left alone");
+        Assert.AreEqual("2 x 500mg", Dosage.Normalize("2 x 500mg"), "the shape regex is anchored, so this never matches");
+    }
+
+    [TestMethod]
+    public void Normalize_CanonicalizesCountNounsToTheInvariantTab()
+    {
+        Assert.AreEqual("3 tab", Dosage.Normalize("3 tablets"),
+            "'tablets' is now a recognized alias, so it canonicalizes like any other alias");
+    }
+
+    [TestMethod]
+    public void Normalize_Blank_ReturnsEmpty()
+    {
+        Assert.AreEqual(string.Empty, Dosage.Normalize(""));
+        Assert.AreEqual(string.Empty, Dosage.Normalize(null));
+    }
+
+    [TestMethod]
     public void ToString_CombinesAmountAndUnit()
     {
         Assert.AreEqual("500 mg", Dosage.Parse("500mg").ToString());

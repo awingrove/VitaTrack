@@ -154,4 +154,48 @@ public class DosageTests
             CultureInfo.CurrentCulture = original;
         }
     }
+
+    /// <summary>
+    /// A stored amount is always written with a "." separator, so reading one back must not
+    /// depend on the ambient locale. Under de-DE a bare TryParse reads "1.5" as fifteen,
+    /// because "." is that locale's group separator and NumberStyles allows thousands. This
+    /// asserts the whole Parse path, not just the formatter, because the corruption happens
+    /// on the way in.
+    /// </summary>
+    [TestMethod]
+    public void Parse_ReadsAStoredDecimalAmount_UnderAnyCulture()
+    {
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("de-DE");
+
+            var dosage = Dosage.Parse("1.5 mg");
+
+            Assert.AreEqual(1.5m, dosage.Amount);
+            Assert.AreEqual("1.5 mg", dosage.ToString());
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    [TestMethod]
+    public void TryParse_ReadsAStoredDecimalAmount_UnderAnyCulture()
+    {
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("de-DE");
+
+            Assert.IsTrue(Dosage.TryParse("0.75 g", out var dosage));
+            Assert.AreEqual(0.75m, dosage.Amount);
+            Assert.AreEqual(Unit.Gram, dosage.Unit);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
 }

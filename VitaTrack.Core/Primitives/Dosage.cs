@@ -67,7 +67,13 @@ public readonly record struct Dosage
     {
         amount = 0m;
         if (string.IsNullOrWhiteSpace(raw)) return false;
-        return decimal.TryParse(AmountPattern.Match(raw).Value, out amount);
+
+        // Invariant, not CurrentCulture: a stored amount is always written with a "." decimal
+        // separator, but in a locale like de-DE "." is the *group* separator and the default
+        // NumberStyles allows thousands — so a bare TryParse reads "1.5" as fifteen. That
+        // silently corrupts the amount rather than failing, which is the failure mode value
+        // objects are supposed to rule out.
+        return decimal.TryParse(AmountPattern.Match(raw).Value, NumberStyles.Number, CultureInfo.InvariantCulture, out amount);
     }
 
     public override string ToString()

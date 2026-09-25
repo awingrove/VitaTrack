@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Coverage floor set at 90% line coverage.
+# Coverage floor set at 92% line coverage (actual 92.53% after the dosage-shape
+# enforcement work; ratcheted up from 90% — the floor only ever moves up).
 set -euo pipefail
 
-THRESHOLD="${COVERAGE_THRESHOLD:-90}"
+THRESHOLD="${COVERAGE_THRESHOLD:-92}"
 THRESHOLD_TYPE="${THRESHOLD_TYPE:-line}"
 CONFIGURATION="${CONFIGURATION:-Debug}"
 

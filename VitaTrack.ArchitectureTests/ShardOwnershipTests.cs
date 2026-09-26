@@ -86,7 +86,14 @@ public class ShardOwnershipTests
             var claims = new List<string>();
             foreach (var key in new[] { "controller", "core", "views", "js", "unit_tests", "e2e_specs" })
             {
-                if (!slice.Children.TryGetValue(new YamlScalarNode(key), out var node)) continue;
+                // Key presence, not list count, separates "declared as empty" from
+                // "not declared": a slice with no JS says `js: []`; a slice that
+                // forgot the key was never reviewed for JS files at all.
+                if (!slice.Children.TryGetValue(new YamlScalarNode(key), out var node))
+                {
+                    errors.Add($"shard '{id}': missing '{key}' declaration (use [] when the slice has no such files).");
+                    continue;
+                }
                 foreach (var raw in ((YamlSequenceNode)node).OfType<YamlScalarNode>())
                 {
                     var pattern = raw.Value!;
@@ -102,7 +109,13 @@ public class ShardOwnershipTests
         var allowlist = new List<string>();
         if (root.Children.TryGetValue(new YamlScalarNode("allowlist"), out var al))
             foreach (var raw in ((YamlSequenceNode)al).OfType<YamlScalarNode>())
-                allowlist.AddRange(Expand(repoRoot, raw.Value!));
+            {
+                var pattern = raw.Value!;
+                var expanded = Expand(repoRoot, pattern);
+                if (expanded.Count == 0)
+                    errors.Add($"allowlist entry '{pattern}' resolves to no file.");
+                allowlist.AddRange(expanded);
+            }
 
         return (sliceClaims, allowlist, sliceIds);
     }
@@ -110,7 +123,11 @@ public class ShardOwnershipTests
     private static void ValidateStoryMapIds(string repoRoot, List<string> sliceIds, List<string> errors)
     {
         var path = Path.Combine(repoRoot, "storymap.yaml");
-        if (!File.Exists(path)) return;
+        if (!File.Exists(path))
+        {
+            errors.Add("storymap.yaml missing at repo root: the shard id cross-check did not run.");
+            return;
+        }
 
         var yaml = new YamlStream();
         yaml.Load(new StringReader(File.ReadAllText(path)));

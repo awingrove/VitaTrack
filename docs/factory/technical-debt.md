@@ -49,9 +49,10 @@ them, per the post-mortem rule in `AGENTS.md`.
   `ShardOwnershipTests` glob-expansion already does.
 
 ### TD-014 — The technical-debt register has no machine check
-- **Where:** `docs/factory/technical-debt.md`.
+- **Where:** `docs/factory/technical-debt.yaml`,
+  `VitaTrack.ArchitectureTests/TechnicalDebtRegisterTests.cs`.
 - **What:** DL-004 recorded an open entry (TD-006) silently vanishing in an out-of-order
-  merge. `ShardMetricsLedgerTests` guards `shard-metrics.yaml`; nothing guards this file.
+  merge. `ShardMetricsLedgerTests` guards `shard-metrics.yaml`; nothing guards the register.
   A referenced-but-missing `TD-`/`DL-` id, a malformed entry, or a duplicate id all pass.
 - **Interest:** the register is the input to prioritization and to the dashboard, so a lost
   entry is a lost piece of work with no trace.
@@ -298,6 +299,6 @@ post-mortem rule (a systemic gap updates `AGENTS.md`/ADR in the same change).
   - **Detection stage:** human suspicion of merge order; audit showed 0 occurrences of
     TD-006 on main.
   - **Systemic gap:** the register has no machine check (`ShardMetricsLedgerTests`
-    guards `shard-metrics.yaml`, nothing guards `technical-debt.md`). Closes with the
+    guards `shard-metrics.yaml`, nothing guards the register). Closes with the
     self-verifying-docs direction in `VISION.md`: register ids should be resolvable by
     a test (every referenced TD/DL id must exist). Restored in this change.

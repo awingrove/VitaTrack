@@ -365,12 +365,41 @@ Same change, per the post-mortem rule in `AGENTS.md`.
 
 ---
 
-## Task sequence — three dispatches, one branch
+## Task sequence — four dispatches, one branch
 
-**Dispatch 1 (Part A, 1 file, 1 commit)**
+> **Correction (2026-09-26, controller): ordering hazard, found by the Part A executor.**
+> Part B rule 5 validates that every `where` path exists. **TD-014's own `where` is
+> `docs/factory/technical-debt.md` — the file Part C deletes.** So the original A → B → C → D
+> order makes Part B's test go red on the register's own entry. `DL-004.systemic_gap` and
+> `TD-014.what` are self-referentially stale for the same reason. Repointing them is a
+> *content* edit, which does not belong in Part A ("prose migrated verbatim"). So the
+> self-referential fields are corrected in a small **Dispatch 1b** between A and B, and the
+> rest of Part D still runs last.
+>
+> Reordered: **A → 1b → B → C → D**. Dispatch 1b is controller-only, one commit, three fields.
+
+**Dispatch 1 (Part A, 1 file, 1 commit)** — **DONE** (`24fee5c`)
 1. Write the YAML, all **21** entries, prose verbatim.
 2. Gate: the `python3 -c` load prints `7 10 4`; the uniqueness check prints `dupes: NONE`; prose diffed against the `.md` **by eye**.
 3. Commit: `refactor: add machine-checked technical-debt.yaml register (TD-014)`
+
+**Dispatch 1b (controller only, 1 file, 1 commit) — repoint the self-referential fields**
+
+`technical-debt.md` is still present and still authoritative at this point, so these three
+edits go in **both** files to keep them identical until Part C deletes the `.md`:
+
+1. `TD-014.where` → `docs/factory/technical-debt.yaml`,
+   `VitaTrack.ArchitectureTests/TechnicalDebtRegisterTests.cs` (from `technical-debt.md`)
+2. `TD-014.what` — the clause "nothing guards `technical-debt.md`" becomes "...nothing guards
+   the register" (it is the entry that Part B is about to close; leaving the filename makes the
+   entry false the moment the test lands)
+3. `DL-004.systemic_gap` — same: `technical-debt.md` → "the register" in the "no machine check"
+   clause. **Do not change `closed_in`,** which is already absent for DL-004.
+
+Gate: the two files still agree on every other field, and
+`python3 -c "import yaml; d=yaml.safe_load(open('docs/factory/technical-debt.yaml')); print(len(d['open']), len(d['closed']), len(d['defects']))"`
+still prints `7 10 4`.
+Commit: `docs: repoint the register's self-referential fields before they go stale`
 
 **Dispatch 2 (Part B, 1 file, 1 commit)**
 1. `TechnicalDebtRegisterTests` — five rules + the negative-path test.

@@ -27,8 +27,8 @@ DL-004 needed).
    impossible, name one file.
 4. **Split register integrity from register shape** into two test methods, so a shape
    failure never masquerades as a lost-entry failure.
-5. **The `EcosystemGuardrailTests` empty `catch` is a robustness fix, not a live-defect
-   fix.** See "Deliberately not claimed" below — do not describe it as a false negative.
+5. **The `EcosystemGuardrailTests` empty `catch` IS a live false negative, and Dispatch 3
+   fixes it.** See the correction below — do not describe it as structural-only.
 
 ## Current-state facts (verified on this branch — do not re-derive)
 
@@ -143,14 +143,23 @@ silent* — the same class the entry describes.
    behaviour with a two-line test: the collector is **non-empty** for a banned name reached
    through the graph, and **empty** for a name no assembly has.
 
-## Deliberately NOT claimed (do not describe these as live defects)
+## Deliberately NOT claimed / corrected
 
-- **The empty `catch` is not currently a false negative.** Verified on this branch: a probe
-  rooting the walk at the arch-test assembly and banning `Dapper` failed at **depth 0**
-  (`Assembly VitaTrack.ArchitectureTests references banned Dapper`), because NuGet reference
-  flattening makes a transitive package dependency a *direct* assembly reference. The
-  depth-0 assert at `:32-34` sits outside the `try` and does fire. Treat commit 2 of D3 as
-  making the "transitive" claim structurally honest, not as fixing a silently-green rule.
+- **CORRECTION (2026-09-26, controller): the empty `catch` IS a live false negative.** An
+  earlier version of this briefing claimed otherwise, on the evidence of a probe rooted at the
+  **arch-test assembly** — which does carry `Dapper` as a *direct* reference, so the depth-0
+  assert fires. That conclusion was generalized from one of three roots and does not transfer.
+  The two roots the shipped tests actually use are `VitaTrack.Core` (`:15`) and
+  `VitaTrack.Web` (`:21`). **`VitaTrack.Web` has no direct `Dapper` reference**, so
+  `Web → Core → Dapper` sits at depth 1, where the recursee's `AssertFailedException` unwinds
+  into the empty `catch` and is discarded. Controller-verified output:
+
+      direct-dapper=False  refs=35
+      shipped walker: RETURNED NORMALLY   (violation swallowed)
+      collector:         1 violation — "Assembly VitaTrack.Core references banned Dapper"
+
+  So the rule named "transitive" is defeated by its own recursion on the one root where the
+  transitive half matters. Dispatch 3 fixes it and the commit message must say so.
 - **No per-type span rewrite in `FileSizeTests` (TD-016).** A correct implementation needs a
   brace-matching scanner that skips strings, verbatim and raw string literals (`"""` is used
   in `CsvImportServiceTests.cs:20-24`), char literals, comments, and regex literals, and

@@ -24,7 +24,7 @@ public class ShardOwnershipTests
     [TestMethod]
     public void Shards_AreConsistent_AndNoFeatureFileIsOrphaned()
     {
-        var repoRoot = FindRepoRoot();
+        var repoRoot = RepoLocator.Root();
         var errors = new List<string>();
 
         var (sliceClaims, allowlist, sliceIds) = LoadShards(repoRoot, errors);
@@ -203,14 +203,5 @@ public class ShardOwnershipTests
         return node.Children.TryGetValue(new YamlScalarNode(key), out var v) && v is YamlScalarNode s
             ? s.Value ?? string.Empty
             : string.Empty;
-    }
-
-    private static string FindRepoRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "VitaTrack.sln")))
-            dir = dir.Parent;
-        Assert.IsNotNull(dir, "Could not locate repo root (VitaTrack.sln not found).");
-        return dir!.FullName;
     }
 }

@@ -38,7 +38,7 @@ public class CrossSliceSqlTests
     [TestMethod]
     public void Sql_References_Only_Tables_Declared_By_The_Slice()
     {
-        var repoRoot = FindRepoRoot();
+        var repoRoot = RepoLocator.Root();
         var errors = new List<string>();
 
         foreach (var (sliceId, corePaths, tables) in LoadSlices(repoRoot, errors))
@@ -47,7 +47,11 @@ public class CrossSliceSqlTests
             foreach (var relativePath in corePaths)
             {
                 var fullPath = Path.Combine(repoRoot, relativePath.Replace('/', Path.DirectorySeparatorChar));
-                if (!File.Exists(fullPath)) continue;
+                if (!File.Exists(fullPath))
+                {
+                    errors.Add($"shard '{sliceId}': artifact '{relativePath}' resolves to no file.");
+                    continue;
+                }
                 foreach (var sql in ExtractSqlStrings(File.ReadAllText(fullPath)))
                     foreach (var table in ExtractTableReferences(sql))
                         referenced.Add(table);
@@ -81,7 +85,7 @@ public class CrossSliceSqlTests
     {
         // Real SQL from the PD exemplar: multi-line verbatim literal, joins,
         // every statement shape — reached through the full source->tables path.
-        var repoRoot = FindRepoRoot();
+        var repoRoot = RepoLocator.Root();
         var doseRepo = File.ReadAllText(Path.Combine(repoRoot,
             "VitaTrack.Core", "Features", "Dosing", "PrescribedDoseRepository.cs"));
         var doseTables = ExtractSqlStrings(doseRepo)
@@ -124,39 +128,46 @@ public class CrossSliceSqlTests
             if (!slice.Children.TryGetValue(new YamlScalarNode("tables"), out var tablesNode))
             {
                 errors.Add($"shard '{id}': missing 'tables' declaration (use [] when the slice issues no SQL).");
-                slices.Add((id, LoadCore(repoRoot, slice), new List<string>()));
+                slices.Add((id, LoadCore(repoRoot, slice, id, errors), new List<string>()));
                 continue;
             }
 
             var tables = tablesNode is YamlSequenceNode seq
                 ? seq.OfType<YamlScalarNode>().Select(s => s.Value ?? string.Empty).ToList()
                 : new List<string>();
-            slices.Add((id, LoadCore(repoRoot, slice), tables));
+            slices.Add((id, LoadCore(repoRoot, slice, id, errors), tables));
         }
 
         return slices;
     }
 
-    private static List<string> LoadCore(string repoRoot, YamlMappingNode slice)
+    /// <summary>
+    /// The slice's <c>core</c> file list, and a loud failure for every way that
+    /// list can quietly stop describing the slice: the key omitted entirely, a
+    /// wildcard that would scan an unreviewed file set, or a path that no longer
+    /// exists. Key <em>presence</em> is the absent-vs-empty discriminator, so
+    /// <c>core: []</c> (SHELL) is legal and an omitted key is not.
+    /// </summary>
+    private static List<string> LoadCore(string repoRoot, YamlMappingNode slice, string sliceId, List<string> errors)
     {
-        if (!slice.Children.TryGetValue(new YamlScalarNode("core"), out var node)) return new();
-        return ((YamlSequenceNode)node).OfType<YamlScalarNode>()
+        if (!slice.Children.TryGetValue(new YamlScalarNode("core"), out var node))
+        {
+            errors.Add($"shard '{sliceId}': missing 'core' declaration (use [] when the slice has no core files).");
+            return new();
+        }
+
+        var patterns = ((YamlSequenceNode)node).OfType<YamlScalarNode>()
             .Select(s => s.Value ?? string.Empty)
-            .Where(p => !p.Contains('*'))
             .ToList();
+
+        foreach (var pattern in patterns.Where(p => p.Contains('*')))
+            errors.Add($"shard '{sliceId}': 'core' pattern '{pattern}' is a wildcard; list the files explicitly so the scanned set is reviewable.");
+
+        return patterns.Where(p => !p.Contains('*')).ToList();
     }
 
     private static string Scalar(YamlMappingNode node, string key)
         => node.Children.TryGetValue(new YamlScalarNode(key), out var v) && v is YamlScalarNode s
             ? s.Value ?? string.Empty
             : string.Empty;
-
-    private static string FindRepoRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "VitaTrack.sln")))
-            dir = dir.Parent;
-        Assert.IsNotNull(dir, "Could not locate repo root (VitaTrack.sln not found).");
-        return dir!.FullName;
-    }
 }

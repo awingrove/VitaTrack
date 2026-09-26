@@ -315,7 +315,8 @@ closed:
     title: >-
       `FamilyRepository.DeleteAsync` issued cross-slice SQL against `PrescribedDoses`
     where: >-
-      `VitaTrack.Core/Data/FamilyRepository.cs`
+      `VitaTrack.Core/Features/Family/FamilyRepository.cs` (was
+      `VitaTrack.Core/Data/FamilyRepository.cs`)
     what: >-
       deleting a family member ran raw `DELETE FROM PrescribedDoses` — a second
       instance of the cross-slice SQL violation fixed for `SupplementRepository` in the NT

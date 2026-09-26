@@ -200,7 +200,7 @@ them, per the post-mortem rule in `AGENTS.md`.
   the ViewData JSON round-trip is gone. RP slice conversion.
 
 ### TD-005 — `FamilyRepository.DeleteAsync` issued cross-slice SQL against `PrescribedDoses`
-- **Where:** `VitaTrack.Core/Data/FamilyRepository.cs`
+- **Where:** `VitaTrack.Core/Features/Family/FamilyRepository.cs` (was `VitaTrack.Core/Data/FamilyRepository.cs`)
 - **What:** deleting a family member ran raw `DELETE FROM PrescribedDoses` — a second
   instance of the cross-slice SQL violation fixed for `SupplementRepository` in the NT
   conversion. Found by the glm-flash NT session (its notice, correctly not fixed in-scope).

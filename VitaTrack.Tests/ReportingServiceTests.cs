@@ -123,36 +123,6 @@ public class ReportingServiceTests : SqliteTestBase
     }
 
     [TestMethod]
-    public async Task NutrientReport_Units_AreExtractedPerNutrient()
-    {
-        var memberId = InsertMember("Alice");
-        var supplementId = InsertSupplement("Vitamin C", cost: 12.00m, servingsPerBottle: 60);
-        InsertNutrient(supplementId, "Vitamin C", "500mg");
-        InsertDose(memberId, supplementId, multiplier: 1);
-
-        var data = await CreateService().GetNutrientReportDataAsync();
-
-        Assert.IsTrue(data.Units.Any(u => u.NutrientName == "Vitamin C"));
-        Assert.AreEqual("mg", data.Units.Single(u => u.NutrientName == "Vitamin C").Units);
-    }
-
-    [TestMethod]
-    public async Task NutrientReport_Units_MergeConflictingUnitsAcrossSupplements()
-    {
-        var memberId = InsertMember("Alice");
-        var suppA = InsertSupplement("Fish Oil", cost: 12.00m, servingsPerBottle: 60);
-        var suppB = InsertSupplement("Multivitamin", cost: 12.00m, servingsPerBottle: 60);
-        InsertNutrient(suppA, "Vitamin D", "200IU");
-        InsertNutrient(suppB, "Vitamin D", "20µg");
-        InsertDose(memberId, suppA, multiplier: 1);
-        InsertDose(memberId, suppB, multiplier: 1);
-        var data = await CreateService().GetNutrientReportDataAsync();
-
-        Assert.IsTrue(data.Units.Any(u => u.NutrientName == "Vitamin D"));
-        Assert.AreEqual("IU, µg", data.Units.Single(u => u.NutrientName == "Vitamin D").Units);
-    }
-
-    [TestMethod]
     public async Task NutrientReport_Contributions_ListSupplementsBehindMemberTotals()
     {
         var memberId = InsertMember("Alice");

@@ -3,6 +3,7 @@ using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using Dapper;
+using VitaTrack.Core.Primitives;
 
 namespace VitaTrack.Core.Features.Nutrients;
 
@@ -53,7 +54,7 @@ public class SupplementNutrientRepository(IDbConnection db) : ISupplementNutrien
 
     public async Task<int> AddAsync(SupplementNutrient nutrient)
     {
-        nutrient.Dosage = DosageParser.NormalizeDosage(nutrient.Dosage);
+        nutrient.Dosage = Dosage.Normalize(nutrient.Dosage);
         const string sql = @"
                 INSERT INTO SupplementNutrients (SupplementId, GenericName, SpecificForm, Dosage, ParentNutrientId)
                 VALUES (@SupplementId, @GenericName, @SpecificForm, @Dosage, @ParentNutrientId);
@@ -63,7 +64,7 @@ public class SupplementNutrientRepository(IDbConnection db) : ISupplementNutrien
 
     public async Task UpdateAsync(SupplementNutrient nutrient)
     {
-        nutrient.Dosage = DosageParser.NormalizeDosage(nutrient.Dosage);
+        nutrient.Dosage = Dosage.Normalize(nutrient.Dosage);
         const string sql = @"
                 UPDATE SupplementNutrients
                 SET GenericName = @GenericName,

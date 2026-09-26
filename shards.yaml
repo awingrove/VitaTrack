@@ -139,6 +139,7 @@ slices:
       - VitaTrack.Tests/SupplementNutrientServiceTests.cs
       - VitaTrack.Tests/SupplementNutrientServiceHierarchyTests.cs
       - VitaTrack.Tests/SupplementNutrientValidationTests.cs
+      - VitaTrack.Tests/SupplementNutrientDosageShapeTests.cs
       - VitaTrack.Tests/SupplementNutrientDosageNormalizationTests.cs
       - VitaTrack.Tests/SupplementNutrientRepositoryTests.cs
       - VitaTrack.Tests/SupplementNutrientRepositoryCascadeTests.cs
@@ -175,6 +176,7 @@ slices:
       - VitaTrack.Web/wwwroot/js/report-toggle.js
     unit_tests:
       - VitaTrack.Tests/ReportingServiceTests.cs
+      - VitaTrack.Tests/NutrientReportUnitTests.cs
     e2e_specs:
       - e2e-tests/playwright/tests/nutrient-report.spec.js
       - e2e-tests/playwright/tests/cost-report.spec.js
@@ -229,7 +231,6 @@ allowlist:
   - VitaTrack.Web/Views/Shared/**
   - VitaTrack.Web/Views/_ViewImports.cshtml
   - VitaTrack.Core/Data/DbInit.cs
-  - VitaTrack.Core/DosageParser.cs
   - VitaTrack.Core/ServiceCollectionExtensions.cs
   - VitaTrack.Core/VitaTrackOptions.cs
   - VitaTrack.Core/Primitives/**
@@ -239,5 +240,4 @@ allowlist:
   - VitaTrack.Tests/SqliteTestBase.cs
   - VitaTrack.Tests/ServiceCollectionExtensionsTests.cs
   - VitaTrack.Tests/DbInitTests.cs
-  - VitaTrack.Tests/DosageParserTests.cs
   - VitaTrack.Tests/Primitives/**

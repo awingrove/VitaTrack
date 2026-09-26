@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using VitaTrack.Core.Data;
+using VitaTrack.Core.Primitives;
 
 namespace VitaTrack.Core.Features.Nutrients;
 
@@ -76,6 +77,12 @@ public class SupplementNutrientService(
                 continue;
             }
 
+            if (!Dosage.IsWellFormed(root.Dosage))
+            {
+                failures.Add(new NutrientFailure(root.GenericName, SupplementNutrient.DosageShapeRequired));
+                continue;
+            }
+
             int parentId;
             try
             {
@@ -103,6 +110,15 @@ public class SupplementNutrientService(
             {
                 foreach (var c in root.Children.Where(x => !string.IsNullOrWhiteSpace(x.GenericName)))
                 {
+                    // Shape only — a blank dosage is legal for a child, so this branch
+                    // gets the same shape check as the root and no "required" rule. It
+                    // used to validate nothing, so a bad child dosage reached the report.
+                    if (!Dosage.IsWellFormed(c.Dosage))
+                    {
+                        failures.Add(new NutrientFailure(c.GenericName, SupplementNutrient.DosageShapeRequired));
+                        continue;
+                    }
+
                     var child = new SupplementNutrient
                     {
                         SupplementId = supplementId,

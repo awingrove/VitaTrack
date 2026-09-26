@@ -21,13 +21,30 @@ public class ShardOwnershipTests
         "bin", "obj", "node_modules", "playwright-report", "test-results", "TestResults"
     };
 
+    /// <summary>
+    /// Floor on the total number of files the manifest's slices resolve to
+    /// (<c>controller</c> + <c>core</c> + <c>views</c> + <c>js</c> +
+    /// <c>unit_tests</c> + <c>e2e_specs</c>); the allowlist is cross-cutting,
+    /// not a slice claim, and is not counted. Today that total is 145, so
+    /// 130 = 145 - 15 permits exactly the 15 paths the two smallest slices
+    /// claim (SHELL 5, MF 11) to disappear before the floor speaks. That is the
+    /// deliberate trade: emptying any of the other five slices' claim lists
+    /// takes the total under the floor and fails here even when the files went
+    /// with them, because a deleted file orphans nothing and the ownership
+    /// check cannot see it. The floor is the only net for a slice whose lists
+    /// were emptied outright — <c>[]</c> is a legal declaration, so the loud
+    /// loaders stay quiet about it. Ratchet the floor up as the total grows;
+    /// lower it only in the change that legitimately removes claimed files.
+    /// </summary>
+    private const int ClaimedArtifactFloor = 130;
+
     [TestMethod]
     public void Shards_AreConsistent_AndNoFeatureFileIsOrphaned()
     {
         var repoRoot = RepoLocator.Root();
         var errors = new List<string>();
 
-        var (sliceClaims, allowlist, sliceIds) = LoadShards(repoRoot, errors);
+        var (sliceClaims, allowlist, sliceIds, _) = LoadShards(repoRoot, errors);
 
         // No double-claim within slices.
         var claimCounts = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
@@ -63,7 +80,43 @@ public class ShardOwnershipTests
             "shard ownership failures:\n  - " + string.Join("\n  - ", errors));
     }
 
-    private static (Dictionary<string, List<string>> SliceClaims, List<string> Allowlist, List<string> SliceIds)
+    /// <summary>
+    /// Sentinel for the rule above, which passes vacuously when the claimed
+    /// file set is empty: no claims means no double-claims, no orphans, and a
+    /// green result. The count clause catches mass shrinkage; the per-slice
+    /// clause states the invariant no aggregate count can — a slice that
+    /// declares artifacts resolves at least one — and refuses a declaration
+    /// that resolves to nothing. Both are derived from the manifest: no slice
+    /// id, path, or type is named, so nothing here rots when a slice is added,
+    /// renamed, or split.
+    /// </summary>
+    [TestMethod]
+    public void Shards_Claim_A_Non_Trivial_File_Set()
+    {
+        var repoRoot = RepoLocator.Root();
+        // Loader failures (unresolvable declarations, missing keys) belong to
+        // the rule above, which asserts on them; this method reports only the
+        // sentinel, so a red run names exactly one failure mode.
+        var (sliceClaims, _, _, declaredPatternCounts) = LoadShards(repoRoot, new List<string>());
+
+        var errors = new List<string>();
+        var totalClaims = sliceClaims.Values.Sum(claims => claims.Count);
+        if (totalClaims <= ClaimedArtifactFloor)
+            errors.Add($"slices claim {totalClaims} files in total, at or below the floor of "
+                + $"{ClaimedArtifactFloor}: the manifest's file set is shrinking out from under "
+                + "the ownership check.");
+
+        foreach (var (sliceId, claims) in sliceClaims)
+            if (declaredPatternCounts[sliceId] > 0 && claims.Count == 0)
+                errors.Add($"shard '{sliceId}' declares {declaredPatternCounts[sliceId]} "
+                    + "artifact(s) but resolves none of them.");
+
+        Assert.AreEqual(0, errors.Count,
+            "shard claimed-file sentinel failures:\n  - " + string.Join("\n  - ", errors));
+    }
+
+    private static (Dictionary<string, List<string>> SliceClaims, List<string> Allowlist,
+        List<string> SliceIds, Dictionary<string, int> DeclaredPatternCounts)
         LoadShards(string repoRoot, List<string> errors)
     {
         var path = Path.Combine(repoRoot, "shards.yaml");
@@ -74,6 +127,7 @@ public class ShardOwnershipTests
         var root = (YamlMappingNode)yaml.Documents[0].RootNode;
 
         var sliceClaims = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        var declaredPatternCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var sliceIds = new List<string>();
 
         var slices = (YamlSequenceNode)root.Children[new YamlScalarNode("slices")];
@@ -84,6 +138,7 @@ public class ShardOwnershipTests
             sliceIds.Add(id);
 
             var claims = new List<string>();
+            var declaredPatterns = 0;
             foreach (var key in new[] { "controller", "core", "views", "js", "unit_tests", "e2e_specs" })
             {
                 // Key presence, not list count, separates "declared as empty" from
@@ -96,6 +151,7 @@ public class ShardOwnershipTests
                 }
                 foreach (var raw in ((YamlSequenceNode)node).OfType<YamlScalarNode>())
                 {
+                    declaredPatterns++;
                     var pattern = raw.Value!;
                     var expanded = Expand(repoRoot, pattern);
                     if (expanded.Count == 0)
@@ -104,6 +160,7 @@ public class ShardOwnershipTests
                 }
             }
             sliceClaims[id] = claims;
+            declaredPatternCounts[id] = declaredPatterns;
         }
 
         var allowlist = new List<string>();
@@ -117,7 +174,7 @@ public class ShardOwnershipTests
                 allowlist.AddRange(expanded);
             }
 
-        return (sliceClaims, allowlist, sliceIds);
+        return (sliceClaims, allowlist, sliceIds, declaredPatternCounts);
     }
 
     private static void ValidateStoryMapIds(string repoRoot, List<string> sliceIds, List<string> errors)

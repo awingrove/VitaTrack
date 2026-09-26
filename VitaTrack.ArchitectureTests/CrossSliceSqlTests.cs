@@ -66,6 +66,34 @@ public class CrossSliceSqlTests
     }
 
     /// <summary>
+    /// Sentinel for the rule above: a slice that declares <c>tables</c> but
+    /// claims no <c>core</c> files issues SQL that nothing will ever be scanned
+    /// for, and the rule above still passes — "no files, no violations" is a
+    /// green result (the TD-006 shape). Derived from the manifest rather than
+    /// from a named slice, so it cannot rot when a slice is added, renamed, or
+    /// legitimately split; a slice with <c>tables: []</c> issues no SQL and is
+    /// vacuously exempt.
+    /// </summary>
+    [TestMethod]
+    public void Sql_Slices_Claiming_Tables_Also_Claim_Core_Files()
+    {
+        // Loader failures (absent declarations, wildcards) belong to the rule
+        // above, which asserts on them; this method reports only the sentinel,
+        // so a red run names exactly one failure mode.
+        var slices = LoadSlices(RepoLocator.Root(), new List<string>());
+
+        var silent = slices
+            .Where(s => s.Tables.Count > 0 && s.CorePaths.Count == 0)
+            .Select(s => s.SliceId)
+            .OrderBy(id => id, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.AreEqual(0, silent.Count,
+            "slices declaring 'tables' but claiming no 'core' files are scanning nothing: "
+            + string.Join(", ", silent));
+    }
+
+    /// <summary>
     /// From C# source, yields every string literal that looks like a SQL
     /// statement. Prose log messages that merely contain words like "from"
     /// do not match the statement shape and are skipped.

@@ -6,7 +6,7 @@ them, per the post-mortem rule in `AGENTS.md`.
 
 ## Open entries
 
-### TD-011 — `Supplements.DailyDose` accepts free text no dosage vocabulary can express
+### TD-017 — `Supplements.DailyDose` accepts free text no dosage vocabulary can express
 - **Where:** `VitaTrack.Core/Features/Supplements/Supplement.cs:19`,
   `VitaTrack.Web/Views/Supplement/Create.cshtml` (`input#DailyDose`).
 - **What:** `DailyDose` is the one remaining free-text dosage field, and it is deliberately

@@ -76,9 +76,6 @@ CHILD_PROGRESS_RE = re.compile(
 CHECKED_RE = re.compile(r"(?m)^\s*- \[x\]\s+", re.IGNORECASE)
 UNCHECKED_RE = re.compile(r"(?m)^\s*- \[ \]\s+")
 H1_RE = re.compile(r"(?m)^#\s+(.+?)\s*$")
-DEBT_ENTRY_RE = re.compile(r"^### (TD-\S+) — (.+)$")
-INTEREST_BULLET_RE = re.compile(r"^- \*\*Interest:\*\* ?(.*)$")
-DEFECT_ENTRY_RE = re.compile(r"^- \*\*(DL-\S+) — (.*)$")
 
 REQUIRED_LEDGER_FIELDS = (
     "id",
@@ -511,7 +508,7 @@ def render_dashboard(data: DashboardData) -> str:
         '<a href="shard-metrics.yaml">shard-metrics.yaml</a> · '
         '<a href="../plans/">docs/plans</a> · '
         '<a href="../superpowers/plans/">docs/superpowers/plans</a> · '
-        '<a href="technical-debt.md">technical-debt.md</a></p>',
+        '<a href="technical-debt.yaml">technical-debt.yaml</a></p>',
         '<p class="mb-0"><code>python3 scripts/generate-factory-dashboard.py</code></p>',
         "</header>",
         f'<div class="row g-3 mb-4">{cards}</div>',
@@ -533,7 +530,7 @@ def render_dashboard(data: DashboardData) -> str:
         "</table>",
         "</div>",
         f'<p class="mt-2 mb-3 text-muted">{data.debt.closed_count} closed entries '
-        '— see <a href="technical-debt.md">technical-debt.md</a></p>',
+        '— see <a href="technical-debt.yaml">technical-debt.yaml</a></p>',
         '<div class="table-responsive">',
         '<table class="table table-striped table-bordered bg-white align-middle mb-0">',
         f"<thead><tr>{defect_head}</tr></thead>",
@@ -705,94 +702,40 @@ def _load_ledger(
     return ledger
 
 
-DEBT_SECTION_HEADINGS = ("## Open entries", "## Closed entries", "## Defect log")
-
-
-def _split_debt_sections(
-    path: Path, lines: list[str]
-) -> tuple[list[str], list[str], list[str]]:
-    positions: dict[str, int] = {}
-    for index, line in enumerate(lines):
-        heading = line.strip()
-        if heading in DEBT_SECTION_HEADINGS and heading not in positions:
-            positions[heading] = index
-    for heading in DEBT_SECTION_HEADINGS:
-        if heading not in positions:
-            raise DashboardError(f"{path}: missing section heading '{heading}'")
-    order = [positions[heading] for heading in DEBT_SECTION_HEADINGS]
-    if order != sorted(order):
+def _debt_entry_id(entry: dict[str, Any], source: Path) -> str:
+    # The dashboard renders `id` and `title` from every collection, so both are
+    # required; a missing one is a register defect, reported with the id rather
+    # than raised as a bare KeyError.
+    entry_id = entry.get("id")
+    if not isinstance(entry_id, str) or not entry_id.strip():
         raise DashboardError(
-            f"{path}: section headings must appear in order: "
-            + ", ".join(DEBT_SECTION_HEADINGS)
+            f"{source}: every debt entry needs a non-empty string 'id'"
         )
-    return (
-        lines[positions["## Open entries"] + 1 : positions["## Closed entries"]],
-        lines[positions["## Closed entries"] + 1 : positions["## Defect log"]],
-        lines[positions["## Defect log"] + 1 :],
-    )
-
-
-def _parse_open_debt_entries(lines: list[str]) -> list[DebtEntry]:
-    parsed: list[list[Any]] = []
-    collecting_interest = False
-    for line in lines:
-        heading = DEBT_ENTRY_RE.match(line)
-        if heading:
-            parsed.append([heading.group(1), heading.group(2).strip(), []])
-            collecting_interest = False
-            continue
-        if not parsed:
-            continue
-        interest = INTEREST_BULLET_RE.match(line)
-        if interest:
-            if interest.group(1).strip():
-                parsed[-1][2].append(interest.group(1).strip())
-            collecting_interest = True
-            continue
-        if collecting_interest and line.startswith("  "):
-            parsed[-1][2].append(line.strip())
-            continue
-        collecting_interest = False
-    return [
-        DebtEntry(entry_id, title, " ".join(part for part in interest if part))
-        for entry_id, title, interest in parsed
-    ]
-
-
-def _parse_defect_entries(lines: list[str]) -> list[DefectEntry]:
-    entries: list[DefectEntry] = []
-    index = 0
-    while index < len(lines):
-        match = DEFECT_ENTRY_RE.match(lines[index])
-        if match is None:
-            index += 1
-            continue
-        entry_id, title_text = match.group(1), match.group(2)
-        while "**" not in title_text and index + 1 < len(lines):
-            following = lines[index + 1]
-            if not following.startswith("  ") or following.lstrip().startswith(
-                ("-", "#")
-            ):
-                break
-            index += 1
-            title_text += " " + following.strip()
-        entries.append(DefectEntry(entry_id, title_text.split("**", 1)[0].strip()))
-        index += 1
-    return entries
+    title = entry.get("title")
+    if not isinstance(title, str) or not title.strip():
+        raise DashboardError(
+            f"{source}: debt entry '{entry_id}' field 'title' must be a non-empty string"
+        )
+    return entry_id
 
 
 def _load_debt(root: Path) -> DebtRegister:
-    path = root / "docs/factory/technical-debt.md"
-    if not path.is_file():
-        raise DashboardError(f"{path}: file not found")
-    register_lines = list(_outside_fence_lines(path.read_text(encoding="utf-8")))
-    open_lines, closed_lines, defect_lines = _split_debt_sections(
-        path, register_lines
-    )
+    source = root / "docs/factory/technical-debt.yaml"
+    document = read_yaml(source)
     return DebtRegister(
-        open_entries=_parse_open_debt_entries(open_lines),
-        closed_count=sum(1 for line in closed_lines if line.startswith("### TD-")),
-        defects=_parse_defect_entries(defect_lines),
+        open_entries=[
+            DebtEntry(
+                _debt_entry_id(entry, source),
+                str(entry["title"]),
+                str(entry.get("interest") or ""),
+            )
+            for entry in _mapping_list(document, "open", source)
+        ],
+        closed_count=len(_mapping_list(document, "closed", source)),
+        defects=[
+            DefectEntry(_debt_entry_id(entry, source), str(entry["title"]))
+            for entry in _mapping_list(document, "defects", source)
+        ],
     )
 
 

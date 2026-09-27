@@ -59,42 +59,29 @@ open:
       (b) split it into a frequency field plus a dose-form vocabulary of its own. (a) is
       cheap and is the recommendation; (b) is a new domain concept needing an ADR.
 
-  - id: TD-012
-    title: >-
-      No architecture test asserts a non-empty selection
-    where: >-
-      `VitaTrack.ArchitectureTests/CrossSliceSqlTests.cs`,
-      `ShardOwnershipTests.cs`.
-    what: >-
-      a NetArchTest or file-scan rule whose selection is empty passes without
-      testing anything. That is precisely how `ServicesLayeringTests` sat green over an empty
-      namespace for two slice conversions (TD-006). `ServicesLayeringTests` and
-      `WebLayerDependencyTests` now both carry a named sentinel; these two do not.
-      `CrossSliceSqlTests` goes vacuous if every `core:` list empties — `SHELL` is already
-      `core: []` (`shards.yaml:216`).
-    interest: >-
-      the same defect class recurs silently, and the next occurrence will be as
-      invisible as the last.
-    paydown: >-
-      add a named-sentinel assertion to each, and extract the duplicated
-      `SelectedTypeNames`/`FormatFailures` helpers now that four test classes carry them.
 
-  - id: TD-013
+
+  - id: TD-019
     title: >-
-      `CrossSliceSqlTests` silently drops wildcard `core:` patterns
+      `Expand` returns an empty list silently, and `StoryMapConsistencyTests` skips a story with no `tests:` key
     where: >-
-      `VitaTrack.ArchitectureTests/CrossSliceSqlTests.cs:145` (`LoadCore`).
+      `VitaTrack.ArchitectureTests/ShardOwnershipTests.cs:180-207`,
+      `VitaTrack.ArchitectureTests/StoryMapConsistencyTests.cs:88-89`
     what: >-
-      a `core:` entry containing `*` is discarded without error, unlike a missing
-      `tables` key, which is an explicit error (`:124-127`). A future
-      `core: VitaTrack.Core/Features/X/**` would quietly disable the ADR-0006 cross-slice
-      invariant for that slice with no test failure anywhere.
+      `Expand`'s three branches each return an empty list with no error, and the zero-match
+      check lives in the *caller* — so a third caller would get silence for free. Both current
+      callers (slice artifacts and the allowlist) now error on `Count == 0`, so this is
+      backstopped today. Separately, `StoryMapConsistencyTests` skips a story that declares no
+      `tests:` key, so a shipped story can claim zero test coverage without a red build.
     interest: >-
-      the invariant that is supposed to be machine-enforced becomes
-      convention-only, invisibly.
+      the same "wrong is loud, deleted is silent" class TD-013 was, one layer down. It is
+      latent because two callers happen to check; a third would not, and the story-map skip
+      means an untested story is invisible.
     paydown: >-
-      error on a wildcard `core:` pattern, or expand it, matching what
-      `ShardOwnershipTests` glob-expansion already does.
+      move the zero-match check into `Expand` itself so it cannot be forgotten by a caller,
+      and decide whether a story with no `tests:` key is an error or a legitimate
+      documentation-only story. The second is a design question — this repo's story map
+      claims every story is tested, so "no tests" currently means a broken claim.
 
   - id: TD-018
     title: >-
@@ -123,24 +110,6 @@ open:
       as an error and the fix must distinguish a live claim from a dated citation rather
       than suppress the scan.
 
-  - id: TD-015
-    title: >-
-      Stale `VitaTrack.Core/Services` references are back in the live docs
-    where: >-
-      `VitaTrack.Core/AGENTS.md:8`, `:12`, `:70`; root `AGENTS.md:17`;
-      `docs/ArchitectureReview.md:27`.
-    what: >-
-      TD-007 was closed 2026-09-23 for exactly this class — docs claiming a retired
-      layout — and four of the same lines still say interfaces live in
-      `VitaTrack.Core.Data` or `VitaTrack.Core.Services`. The directory does not exist;
-      `VitaTrack.Core/AGENTS.md:8` contradicts itself three lines apart.
-    interest: >-
-      an agent reading these reinvents a layout that was deliberately retired,
-      and "docs must not lie" (ArchitectureReview §2.2) stops being reviewable because the
-      review already passed once on the same text.
-    paydown: >-
-      delete the four references, and add a grep-based arch test for retired
-      namespace names so the fix cannot regress. Fold into the TD-014 register/meta-test work.
 
   - id: TD-016
     title: >-
@@ -191,6 +160,118 @@ open:
       *rejected* at approve/merge, not merely deferred by convention.
 
 closed:
+  - id: TD-012
+    title: >-
+      No architecture test asserts a non-empty selection
+    where: >-
+      `VitaTrack.ArchitectureTests/CrossSliceSqlTests.cs`,
+      `ShardOwnershipTests.cs`.
+    what: >-
+      a NetArchTest or file-scan rule whose selection is empty passes without
+      testing anything. That is precisely how `ServicesLayeringTests` sat green over an empty
+      namespace for two slice conversions (TD-006). `ServicesLayeringTests` and
+      `WebLayerDependencyTests` now both carry a named sentinel; these two do not.
+      `CrossSliceSqlTests` goes vacuous if every `core:` list empties — `SHELL` is already
+      `core: []` (`shards.yaml:216`).
+    interest: >-
+      the same defect class recurs silently, and the next occurrence will be as
+      invisible as the last.
+    paydown: >-
+      add a named-sentinel assertion to each, and extract the duplicated
+      `SelectedTypeNames`/`FormatFailures` helpers now that four test classes carry them.
+    closed: 2026-09-26
+    note: >-
+      Closed as **derived invariants, not named sentinels**. `CrossSliceSqlTests` gained
+      `Sql_Slices_Claiming_Tables_Also_Claim_Core_Files` — every slice declaring `tables:`
+      must claim `core:` files, which needs no slice name to rot. `ShardOwnershipTests` gained
+      `Shards_Claim_A_Non_Trivial_File_Set` — a total claimed-file floor of 130 (real total
+      145, so 130 = 145 minus 15, the two smallest slices) plus a per-slice clause, because a
+      floor alone is gameable by one large slice absorbing another's loss.
+
+      Both were proven load-bearing by mutating `shards.yaml` and observing red, then
+      reverting. The floor is deliberately not rounder: 120 leaves 5 of 7 slices collapsible
+      and 140 leaves 4 to 5 files of slack, so an ordinary 6-file deletion would turn CI red
+      and the constant would get re-tuned until it meant nothing.
+
+      **Accepted limitation:** a slice whose keys are *all* `[]` and whose files are gone
+      declares nothing, so both sentinels are vacuous and only the floor sees it, and only for
+      drops of 15 or more. Collapsing MF (11) or SHELL (5) alone remains silent. Closing that
+      needs either a runtime-derived floor or an "every slice claims at least 1 artifact"
+      rule, both design changes this entry did not take on.
+
+      The `SelectedTypeNames`/`FormatFailures` helper extraction named in the original paydown
+      did **not** happen; the helpers are still duplicated across test classes. It is cosmetic
+      next to the sentinel work and is not tracked separately.
+
+  - id: TD-013
+    title: >-
+      `CrossSliceSqlTests` silently drops wildcard `core:` patterns
+    where: >-
+      `VitaTrack.ArchitectureTests/CrossSliceSqlTests.cs:145` (`LoadCore`).
+    what: >-
+      a `core:` entry containing `*` is discarded without error, unlike a missing
+      `tables` key, which is an explicit error (`:124-127`). A future
+      `core: VitaTrack.Core/Features/X/**` would quietly disable the ADR-0006 cross-slice
+      invariant for that slice with no test failure anywhere.
+    interest: >-
+      the invariant that is supposed to be machine-enforced becomes
+      convention-only, invisibly.
+    paydown: >-
+      error on a wildcard `core:` pattern, or expand it, matching what
+      `ShardOwnershipTests` glob-expansion already does.
+    closed: 2026-09-26
+    note: >-
+      Closed by **erroring, not expanding** — the decision is recorded here because the
+      register offered both: error is a strict subset of expand-later, and expanding
+      `VitaTrack.Core/**` would pull every slice's SQL into one slice's `tables` and flood the
+      rule with false positives, training people to ignore it.
+
+      Widening the sweep, `CrossSliceSqlTests` and `ShardOwnershipTests` now error on every
+      silent manifest skip found: the missing `core:` key, a `core:` path resolving to no
+      file, a wildcard pattern, a missing artifact key, an allowlist pattern matching zero
+      files, and a missing `storymap.yaml` (which had been silently disabling both directions
+      of the slice-id cross-check). Absent-key is distinguished from present-but-empty by
+      YamlDotNet key presence, not list count, so `SHELL`'s legitimate `core: []` still passes.
+
+      Each error path was proven by mutating the real manifest, observing red, and reverting.
+      **No current declaration turned out to be wrong**, so nothing in the manifest was edited
+      to make a newly-fatal check pass.
+
+  - id: TD-015
+    title: >-
+      Stale `VitaTrack.Core/Services` references are back in the live docs
+    where: >-
+      `VitaTrack.Core/AGENTS.md:8`, `:12`, `:70`; root `AGENTS.md:17`;
+      `docs/ArchitectureReview.md:27`.
+    what: >-
+      TD-007 was closed 2026-09-23 for exactly this class — docs claiming a retired
+      layout — and four of the same lines still say interfaces live in
+      `VitaTrack.Core.Data` or `VitaTrack.Core.Services`. The directory does not exist;
+      `VitaTrack.Core/AGENTS.md:8` contradicts itself three lines apart.
+    interest: >-
+      an agent reading these reinvents a layout that was deliberately retired,
+      and "docs must not lie" (ArchitectureReview §2.2) stops being reviewable because the
+      review already passed once on the same text.
+    paydown: >-
+      delete the four references, and add a grep-based arch test for retired
+      namespace names so the fix cannot regress. Fold into the TD-014 register/meta-test work.
+    closed: 2026-09-26
+    note: >-
+      Closed. The four references were rewritten into explicit *prohibitions* (the namespace
+      "is retired — do not add to them") rather than deleted, because a bare deletion leaves
+      no reason and invites reintroduction. `VitaTrack.ArchitectureTests/RetiredNamespaceTests`
+      now scans 230 live files and tolerates exactly the four spans that say so, matched on
+      file plus anchored text fragment — any *other* mention in the same file is still a
+      violation, so there is no whole-file amnesty.
+
+      Two sentinels keep the rule from being narrowed to nothing: a 200-file scan floor, and a
+      cap of 4 permitted mentions that trips with "each addition is a live file that names the
+      retired namespace, and needs a human to read it."
+
+      **Accepted limitation:** the cap is a count, not a liveness check. A permitted fragment
+      edited out of existence leaves a dead entry that still satisfies the cap — fail-safe, but
+      the stale entry is invisible.
+
   - id: TD-014
     title: >-
       The technical-debt register has no machine check

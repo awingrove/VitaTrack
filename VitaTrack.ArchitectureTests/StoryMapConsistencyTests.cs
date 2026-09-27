@@ -18,7 +18,7 @@ public class StoryMapConsistencyTests
     [TestMethod]
     public void StoryMap_IsValid_AndTestReferencesResolve()
     {
-        var repoRoot = FindRepoRoot();
+        var repoRoot = RepoLocator.Root();
         var path = Path.Combine(repoRoot, "storymap.yaml");
         var yaml = new YamlStream();
         yaml.Load(new StringReader(File.ReadAllText(path)));
@@ -192,15 +192,5 @@ public class StoryMapConsistencyTests
     {
         var dir = Path.Combine(repoRoot, "VitaTrack.Tests");
         return Directory.GetFiles(dir, "*.cs").Select(File.ReadAllText).ToArray();
-    }
-
-    private static string FindRepoRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "VitaTrack.sln")))
-            dir = dir.Parent;
-
-        Assert.IsNotNull(dir, "Could not locate repo root (VitaTrack.sln not found).");
-        return dir!.FullName;
     }
 }

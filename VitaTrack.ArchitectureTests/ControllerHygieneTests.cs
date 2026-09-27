@@ -1,6 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.IO;
-using System.Reflection;
 using VitaTrack.Web.Controllers;
 
 namespace VitaTrack.ArchitectureTests;
@@ -11,7 +10,7 @@ public class ControllerHygieneTests
     [TestMethod]
     public void Controllers_DoNotCatchException()
     {
-        var solutionRoot = FindSolutionRoot();
+        var solutionRoot = RepoLocator.Root();
         Assert.IsNotNull(solutionRoot);
 
         var controllersDir = Path.Combine(solutionRoot, "VitaTrack.Web", "Controllers");
@@ -31,16 +30,5 @@ public class ControllerHygieneTests
             "Controllers must not `catch (Exception)` — per-row failures return failure-carrying result records; "
             + "exceptional system failures propagate to the global error handler (AGENTS.md §2.5):\n  "
             + string.Join("\n  ", violations));
-    }
-
-    private static string? FindSolutionRoot()
-    {
-        var dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-        while (dir != null)
-        {
-            if (Directory.GetFiles(dir, "*.sln").Length > 0) return dir;
-            dir = Directory.GetParent(dir)?.FullName;
-        }
-        return null;
     }
 }

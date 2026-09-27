@@ -46,7 +46,7 @@ public class TechnicalDebtRegisterTests
     [TestMethod]
     public void Register_Has_Unique_Ids_And_Complete_Entries_With_Live_Where_Paths()
     {
-        var repoRoot = FindRepoRoot();
+        var repoRoot = RepoLocator.Root();
         var errors = new List<string>();
         Validate(repoRoot, LoadRegister(repoRoot), errors);
         Assert.AreEqual(0, errors.Count,
@@ -56,7 +56,7 @@ public class TechnicalDebtRegisterTests
     [TestMethod]
     public void Validator_Rejects_DuplicateId_MissingPaydown_And_DeadWhere_Path()
     {
-        var repoRoot = FindRepoRoot();
+        var repoRoot = RepoLocator.Root();
         const string malformed = """
             open:
               - id: TD-900
@@ -202,16 +202,5 @@ public class TechnicalDebtRegisterTests
         var stream = new YamlStream();
         stream.Load(new StringReader(yaml));
         return (YamlMappingNode)stream.Documents[0].RootNode;
-    }
-
-    // The 8th copy of this walk. A shared RepoLocator.Root() exists on the unmerged
-    // guardrail-self-verification branch; adding one here would collide with it on merge.
-    private static string FindRepoRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "VitaTrack.sln")))
-            dir = dir.Parent;
-        Assert.IsNotNull(dir, "Could not locate repo root (VitaTrack.sln not found).");
-        return dir.FullName;
     }
 }

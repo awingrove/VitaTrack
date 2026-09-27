@@ -24,7 +24,7 @@ public class ShardMetricsLedgerTests
     [TestMethod]
     public void Ledger_Entries_Resolve_To_Real_Shards_And_Carry_Required_Fields()
     {
-        var repoRoot = FindRepoRoot();
+        var repoRoot = RepoLocator.Root();
         var errors = new List<string>();
 
         var sliceIds = LoadSliceIds(repoRoot);
@@ -105,13 +105,4 @@ public class ShardMetricsLedgerTests
         => node.Children.TryGetValue(new YamlScalarNode(key), out var v) && v is YamlScalarNode s
             ? s.Value ?? string.Empty
             : string.Empty;
-
-    private static string FindRepoRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "VitaTrack.sln")))
-            dir = dir.Parent;
-        Assert.IsNotNull(dir, "Could not locate repo root (VitaTrack.sln not found).");
-        return dir!.FullName;
-    }
 }

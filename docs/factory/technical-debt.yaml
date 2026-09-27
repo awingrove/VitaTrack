@@ -63,25 +63,42 @@ open:
 
   - id: TD-019
     title: >-
-      `Expand` returns an empty list silently, and `StoryMapConsistencyTests` skips a story with no `tests:` key
+      `Expand` returns an empty list silently, so a third caller would get silence for free
     where: >-
-      `VitaTrack.ArchitectureTests/ShardOwnershipTests.cs:180-207`,
-      `VitaTrack.ArchitectureTests/StoryMapConsistencyTests.cs:88-89`
+      `VitaTrack.ArchitectureTests/ShardOwnershipTests.cs:180-207`
     what: >-
       `Expand`'s three branches each return an empty list with no error, and the zero-match
       check lives in the *caller* — so a third caller would get silence for free. Both current
       callers (slice artifacts and the allowlist) now error on `Count == 0`, so this is
-      backstopped today. Separately, `StoryMapConsistencyTests` skips a story that declares no
-      `tests:` key, so a shipped story can claim zero test coverage without a red build.
+      backstopped today.
     interest: >-
       the same "wrong is loud, deleted is silent" class TD-013 was, one layer down. It is
-      latent because two callers happen to check; a third would not, and the story-map skip
-      means an untested story is invisible.
+      latent because two callers happen to check; a third would not.
     paydown: >-
-      move the zero-match check into `Expand` itself so it cannot be forgotten by a caller,
-      and decide whether a story with no `tests:` key is an error or a legitimate
-      documentation-only story. The second is a design question — this repo's story map
-      claims every story is tested, so "no tests" currently means a broken claim.
+      move the zero-match check into `Expand` itself so it cannot be forgotten by a caller.
+
+  - id: TD-020
+    title: >-
+      `StoryMapConsistencyTests` skips a story that declares no `tests:` key
+    where: >-
+      `VitaTrack.ArchitectureTests/StoryMapConsistencyTests.cs:88-89`,
+      `storymap.yaml`
+    what: >-
+      a story with no `tests:` key is skipped, so a shipped story can claim zero test
+      coverage without a red build. Split from the original TD-019 because the two halves
+      have different owners: that one is a guardrail defect, this one is a policy question.
+    interest: >-
+      the story map is how the factory claims every story is tested. If a story may
+      legitimately declare no tests, then "untested" is unrepresentable rather than detected,
+      and the map's central claim becomes unfalsifiable — the same shape as TD-014's lost-id
+      half, where a rule that cannot fail is read as a rule that is passing.
+    paydown: >-
+      decide whether a story with no `tests:` key is an error or a legitimate
+      documentation-only story, and make the test agree either way. This is a **design
+      question, deliberately not decided here**: the repo's story map currently claims every
+      story is tested, so "no tests" means a broken claim today — but a documentation-only
+      story may be a legitimate category nobody has named yet. Answering it needs a
+      developer, not a refactor.
 
   - id: TD-018
     title: >-
@@ -109,7 +126,19 @@ open:
       historical records citing what was true when written, so a naive scan reports each
       as an error and the fix must distinguish a live claim from a dated citation rather
       than suppress the scan.
+    deferred: 2026-09-27
+    deferral_note: >-
+      **Deferred by freeze, not declined.** The 2026-09-27 factory wrap-up (see
+      `docs/factory/new-shard.md`, "Guardrail discipline") agreed a commit-mix freeze on
+      meta-layer work for the next two branches, because the previous branch was six
+      test/doc commits to one product commit. This entry is the same class of work that
+      consumed those 22 commits, so it is parked rather than rejected.
 
+      It stays **open** deliberately. Closing it would write a decision that reads as "we
+      chose not to detect lost entries," which is worse than a known gap — a closed entry
+      looks resolved, and an open one looks like work. Revisit when a branch is
+      majority-product-code again, or when a `TD-`/`DL-` id is actually lost in a merge,
+      which is the event this exists to catch.
 
   - id: TD-016
     title: >-

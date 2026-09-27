@@ -43,6 +43,9 @@ public class TechnicalDebtRegisterTests
     // one entry using `FileSizeTests.cs:45-63`, so both forms are stripped.
     private static readonly Regex LineSuffix = new(@":\d+(-\d+)?$", RegexOptions.Compiled);
 
+    // A key opening a folded block scalar: four spaces of key indent, then `key: >-`.
+    private static readonly Regex FoldedKeyPattern = new(@"^ {4}(?<key>\w+): >-\s*$", RegexOptions.Compiled);
+
     [TestMethod]
     public void Register_Has_Unique_Ids_And_Complete_Entries_With_Live_Where_Paths()
     {
@@ -97,6 +100,77 @@ public class TechnicalDebtRegisterTests
 
     private static bool Has(List<string> errors, params string[] fragments)
         => errors.Any(e => fragments.All(f => e.Contains(f, StringComparison.Ordinal)));
+
+    /// <summary>
+    /// Rule 6 — every folded scalar (<c>&gt;-</c>) in the register has its content lines at
+    /// exactly six spaces: keys sit at four, so six is the only correct content indent.
+    /// </summary>
+    /// <remarks>
+    /// This checks the <em>shape</em> of the file, not its meaning. It catches a malformed
+    /// register — a hand-edited scalar whose content drifted off the six-space grid — and it
+    /// runs independently of the parser so a bad indent is reported as an indent problem
+    /// rather than surfacing as an opaque YamlDotNet message from another test.
+    ///
+    /// It does **not** catch a silently truncated field, and this remark exists to stop a
+    /// later reader assuming it does. That failure was measured, not assumed: a 5-space
+    /// continuation is a <c>ParserError</c> and a 4-space cut is a <c>ScannerError</c>, so an
+    /// indent error is already loud without this rule. And a *dropped* continuation line —
+    /// the genuinely silent case — leaves valid YAML with a shorter field, with no structural
+    /// signal at all. Two content thresholds were measured and both fail: a flat 40-character
+    /// per-field floor false-positives on 7 legitimate fields (the shortest is
+    /// <c>TD-009.where</c> at 24), and a 200-character per-entry volume floor catches zero
+    /// real truncations, because all 23 entries absorb a one-line drop. Tightening the volume
+    /// floor to 217 would catch it on the tightest entry but leaves 44 characters of margin,
+    /// so the first legitimately terse entry breaks the build.
+    ///
+    /// So truncation is undetectable by a threshold that does not also fail on healthy data.
+    /// The honest mitigations are review at the point of edit — the register's header comment
+    /// documents the six-space grid — and not pretending otherwise. It is a separate
+    /// [TestMethod] because it reads the file as text rather than as a parsed node.
+    /// </remarks>
+    [TestMethod]
+    public void Folded_Scalars_Indent_Their_Content_At_Six_Spaces()
+    {
+        var repoRoot = RepoLocator.Root();
+        var path = Path.Combine(repoRoot, "docs", "factory", "technical-debt.yaml");
+        var lines = File.ReadAllLines(path);
+
+        var errors = new List<string>();
+        var foldedKeys = 0;
+        string? pendingKey = null;
+        var pendingKeyLine = 0;
+
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i];
+            var keyMatch = FoldedKeyPattern.Match(line);
+            if (keyMatch.Success)
+            {
+                pendingKey = keyMatch.Groups["key"].Value;
+                pendingKeyLine = i + 1;
+                foldedKeys++;
+                continue;
+            }
+
+            if (pendingKey is null || line.Length == 0) continue;
+
+            var indent = line.Length - line.TrimStart().Length;
+            if (indent <= 4)
+            {
+                pendingKey = null;
+                continue;
+            }
+
+            if (indent != 6)
+                errors.Add($"{Path.GetFileName(path)}:{i + 1}: folded scalar '{pendingKey}' "
+                    + $"(declared at line {pendingKeyLine}) has content at {indent} spaces, expected 6.");
+        }
+
+        Assert.AreEqual(0, errors.Count,
+            "technical-debt register indentation failures:\n  - " + string.Join("\n  - ", errors));
+        Assert.IsTrue(foldedKeys > 0,
+            $"no folded scalar found in {path} — the rule is not inspecting anything, so it would pass vacuously.");
+    }
 
     private static void Validate(string repoRoot, YamlMappingNode root, List<string> errors)
     {

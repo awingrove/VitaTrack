@@ -323,15 +323,20 @@ closed:
       entry's `where` is never checked for existence, because it names a historical path by
       design. (4) `found`/`closed` dates are narrowed to the day a commit named in the
       entry's own prose recorded it, so the source's coarser "found Sep 2026" survives only
-      inside the prose fields. (5) **A silently truncated prose field is undetectable.** A
-      continuation line that loses its two-space indent ends the folded scalar without a
-      parse error, so the field survives as a fragment. A per-field length floor would catch
-      it, and was considered and rejected: the register legitimately carries short fields
-      (`where: FamilyRepository.cs:17` is 24 characters, the shortest title is 36), so any
-      threshold tight enough to catch a truncation goes red on healthy data. If this needs
-      detecting, assert the structural property instead — that every folded scalar's content
-      lines sit at exactly six spaces — which catches the indent error at its source rather
-      than inferring it from length.
+      inside the prose fields. (5) **A silently truncated prose field is undetectable.** The
+      failure was measured rather than assumed, and the first hypothesis was wrong. An *indent*
+      error is already loud without help — a 5-space continuation is a `ParserError` and a
+      4-space cut is a `ScannerError` — so it needs no rule. The silent case is a *dropped*
+      continuation line, which leaves valid YAML with a shorter field and no structural signal.
+      Two content thresholds were measured and both fail: a flat 40-character per-field floor
+      false-positives on 7 legitimate fields (the shortest is `` `FamilyRepository.cs:17` ``
+      at 24), and a 200-character per-entry volume floor catches **zero** real truncations,
+      because all 23 entries absorb a one-line drop. Tightening that floor to 217 would catch
+      the tightest entry but leaves only 44 characters of margin, so the first legitimately
+      terse entry breaks the build. Truncation is therefore undetectable by any threshold that
+      does not also fail on healthy data. The mitigations are review at the point of edit — the
+      header comment documents the six-space grid — plus rule 6, which checks the file's shape
+      and reports a bad indent as an indent problem rather than an opaque parser message.
 
   - id: TD-003
     title: >-

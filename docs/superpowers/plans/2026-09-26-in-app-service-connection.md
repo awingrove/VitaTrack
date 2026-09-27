@@ -21,7 +21,7 @@
 - **No `BaseAddress` on any `HttpClient`.** Every LLM request builds an absolute `Uri` from the connection's `BaseUrl`. The `AddHttpClient("llm", …)` configure delegate is deleted.
 - **`Authorization` and descriptor headers are set per request**, never on a cached handler.
 - **No foreign keys on `ServiceConnections`.** Deleting a connection must never touch a supplement.
-- **No seed row for `ServiceConnections`.** Seeding a credential is wrong. This is a recorded exception to the AGENTS.md seeding rule, written into the debt register in the same change.
+- **No seed row for `ServiceConnections`.** Seeding a credential is wrong. This is a recorded exception to the AGENTS.md seeding rule, written into the debt register in the same change (as `TD-020` — see Task 6).
 - **`Service` is a descriptor id, not free text.** The user picks from the registry; the controller never accepts an arbitrary string.
 - **`IsActive` invariant: at most one row has `IsActive = 1`.** Enforced in the repository, not by convention.
 - **`x-opencode-session` is a per-process singleton id**, not per-request.
@@ -473,11 +473,23 @@ git commit -m "refactor: delete VitaTrackOptions — the database is the only so
 - Modify: `AGENTS.md` (LLM Integration bullet rewritten; variant vocabulary recorded; seed exception)
 - Modify: `docs/quality/nfr.md` (secrets bullet rewritten; SSRF decision recorded)
 - Modify: `DESIGN.md` (three-state connection indicator, dependent dropdown, Settings page, button intents)
-- Modify: `docs/factory/technical-debt.yaml` (or `.md` if Task order differs — see below) — record the no-seed exception
+- Modify: `docs/factory/technical-debt.yaml` (the `open` collection — see Step 6)
 
 **Interfaces:** none. Documentation and manifest task.
 
-> **Note on the debt register:** this plan may land before or after the register-to-YAML conversion. Check which file exists and write the entry in the current format. If the YAML register has landed, use the `open:` collection; if not, use the `## Open entries` Markdown section.
+> **Debt register format (settled — the prose `.md` is deleted).** The register is
+> `docs/factory/technical-debt.yaml`, guarded by `VitaTrack.ArchitectureTests/TechnicalDebtRegisterTests`.
+> An `open` entry requires `id`, `title`, `where`, `what`, `interest`, `paydown` and must not carry
+> `closed` or `note`. **Every prose field is a folded `>-` scalar** — the text contains `": "` throughout,
+> which is a parse error in a plain scalar — with keys at four spaces and content at six.
+>
+> **The new id is `TD-020`.** Open entries are currently `TD-017`, `TD-019`, `TD-018`, `TD-016`, `TD-010`;
+> closed are `TD-001`–`TD-015`. Ids are unique across the whole register: **never reuse one and never
+> renumber an existing entry to make room** (`AGENTS.md`, Post-Mortem Capture). Append `TD-020`.
+>
+> **Rule 5 will check this entry's `where` on the same build.** Backtick-delimited spans starting with a
+> known project root are stripped of any `:\d+` line suffix and must resolve. Every path named in the
+> `where` below exists at the time this task runs — verify, do not recall (DL-002 defect b).
 
 - [ ] **Step 1: Finalize `shards.yaml`**
 
@@ -499,9 +511,24 @@ Rewrite the secrets bullet — the key is a plaintext `TEXT` column, masked to t
 
 Add: the three-state connection indicator (disconnected / connected-verified / connected-unverified), the dependent model→variant dropdown, the Settings page as a nav destination, and the button intent classes used in Task 4.
 
-- [ ] **Step 6: Record the no-seed exception in the debt register**
+- [ ] **Step 6: Record the no-seed exception as `TD-020` in the register**
 
-An entry stating that `ServiceConnections` is deliberately unseeded because seeding a credential is wrong, with the compensating coverage (e2e creates its connection through the UI).
+Append to the `open` collection in `docs/factory/technical-debt.yaml`. Content, as prose — this is
+deliberately not a decision-log line, because the interest is a real per-change cost:
+
+- `id: TD-020` · `title: >-` "`ServiceConnections` is deliberately unseeded, and nothing in code marks it"
+- `where: >-` `` `VitaTrack.Core/Data/DbInit.cs`, `AGENTS.md` `` — both resolve, so rule 5 stays green
+- `what: >-` Every other table `DbInit.EnsureCreated` creates carries a seed. This one does not, because
+  seeding a credential is wrong. The AGENTS.md seeding rule has exactly one documented exception and it
+  is here.
+- `interest: >-` A future agent reading "seed data for new entity types" and finding no seed block for
+  `ServiceConnections` cannot distinguish a deliberate exception from an oversight, and "fixing" it puts
+  an API key in a source file that is committed to git.
+- `paydown: >-` None needed. The exception is recorded in AGENTS.md and here; the compensating coverage is
+  the e2e spec, which creates its connection through the UI rather than reading a seed row.
+
+Then regenerate the dashboard in Step 7 — the register is one of its three sources, and CI gates freshness
+(`ci.yml`, commit `2d786ea`), so a register edit without a regeneration is a red build.
 
 - [ ] **Step 7: Run the gates and commit**
 
@@ -509,9 +536,13 @@ An entry stating that `ServiceConnections` is deliberately unseeded because seed
 dotnet test VitaTrack.sln -c Release
 python3 scripts/generate-factory-dashboard.py
 python3 scripts/generate-factory-dashboard.py --check
-git add AGENTS.md DESIGN.md docs/ shards.yaml storymap.yaml
+git add AGENTS.md DESIGN.md docs/quality/nfr.md docs/factory/technical-debt.yaml docs/factory/dashboard.html shards.yaml storymap.yaml
 git commit -m "docs: manifests, AGENTS, NFR, and DESIGN.md for the service-connection slice"
 ```
+
+Expected: arch 27 / unit 234 plus whatever Tasks 1–5 added, 0 failed. **The register's rule 1 and rule 5
+run in that `dotnet test`** — if `TD-020`'s `where` names a path that does not resolve, the build is red
+and the message names the id.
 
 ---
 
@@ -566,7 +597,7 @@ git commit -m "test: e2e coverage for the connect flow against a real stub endpo
 
 **Spec coverage.** Every spec section maps to a task: storage-is-source-of-truth → Task 5 · slice boundary and one-way dependency → Tasks 1–3 · descriptor-not-interface → Task 2 · session id → Task 3 · the `HttpClient` fix → Task 3 (per-request) and Task 5 (delegate deleted) · the `gpt-4o-mini` default → Task 3 · the three states → Task 4 · the connect POST semantics → Tasks 2 + 4 · fixed variant vocabulary → Task 2 · the hard-fail path → Task 3 · schema → Task 1 · no-seed exception → Task 6 · secret handling → Task 6 · files → Tasks 1–4, 7 · `DESIGN.md` amendment → Task 6 · testing → Tasks 1–5, 7 · the no-mock amendment → Task 7 · all eight recorded decisions → Global Constraints plus Tasks 2, 3, 4, 6.
 
-**Gaps found and closed during review.** (1) The spec's file list omits that `ILlmClient` is consumed by `SupplementLabelParser`, so the seam is **three** signatures — now called out in Task 3's header, since an implementer reading only the spec would miss it. (2) The spec does not say where the `LlmSessionId` singleton is registered — now Task 3 Step 3 and Task 4 Step 7. (3) The spec's e2e section does not name who re-points the real-provider spec — now Task 7 Step 3. (4) The spec allows either `.md` or `.yaml` for the debt register depending on landing order — now a note in Task 6.
+**Gaps found and closed during review.** (1) The spec's file list omits that `ILlmClient` is consumed by `SupplementLabelParser`, so the seam is **three** signatures — now called out in Task 3's header, since an implementer reading only the spec would miss it. (2) The spec does not say where the `LlmSessionId` singleton is registered — now Task 3 Step 3 and Task 4 Step 7. (3) The spec's e2e section does not name who re-points the real-provider spec — now Task 7 Step 3. (4) The debt-register format was left open pending the register-to-YAML conversion, which has since landed (`refactor/debt-register-yaml`) — Task 6 now names the file, the `open` collection, the id (`TD-020`, continuing from `TD-019`), the folded-scalar requirement, and the two register rules that will check the new entry on the same build. (5) Task 6 Step 3's seed exception and Step 6's register entry are the same decision recorded twice, deliberately: `AGENTS.md` is where a future agent looks for the rule, the register is where the *cost* of breaking it is tracked.
 
 **Step scan.** Every step names a file, a signature, a test name, or a command. No step says "add appropriate validation." The only algorithm bodies deliberately omitted are the URI trim-and-combine rule, which Task 2 Step 5 and Task 3 Step 4 both define by invariant rather than by transcript, and the `/v1/models` JSON parse, which the test assertions fully determine.
 

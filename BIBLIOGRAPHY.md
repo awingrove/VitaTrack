@@ -57,8 +57,9 @@ Factory-specific terms mapped to their origin texts:
 **Factory Context:** DTO binding (never entity binding from forms), result records for control flow, service layer patterns. Your factory is Fowler-tactical: pragmatic, not dogmatic.
 
 ### *A Philosophy of Software Design* — John Ousterhout
-**LLM Prompt Trigger:** When a file approaches 300 lines, when deciding whether to split a type, or when evaluating complexity of an abstraction.
-**Factory Context:** "No complete type > 300 lines" is Ousterhout-flavored. Deep modules (simple interface, complex implementation) vs shallow modules. Complexity management: define errors out of existence.
+**LLM Prompt Trigger:** when a file approaches 300 lines; when deciding whether to split a type; **when choosing an interface versus a plain data record**; when a module's interface is complex relative to what it does; when a special case may need its own code path; when a method signals failure by throwing.
+**Chapters are not interchangeable — cite the one you actually used:** Ch 4 *Modules Should Be Deep* · Ch 5 *Information Hiding* (Parnas 1972; the base concept) · Ch 6 *General-Purpose Modules Are Deeper* (one generic implementation beats N special-purpose ones) · Ch 10 *Define Errors Out of Existence* — **this one is about exceptions and caller burden, not abstraction choice**; only 10.9 "design special cases out of existence" generalises.
+**Factory Context:** "No complete type > 300 lines" is Ousterhout-flavored. The `ServiceDescriptor`-over-`IServicePreset` call is **Ch 4 + Ch 6, not Ch 10** — `docs/superpowers/specs/2026-09-26-in-app-service-connection-design.md`. **Usage (Ch 1):** these principles "compare design alternatives and guide your exploration of the design space" — they never identify the best design outright. Do not name a chapter as authority for an argument you did not make.
 
 ### *Team Topologies: Organizing Business and Technology Teams for Fast Flow* — Matthew Skelton, Manuel Pais
 **LLM Prompt Trigger:** When deciding shard ownership, when a concept is shared across slices, or when cognitive load is too high for one agent/human.

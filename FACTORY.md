@@ -80,5 +80,7 @@ the human** — never hunt for another route around a gate.
   enforced by `ShardMetricsLedgerTests`). Warn-only until 3 shards have entries, then hard.
 - Static analysis: Roslyn analyzers + warnings-as-errors in CI.
 - Non-functional requirements: `docs/quality/nfr.md`.
-- Technical debt register: `docs/factory/technical-debt.md` (each entry with an interest rate).
+- Technical debt register: `docs/factory/technical-debt.yaml` (each entry with an interest
+  rate), guarded by `VitaTrack.ArchitectureTests/TechnicalDebtRegisterTests` — a missing field,
+  a duplicate id, or an unresolvable `where` path fails the build.
 - Defect log: escaped defects with injection stage + root cause → post-mortem rule.

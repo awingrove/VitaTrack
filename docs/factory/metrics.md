@@ -18,7 +18,7 @@ A shard only counts toward the proof when its ledger entry records `agent` in th
 | `human_interventions` | Every stop that needed a human: design-review prompts, corrections, unblocks, review findings that forced changes. **The headline number.** `0` = fully autonomous. |
 | `guardrail_failures` | Red gate cycles (arch/format/build/e2e failures before green). Loud failures are the design working; a high count means the recipe under-contextualizes the shard. |
 | `fix_commits` | Commits after the first "done" claim. Measures verification honesty. |
-| `defects_escaped` | Defects found after merge (from the defect log in `technical-debt.md`). |
+| `defects_escaped` | Defects found after merge (from the defect log in `technical-debt.yaml`). |
 | `agent_model` (optional) | Exact `provider/model` of the executor session, e.g. `opencode-go/glm-5.3-flash`. |
 | `tokens_input` / `tokens_output` / `tokens_reasoning` / `tokens_cache_read` (optional) | Exact token usage of the executor session. `tokens_reasoning` is `0` when the model does not expose thinking tokens. |
 | `cost_usd` (optional) | Dollar spend reported by opencode for the session. `0` on free-tier models is a real measurement, not an omission — record it as `0`, not blank. |

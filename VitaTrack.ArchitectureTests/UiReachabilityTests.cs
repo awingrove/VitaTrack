@@ -27,7 +27,7 @@ public class UiReachabilityTests
     [TestMethod]
     public void GetActions_AreReferencedFromInsideTheApp()
     {
-        var repoRoot = FindRepoRoot();
+        var repoRoot = RepoLocator.Root();
         var actions = DiscoverGetActions();
         Assert.IsTrue(actions.Count > 0, "No GET actions discovered - discovery logic broken.");
 
@@ -144,15 +144,5 @@ public class UiReachabilityTests
                 references.Add((controller.ToLowerInvariant(), segment.ToLowerInvariant()));
             }
         }
-    }
-
-    private static string FindRepoRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "VitaTrack.sln")))
-            dir = dir.Parent;
-
-        Assert.IsNotNull(dir, "Could not locate repo root (VitaTrack.sln not found).");
-        return dir!.FullName;
     }
 }

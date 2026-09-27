@@ -2,7 +2,6 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Text.RegularExpressions;
 
 namespace VitaTrack.ArchitectureTests;
@@ -21,7 +20,7 @@ public class FileSizeTests
     [TestMethod]
     public void NoCsFile_Exceeds300Lines()
     {
-        var solutionRoot = FindSolutionRoot();
+        var solutionRoot = RepoLocator.Root();
         Assert.IsNotNull(solutionRoot, "Could not locate VitaTrack.sln");
 
         var violations = new List<string>();
@@ -39,7 +38,7 @@ public class FileSizeTests
     [TestMethod]
     public void NoCompleteType_Exceeds300LinesIncludingPartials()
     {
-        var solutionRoot = FindSolutionRoot();
+        var solutionRoot = RepoLocator.Root();
         Assert.IsNotNull(solutionRoot, "Could not locate VitaTrack.sln");
 
         var totals = new Dictionary<string, (int Lines, List<string> Files)>();
@@ -102,16 +101,5 @@ public class FileSizeTests
     {
         foreach (Match m in TypePattern.Matches(text))
             yield return m.Groups[1].Value;
-    }
-
-    private static string? FindSolutionRoot()
-    {
-        var dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-        while (dir != null)
-        {
-            if (Directory.GetFiles(dir, "*.sln").Length > 0) return dir;
-            dir = Directory.GetParent(dir)?.FullName;
-        }
-        return null;
     }
 }

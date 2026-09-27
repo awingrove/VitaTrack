@@ -39,6 +39,13 @@ Each theme represents a capability that would make the factory measurably better
 - How to handle aspirational claims ("we plan to enforce X") vs factual claims ("X is enforced")?
 - Should this apply to all docs or only AGENTS.md/ADRs?
 
+**Partial progress (2026-09-26):** the technical-debt register is now structured
+(`docs/factory/technical-debt.yaml`) and machine-checked by
+`VitaTrack.ArchitectureTests/TechnicalDebtRegisterTests` — a missing field, a duplicate id, or
+an unresolvable `where` path is a red build. Still open: **no test resolves a `TD-`/`DL-` id
+referenced from prose in other documents**, so a renamed or deleted entry still reads as live
+there. That is tracked as TD-018.
+
 **Related current work:**
 - [docs/adr/0006-vertical-slice-architecture.md](docs/adr/0006-vertical-slice-architecture.md) (known gap)
 - [docs/factory/design-review.md](docs/factory/design-review.md) (human gate, not automated)
@@ -83,7 +90,7 @@ Each theme represents a capability that would make the factory measurably better
 
 **Related current work:**
 - [docs/factory/design-review.md](docs/factory/design-review.md) (checklist, manual)
-- [docs/factory/technical-debt.md](docs/factory/technical-debt.md) DL-002 (briefing authoring defects)
+- [docs/factory/technical-debt.yaml](docs/factory/technical-debt.yaml) DL-002 (briefing authoring defects)
 
 ## Cold-Start Any Agent, Any Team
 

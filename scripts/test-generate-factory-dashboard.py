@@ -7,6 +7,8 @@ import unittest
 from contextlib import redirect_stderr
 from pathlib import Path
 
+import yaml
+
 _GENERATOR_PATH = Path(__file__).resolve().with_name("generate-factory-dashboard.py")
 _VALID_LEDGER_ENTRY = """  - id: X1
     name: Example
@@ -16,6 +18,36 @@ _VALID_LEDGER_ENTRY = """  - id: X1
     fix_commits: 0
     defects_escaped: 0
 """
+
+# Register fixtures are written as data and dumped, so a test reads as an entry
+# rather than as YAML indentation. Each constant carries every field its side
+# requires, matching the schema technical-debt.yaml states in its header comment.
+_VALID_OPEN_ENTRY = {
+    "id": "TD-001",
+    "title": "`Example` open item",
+    "where": "`path/one.cs`",
+    "what": "the register is read for id, title and interest only.",
+    "interest": "an open entry states why it still matters.",
+    "paydown": "decide the paydown and write it down.",
+}
+_VALID_CLOSED_ENTRY = {
+    "id": "TD-900",
+    "title": "`Example` closed item",
+    "where": "`path/two.cs`",
+    "what": "shipped in a past change.",
+    "interest": "no longer accruing.",
+    "closed": "2026-09-24",
+    "note": "what closed, and what shipped.",
+}
+_VALID_DEFECT_ENTRY = {
+    "id": "DL-001",
+    "title": "`Example` defect",
+    "found": "2026-09-24",
+    "injection_stage": "the design stage.",
+    "detection_stage": "the review stage.",
+    "systemic_gap": "no rule covered this case.",
+    "closed_in": "new-shard.md",
+}
 
 
 def _load_generator():
@@ -71,10 +103,8 @@ def make_valid_root() -> tuple[tempfile.TemporaryDirectory, Path]:
     (root / "docs/factory/shard-metrics.yaml").write_text(
         f"shards:\n{_VALID_LEDGER_ENTRY}", encoding="utf-8"
     )
-    (root / "docs/factory/technical-debt.md").write_text(
-        "# Technical Debt Register\n\n## Open entries\n\n## Closed entries\n\n"
-        "## Defect log\n",
-        encoding="utf-8",
+    (root / "docs/factory/technical-debt.yaml").write_text(
+        "open: []\nclosed: []\ndefects: []\n", encoding="utf-8"
     )
     (root / "docs/plans/example.md").write_text("# Example\n", encoding="utf-8")
     return temporary, root
@@ -95,17 +125,21 @@ def _replace_ledger_field(entry: str, field: str, value: str) -> str:
 
 
 def _write_debt(root: Path, content: str) -> None:
-    (root / "docs/factory/technical-debt.md").write_text(content, encoding="utf-8")
+    (root / "docs/factory/technical-debt.yaml").write_text(content, encoding="utf-8")
 
 
 def _debt_document(
-    open_section: str, closed_section: str, defect_section: str
+    open_entries: list[dict] | None = None,
+    closed: list[dict] | None = None,
+    defects: list[dict] | None = None,
 ) -> str:
-    return (
-        "# Technical Debt Register\n\n"
-        f"## Open entries\n\n{open_section}\n\n"
-        f"## Closed entries\n\n{closed_section}\n\n"
-        f"## Defect log\n\n{defect_section}\n"
+    return yaml.safe_dump(
+        {
+            "open": open_entries or [],
+            "closed": closed or [],
+            "defects": defects or [],
+        },
+        sort_keys=False,
     )
 
 
@@ -606,26 +640,35 @@ class CliModeTests(unittest.TestCase):
 
 
 class DebtLoadingTests(unittest.TestCase):
-    def test_open_entries_parse_with_multiline_interest(self):
+    def test_folded_interest_scalar_joins_its_continuation_lines(self):
         temporary, root = make_valid_root()
         self.addCleanup(temporary.cleanup)
+        # The real register writes every prose field as a folded block scalar, so
+        # the wrapped-line case is a fixture that mirrors the shipped shape.
         _write_debt(
             root,
-            _debt_document(
-                open_section=(
-                    "### TD-777 — `Alpha` open item\n"
-                    "- **Where:** `path/one.cs`\n"
-                    "  second where line\n"
-                    "- **Interest:** first interest line\n"
-                    "  wrapped interest line\n"
-                    "- **Paydown:** fix it later"
-                ),
-                closed_section=(
-                    "### TD-700 — Closed item\n"
-                    "- **Closed 2026-09-01:** shipped."
-                ),
-                defect_section="Escaped defects go here.",
-            ),
+            "open:\n"
+            "  - id: TD-777\n"
+            "    title: >-\n"
+            "      `Alpha` open item\n"
+            "    where: >-\n"
+            "      `path/one.cs`\n"
+            "      second where line\n"
+            "    what: >-\n"
+            "      prose the dashboard never renders\n"
+            "    interest: >-\n"
+            "      first interest line\n"
+            "      wrapped interest line\n"
+            "    paydown: >-\n"
+            "      fix it later\n"
+            "closed:\n"
+            "  - id: TD-700\n"
+            "    title: >-\n"
+            "      Closed item\n"
+            "    closed: 2026-09-01\n"
+            "    note: >-\n"
+            "      shipped.\n"
+            "defects: []\n",
         )
 
         data = load_dashboard(root)
@@ -635,18 +678,17 @@ class DebtLoadingTests(unittest.TestCase):
         self.assertEqual("TD-777", entry.id)
         self.assertEqual("`Alpha` open item", entry.title)
         self.assertEqual("first interest line wrapped interest line", entry.interest)
+        self.assertEqual(1, data.debt.closed_count)
 
-    def test_open_entry_without_interest_bullet_has_empty_interest(self):
+    def test_open_entry_without_interest_field_has_empty_interest(self):
         temporary, root = make_valid_root()
         self.addCleanup(temporary.cleanup)
-        _write_debt(
-            root,
-            _debt_document(
-                open_section="### TD-778 — No interest line\n- **Where:** `path`",
-                closed_section="",
-                defect_section="",
-            ),
-        )
+        entry = {
+            key: value
+            for key, value in _VALID_OPEN_ENTRY.items()
+            if key != "interest"
+        }
+        _write_debt(root, _debt_document(open_entries=[entry]))
 
         data = load_dashboard(root)
 
@@ -658,14 +700,13 @@ class DebtLoadingTests(unittest.TestCase):
         _write_debt(
             root,
             _debt_document(
-                open_section="### TD-777 — Only open entry",
-                closed_section=(
-                    "### TD-700 — First closed\n"
-                    "- **Closed 2026-09-01:** shipped.\n\n"
-                    "### TD-701 — Second closed\n"
-                    "- **Closed 2026-09-02:** shipped."
-                ),
-                defect_section="",
+                open_entries=[
+                    {**_VALID_OPEN_ENTRY, "id": "TD-777", "title": "Only open entry"}
+                ],
+                closed=[
+                    {**_VALID_CLOSED_ENTRY, "id": "TD-700", "closed": "2026-09-01"},
+                    {**_VALID_CLOSED_ENTRY, "id": "TD-701", "closed": "2026-09-02"},
+                ],
             ),
         )
 
@@ -674,71 +715,27 @@ class DebtLoadingTests(unittest.TestCase):
         self.assertEqual(2, data.debt.closed_count)
         self.assertEqual(1, len(data.debt.open_entries))
 
-    def test_defect_entries_strip_markers_and_trailing_parenthetical(self):
-        temporary, root = make_valid_root()
-        self.addCleanup(temporary.cleanup)
-        _write_debt(
-            root,
-            _debt_document(
-                open_section="",
-                closed_section="",
-                defect_section=(
-                    "Escaped defects are recorded here.\n\n"
-                    "- **DL-42 — Defect title** (found Sep 2026 in review).\n"
-                    "  - **Injection stage:** design."
-                ),
-            ),
-        )
-
-        data = load_dashboard(root)
-
-        self.assertEqual(1, len(data.debt.defects))
-        self.assertEqual("DL-42", data.debt.defects[0].id)
-        self.assertEqual("Defect title", data.debt.defects[0].title)
-
-    def test_wrapped_defect_title_is_joined_from_continuation_line(self):
-        temporary, root = make_valid_root()
-        self.addCleanup(temporary.cleanup)
-        _write_debt(
-            root,
-            _debt_document(
-                open_section="",
-                closed_section="",
-                defect_section=(
-                    "- **DL-201 — title starts on the first line\n"
-                    "  and finishes on the next** (found Sep 2026 during review).\n"
-                    "  - **Injection stage:** design."
-                ),
-            ),
-        )
-
-        data = load_dashboard(root)
-
-        self.assertEqual(1, len(data.debt.defects))
-        self.assertEqual("DL-201", data.debt.defects[0].id)
-        self.assertEqual(
-            "title starts on the first line and finishes on the next",
-            data.debt.defects[0].title,
-        )
-
     def test_missing_register_file_raises_dashboard_error(self):
         temporary, root = make_valid_root()
         self.addCleanup(temporary.cleanup)
-        (root / "docs/factory/technical-debt.md").unlink()
+        (root / "docs/factory/technical-debt.yaml").unlink()
 
         with self.assertRaises(DashboardError):
             load_dashboard(root)
 
-    def test_missing_section_heading_raises_dashboard_error(self):
-        temporary, root = make_valid_root()
-        self.addCleanup(temporary.cleanup)
-        _write_debt(
-            root,
-            "# Technical Debt Register\n\n## Open entries\n\n## Closed entries\n",
-        )
+    def test_missing_collection_raises_dashboard_error(self):
+        for collection in ("open", "closed", "defects"):
+            with self.subTest(collection=collection):
+                temporary, root = make_valid_root()
+                self.addCleanup(temporary.cleanup)
+                register = yaml.safe_load(_debt_document())
+                del register[collection]
+                _write_debt(root, yaml.safe_dump(register, sort_keys=False))
 
-        with self.assertRaises(DashboardError):
-            load_dashboard(root)
+                with self.assertRaises(DashboardError) as raised:
+                    load_dashboard(root)
+
+                self.assertIn(f"'{collection}'", str(raised.exception))
 
     def test_entry_ids_are_discovered_not_hardcoded(self):
         temporary, root = make_valid_root()
@@ -746,9 +743,15 @@ class DebtLoadingTests(unittest.TestCase):
         _write_debt(
             root,
             _debt_document(
-                open_section="### TD-4242 — Novel open id",
-                closed_section="### TD-0007 — Novel closed id",
-                defect_section="- **DL-31337 — Novel defect id** (found Sep 2026).",
+                open_entries=[
+                    {**_VALID_OPEN_ENTRY, "id": "TD-4242", "title": "Novel open id"}
+                ],
+                closed=[
+                    {**_VALID_CLOSED_ENTRY, "id": "TD-0007", "title": "Novel closed id"}
+                ],
+                defects=[
+                    {**_VALID_DEFECT_ENTRY, "id": "DL-31337", "title": "Novel defect id"}
+                ],
             ),
         )
 
@@ -758,57 +761,82 @@ class DebtLoadingTests(unittest.TestCase):
         self.assertEqual(1, data.debt.closed_count)
         self.assertEqual(["DL-31337"], [e.id for e in data.debt.defects])
 
-    def test_fenced_entry_lines_are_ignored_for_rows_and_counts(self):
+    def test_fenced_examples_inside_register_fields_do_not_become_rows(self):
         temporary, root = make_valid_root()
         self.addCleanup(temporary.cleanup)
+        quoted_example = (
+            "the register quotes Markdown, e.g.\n"
+            "```markdown\n"
+            "### TD-999 — a heading inside a fenced example\n"
+            "- **DL-999 — a defect inside a fenced example**\n"
+            "```"
+        )
         _write_debt(
             root,
             _debt_document(
-                open_section=(
-                    "### TD-100 — Real open entry\n"
-                    "- **Interest:** real interest\n\n"
-                    "```markdown\n"
-                    "### TD-999 — Fenced\n"
-                    "- **DL-999 — Fenced**\n"
-                    "```"
-                ),
-                closed_section=(
-                    "### TD-700 — Real closed entry\n"
-                    "- **Closed 2026-09-01:** shipped.\n\n"
-                    "```markdown\n"
-                    "### TD-998 — Fenced closed\n"
-                    "```"
-                ),
-                defect_section=(
-                    "- **DL-42 — Real defect** (found Sep 2026).\n\n"
-                    "```markdown\n"
-                    "- **DL-999 — Fenced**\n"
-                    "```"
-                ),
+                open_entries=[
+                    {
+                        **_VALID_OPEN_ENTRY,
+                        "id": "TD-100",
+                        "title": "Real open entry",
+                        "what": quoted_example,
+                        "interest": "real interest",
+                    }
+                ],
+                closed=[
+                    {**_VALID_CLOSED_ENTRY, "id": "TD-700", "title": "Real closed entry"}
+                ],
+                defects=[{**_VALID_DEFECT_ENTRY, "id": "DL-42", "title": "Real defect"}],
             ),
         )
 
         data = load_dashboard(root)
 
         self.assertEqual(["TD-100"], [e.id for e in data.debt.open_entries])
+        self.assertEqual("Real open entry", data.debt.open_entries[0].title)
+        self.assertEqual("real interest", data.debt.open_entries[0].interest)
         self.assertEqual(1, data.debt.closed_count)
         self.assertEqual(["DL-42"], [e.id for e in data.debt.defects])
 
-    def test_out_of_order_section_headings_raise_dashboard_error(self):
-        documents = (
-            "# Technical Debt Register\n\n## Defect log\n\n## Open entries\n\n"
-            "## Closed entries\n",
-            "# Technical Debt Register\n\n## Closed entries\n\n## Open entries\n\n"
-            "## Defect log\n",
+    def test_collection_order_does_not_change_the_register(self):
+        # YAML key order carries no meaning, so the ordering guard that the prose
+        # parser used to enforce is gone by design: the collections may appear in
+        # any order and still load identically.
+        temporary, root = make_valid_root()
+        self.addCleanup(temporary.cleanup)
+        _write_debt(
+            root,
+            yaml.safe_dump(
+                {
+                    "defects": [_VALID_DEFECT_ENTRY],
+                    "closed": [_VALID_CLOSED_ENTRY],
+                    "open": [_VALID_OPEN_ENTRY],
+                },
+                sort_keys=False,
+            ),
         )
-        for document in documents:
-            with self.subTest(document=document):
-                temporary, root = make_valid_root()
-                self.addCleanup(temporary.cleanup)
-                _write_debt(root, document)
 
-                with self.assertRaises(DashboardError):
-                    load_dashboard(root)
+        data = load_dashboard(root)
+
+        self.assertEqual(["TD-001"], [e.id for e in data.debt.open_entries])
+        self.assertEqual(1, data.debt.closed_count)
+        self.assertEqual(["DL-001"], [e.id for e in data.debt.defects])
+
+    def test_malformed_entry_raises_dashboard_error_naming_the_id(self):
+        temporary, root = make_valid_root()
+        self.addCleanup(temporary.cleanup)
+        entry = {
+            key: value
+            for key, value in _VALID_OPEN_ENTRY.items()
+            if key != "title"
+        }
+        _write_debt(root, _debt_document(open_entries=[entry]))
+
+        with self.assertRaises(DashboardError) as raised:
+            load_dashboard(root)
+
+        self.assertIn("TD-001", str(raised.exception))
+        self.assertIn("field 'title'", str(raised.exception))
 
 
 class DebtRenderingTests(unittest.TestCase):
@@ -843,7 +871,49 @@ class DebtRenderingTests(unittest.TestCase):
         self.assertEqual(2, document.count("<td>TD-"))
         self.assertEqual(1, document.count("<td>DL-"))
         self.assertIn("3 closed entries", document)
-        self.assertIn('<a href="technical-debt.md">technical-debt.md</a>', document)
+        self.assertIn(
+            '<a href="technical-debt.yaml">technical-debt.yaml</a>', document
+        )
+
+    def test_open_entry_interest_reaches_the_rendered_row(self):
+        temporary, root = make_valid_root()
+        self.addCleanup(temporary.cleanup)
+        _write_debt(
+            root,
+            _debt_document(
+                open_entries=[
+                    {
+                        **_VALID_OPEN_ENTRY,
+                        "id": "TD-777",
+                        "title": "`Alpha` open item",
+                        "interest": "the register's own interest prose",
+                    }
+                ]
+            ),
+        )
+
+        document = render_dashboard(load_dashboard(root))
+
+        self.assertIn("<td>TD-777</td>", document)
+        self.assertIn("<td>`Alpha` open item</td>", document)
+        self.assertIn("<td>the register&#x27;s own interest prose</td>", document)
+
+    def test_closed_count_is_derived_from_the_closed_collection(self):
+        temporary, root = make_valid_root()
+        self.addCleanup(temporary.cleanup)
+        closed = [
+            {**_VALID_CLOSED_ENTRY, "id": f"TD-{number:03d}"}
+            for number in range(700, 703)
+        ]
+        _write_debt(root, _debt_document(closed=closed))
+
+        data = load_dashboard(root)
+        document = render_dashboard(data)
+
+        self.assertEqual(len(closed), data.debt.closed_count)
+        self.assertIn("3 closed entries", document)
+        # `closed` contributes the count only — a closed entry never becomes a row.
+        self.assertNotIn("TD-700", document)
 
     def test_debt_values_are_escaped(self):
         document = _render_with_debt(

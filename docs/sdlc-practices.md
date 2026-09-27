@@ -121,9 +121,10 @@ until three shards have entries, then a shipped slice without a ledger entry fai
 — tightening as the recipe improves. Rising interventions mean slices are too large or
 under-specified: fix the recipe, not the agent.
 
-Escaped defects feed a defect log (`docs/factory/technical-debt.md`) recording injection
-stage and root cause, and a **post-mortem rule**: when a bug reveals a systemic gap,
-updating the relevant `AGENTS.md` / recipe / checklist is part of the fix, same commit.
+Escaped defects feed a defect log (`docs/factory/technical-debt.yaml`, machine-checked)
+recording injection stage and root cause, and a **post-mortem rule**: when a bug reveals a
+systemic gap, updating the relevant `AGENTS.md` / recipe / checklist is part of the fix,
+same commit.
 Two worked examples show the loop turning:
 
 - **DL-001** — `Money +` silently kept the left operand's currency. Unit tests and CI both

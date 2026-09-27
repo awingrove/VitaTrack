@@ -96,23 +96,32 @@ open:
       error on a wildcard `core:` pattern, or expand it, matching what
       `ShardOwnershipTests` glob-expansion already does.
 
-  - id: TD-014
+  - id: TD-018
     title: >-
-      The technical-debt register has no machine check
+      No test resolves a `TD-`/`DL-` id referenced from prose in other documents
     where: >-
-      `docs/factory/technical-debt.yaml`,
-      `VitaTrack.ArchitectureTests/TechnicalDebtRegisterTests.cs`.
+      `VitaTrack.ArchitectureTests/TechnicalDebtRegisterTests.cs`,
+      `docs/factory/technical-debt.yaml`
     what: >-
-      DL-004 recorded an open entry (TD-006) silently vanishing in an out-of-order
-      merge. `ShardMetricsLedgerTests` guards `shard-metrics.yaml`; nothing guards the register.
-      A referenced-but-missing `TD-`/`DL-` id, a malformed entry, or a duplicate id all pass.
+      the register is machine-checked, but nothing verifies that prose *elsewhere* still
+      references real ids. `AGENTS.md`, `BIBLIOGRAPHY.md`, `VISION.md`,
+      `docs/factory/design-review.md`, `docs/sdlc-practices.md`,
+      `docs/adr/0006-vertical-slice-architecture.md` and the briefings under
+      `docs/plans/` all name `TD-`/`DL-` ids in prose.
     interest: >-
-      the register is the input to prioritization and to the dashboard, so a lost
-      entry is a lost piece of work with no trace.
+      a deleted or renumbered id in a plan, a briefing, or `AGENTS.md` reads as a live
+      reference, and nothing turns it red. That is the drift class TD-015 documents and
+      the self-verifying-docs direction in `VISION.md:26-44`; checking the register alone
+      addresses neither.
     paydown: >-
-      a `TechnicalDebtRegisterTests` in `VitaTrack.ArchitectureTests` resolving
-      every `TD-\d+`/`DL-\d+` reference across docs and the ledger, and failing on a duplicate
-      or malformed entry. This closes DL-004's systemic half.
+      extend the "enforced by" meta-test to resolve every `TD-\d+`/`DL-\d+` reference in
+      `docs/`, root `AGENTS.md`, and `docs/factory/*.md` against the register. Do **not**
+      fold this into TD-014's close — it is a distinct change with its own design
+      questions: which files are in scope, and what a reference inside a *closed* entry's
+      prose or inside a superseded `docs/plans/` briefing is *meant* to mean. Both are
+      historical records citing what was true when written, so a naive scan reports each
+      as an error and the fix must distinguish a live claim from a dated citation rather
+      than suppress the scan.
 
   - id: TD-015
     title: >-
@@ -182,6 +191,52 @@ open:
       *rejected* at approve/merge, not merely deferred by convention.
 
 closed:
+  - id: TD-014
+    title: >-
+      The technical-debt register has no machine check
+    where: >-
+      `docs/factory/technical-debt.yaml`,
+      `VitaTrack.ArchitectureTests/TechnicalDebtRegisterTests.cs`.
+    what: >-
+      DL-004 recorded an open entry (TD-006) silently vanishing in an out-of-order
+      merge. `ShardMetricsLedgerTests` guards `shard-metrics.yaml`; nothing guards the register.
+      A referenced-but-missing `TD-`/`DL-` id, a malformed entry, or a duplicate id all pass.
+    interest: >-
+      the register is the input to prioritization and to the dashboard, so a lost
+      entry is a lost piece of work with no trace.
+    paydown: >-
+      a `TechnicalDebtRegisterTests` in `VitaTrack.ArchitectureTests` resolving
+      every `TD-\d+`/`DL-\d+` reference across docs and the ledger, and failing on a duplicate
+      or malformed entry. This closes DL-004's systemic half.
+    closed: 2026-09-26
+    note: >-
+      Closed as **partially delivered, deliberately**. What shipped: the register is now
+      structured `docs/factory/technical-debt.yaml` (the prose `.md` is deleted, not
+      regenerated — a generated view would be a second artifact that can drift from its
+      source, which is the failure class this change exists to remove); a five-rule
+      `TechnicalDebtRegisterTests` (id uniqueness and format, no id in both `open` and
+      `closed`, required fields, forbidden field on the wrong side, and `where` path
+      resolution for `open` entries), with an in-memory negative-path test as its proof; and
+      the dashboard generator reads the YAML (`scripts/generate-factory-dashboard.py`, −57
+      lines). DL-004's systemic half is closed in the sense that a duplicate or lost id is
+      now a red build.
+
+      The **id-resolution half of the original paydown did not ship** and is TD-018, not
+      this entry. A `TD-`/`DL-` id referenced from prose in *other* documents is still
+      unverified.
+
+      **Accepted limitations, so no later reader mistakes them for oversights.** (1) Four of
+      the five rules have never been observed red on real register data — rules 1–4 pass
+      because the data is clean, so they are proven only by the in-memory negative test.
+      Rule 5 is the one with demonstrated value, and it earned its keep on its first run by
+      finding TD-005's `where` still naming `VitaTrack.Core/Data/FamilyRepository.cs` after
+      the MF slice conversion moved it. (2) `where` is validated only for path-shaped
+      backtick spans on `open` entries, so a prose `where` can still drift. (3) A closed
+      entry's `where` is never checked for existence, because it names a historical path by
+      design. (4) `found`/`closed` dates are narrowed to the day a commit named in the
+      entry's own prose recorded it, so the source's coarser "found Sep 2026" survives only
+      inside the prose fields.
+
   - id: TD-003
     title: >-
       `DosageParser` should be a `Dosage` value object

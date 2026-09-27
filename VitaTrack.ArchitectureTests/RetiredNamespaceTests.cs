@@ -58,8 +58,7 @@ public class RetiredNamespaceTests
     /// </summary>
     private static readonly (string Match, string Why)[] NotScannedFiles =
     {
-        ("docs/factory/technical-debt.md", "the register quotes the retired name in TD-006 and TD-015"),
-        ("docs/factory/technical-debt.yaml", "the register quotes the retired name in TD-006 and TD-015"),
+        ("docs/factory/technical-debt.yaml", "the register quotes the retired name in TD-006, TD-015 and TD-019"),
         (nameof(RetiredNamespaceTests) + ".cs", "a grep test has to contain the literal it greps for"),
     };
 

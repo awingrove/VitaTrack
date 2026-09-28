@@ -38,7 +38,7 @@ This is critical — missing cascade delete tests leads to foreign key constrain
 
 ## Writing Service Tests (LLM)
 - Mock `HttpClient` using `Moq.Protected().Setup<...>("SendAsync", ...)`.
-- Provide `IOptions<VitaTrackOptions>` via `Options.Create(new VitaTrackOptions { ... })`.
+- Supply connection state as a `ServiceConnection` plus `LlmRequestSettings` via `LlmTestData` (`TestDoubles/LlmTestData.cs`); there is no configuration to bind.
 - Verify the service returns a `LlmResult` with expected fields.
 - Do **not** hit the real LLM API in unit tests.
 

@@ -15,14 +15,12 @@ namespace VitaTrack.Core.Features.LlmEnrichment;
 /// to the connection being called rather than to whichever connection used the
 /// client last.
 /// <para>
-/// Interim state, named because the code around it does not say so on its own: the
-/// <c>"llm"</c> named client still carries a configure delegate that sets a
-/// <c>BaseAddress</c> and a default <c>Authorization</c> from configuration, left
-/// behind in <c>ServiceCollectionExtensions</c> by the config-driven seam this
-/// replaces. Per-request headers already win — <c>LlmClientRequestTests</c> hands
-/// the client a deliberately stale address and authorization and shows both losing
-/// — so nothing is wrong today; the delegate is removed in Task 6, after which the
-/// client has nothing left to lose to.
+/// The named client is registered with no configure delegate, so there is no
+/// configuration-derived <c>BaseAddress</c> and no default <c>Authorization</c> left
+/// on it to lose to. That is a stronger statement than the code needs to make:
+/// <c>LlmClientRequestTests</c> still hands the client a deliberately stale address
+/// and authorization and shows both losing, so the per-request wins hold even against
+/// a client configured by someone else.
 /// </para>
 /// </summary>
 /// <inheritdoc cref="ILlmClient"/>

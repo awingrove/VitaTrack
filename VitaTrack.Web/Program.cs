@@ -3,8 +3,6 @@ using VitaTrack.Web.ViewComponents;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.Configure<VitaTrackOptions>(
-    builder.Configuration.GetSection("VitaTrack"));
 builder.Services.AddControllersWithViews(options =>
 {
     options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;

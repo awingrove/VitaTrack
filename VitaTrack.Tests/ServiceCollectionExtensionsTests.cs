@@ -2,7 +2,6 @@ using System.Data;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using VitaTrack.Core;
 using VitaTrack.Core.Data;
@@ -23,12 +22,10 @@ public class ServiceCollectionExtensionsTests
     private const string FileDataSource = "Data Source=cov-audit.db";
     private const string MemoryDataSource = "Data Source=covtest;Mode=Memory;Cache=Shared";
 
-    /// <summary>Builds a provider exactly like the app composes it, except options are
-    /// supplied directly (Program.cs owns the Configure&lt;VitaTrackOptions&gt; binding).</summary>
-    private static ServiceProvider BuildProvider(
-        string connectionString,
-        string? baseUrl = "https://api.example.com/v1",
-        string? apiKey = "key")
+    /// <summary>Builds a provider exactly like the app composes it, from configuration
+    /// alone. There is no connection state to supply: the named clients carry none, and
+    /// every value a request needs travels with the request.</summary>
+    private static ServiceProvider BuildProvider(string connectionString)
     {
         var services = new ServiceCollection();
         var configuration = new ConfigurationBuilder()
@@ -38,11 +35,6 @@ public class ServiceCollectionExtensionsTests
             })
             .Build();
 
-        services.AddSingleton(Options.Create(new VitaTrackOptions
-        {
-            BaseUrl = baseUrl,
-            ApiKey = apiKey,
-        }));
         services.AddCore(configuration);
 
         return services.BuildServiceProvider();
@@ -154,37 +146,36 @@ public class ServiceCollectionExtensionsTests
             "the session id is the registry's, not a second one minted beside it");
     }
 
+    /// <summary>The named client is registered with no configure delegate, so the pooled
+    /// client carries neither a destination nor a credential. Both are per request
+    /// values that belong to the connection being called
+    /// (<see cref="LlmClientRequestTests"/>), and a default left here would be a
+    /// second, silent source of both: a stale <c>BaseAddress</c> would resolve a
+    /// relative URI against whatever connection used the pool last, and a default
+    /// <c>Authorization</c> is copied onto any request that does not carry its own —
+    /// so the credential one caller saved would ride along on another's call.
+    /// <para>
+    /// Resolving <c>IHttpClientFactory</c> and asking for this name is also what pins
+    /// that the registration itself still exists; drop it and this throws rather than
+    /// quietly returning an unconfigured client.
+    /// </para></summary>
     [TestMethod]
-    public void AddCore_LlmClient_HasBaseUrlAndAuthHeader()
+    public void AddCore_LlmClient_CarriesNoBaseAddressAndNoAuthorization()
     {
-        using (var provider = BuildProvider(MemoryDataSource))
-        {
-            var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("llm");
+        using var provider = BuildProvider(MemoryDataSource);
+        var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("llm");
 
-            Assert.AreEqual(new Uri("https://api.example.com/v1/"), client.BaseAddress, "Trailing slash must be appended.");
-            Assert.AreEqual("Bearer", client.DefaultRequestHeaders.Authorization?.Scheme);
-            Assert.AreEqual("key", client.DefaultRequestHeaders.Authorization?.Parameter);
-            Assert.AreEqual(TimeSpan.FromSeconds(120), client.Timeout);
-        }
-
-        // A BaseUrl without a trailing slash normalizes identically.
-        using (var provider = BuildProvider(MemoryDataSource, baseUrl: "https://api.example.com/v1"))
-        {
-            var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("llm");
-
-            Assert.AreEqual(new Uri("https://api.example.com/v1/"), client.BaseAddress,
-                "Base URL without trailing slash must normalize identically.");
-        }
-
-        // An empty BaseUrl leaves BaseAddress unset (but the auth header is still applied).
-        using (var provider = BuildProvider(MemoryDataSource, baseUrl: ""))
-        {
-            var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("llm");
-
-            Assert.IsNull(client.BaseAddress, "Empty BaseUrl must leave BaseAddress unset.");
-            Assert.AreEqual("Bearer", client.DefaultRequestHeaders.Authorization?.Scheme);
-            Assert.AreEqual("key", client.DefaultRequestHeaders.Authorization?.Parameter);
-        }
+        Assert.IsNull(
+            client.BaseAddress,
+            "No BaseAddress: the request URI is absolute, so nothing on the client can redirect it.");
+        Assert.IsNull(
+            client.DefaultRequestHeaders.Authorization,
+            "No default Authorization: the credential belongs to the connection being called, and a pooled "
+            + "default is copied onto any request that does not set its own.");
+        Assert.IsFalse(
+            client.DefaultRequestHeaders.Contains("Authorization"),
+            "Checked by name as well as by parsed value: a header .NET did not parse into Authorization "
+            + "would still be copied onto the request.");
     }
 
     [TestMethod]

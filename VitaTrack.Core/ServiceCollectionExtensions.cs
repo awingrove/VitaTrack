@@ -2,7 +2,6 @@ using System.Data;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using VitaTrack.Core.Data;
 using VitaTrack.Core.Features.Dosing;
 using VitaTrack.Core.Features.Family;
@@ -81,19 +80,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISupplementLabelParser, SupplementLabelParser>();
         services.AddScoped<ICsvImportService, CsvImportService>();
 
-        services.AddHttpClient("llm", (sp, client) =>
-        {
-            var options = sp.GetRequiredService<IOptions<VitaTrackOptions>>().Value;
-            var baseUrl = options.BaseUrl;
-            if (!string.IsNullOrWhiteSpace(baseUrl))
-            {
-                if (!baseUrl.EndsWith('/'))
-                    baseUrl += '/';
-                client.BaseAddress = new Uri(baseUrl);
-            }
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {options.ApiKey}");
-            client.Timeout = TimeSpan.FromSeconds(120);
-        });
+        // The named client carries no destination and no credential: the absolute URI
+        // and the authorization header travel per request, because they belong to the
+        // connection being called rather than to whichever connection used the pooled
+        // client last. LlmClientRequestTests hands the client a deliberately stale
+        // address and authorization and shows both losing.
+        services.AddHttpClient("llm");
 
         services.AddHttpClient("scraper", client =>
         {

@@ -317,7 +317,6 @@ allowlist:
   - VitaTrack.Web/Views/_ViewImports.cshtml
   - VitaTrack.Core/Data/DbInit.cs
   - VitaTrack.Core/ServiceCollectionExtensions.cs
-  - VitaTrack.Core/VitaTrackOptions.cs
   - VitaTrack.Core/Primitives/**
   - VitaTrack.Web/wwwroot/js/table-sort.js
   - VitaTrack.Web/wwwroot/js/delete-confirm.js

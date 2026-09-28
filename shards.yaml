@@ -224,6 +224,21 @@ slices:
       - e2e-tests/playwright/tests/home.spec.js
       - e2e-tests/playwright/tests/htmx-load.spec.js
 
+  - id: SC
+    name: Service Connections
+    tables:
+      - ServiceConnections
+    controller: []
+    core:
+      - VitaTrack.Core/Features/ServiceConnections/ServiceConnection.cs
+      - VitaTrack.Core/Features/ServiceConnections/IServiceConnectionRepository.cs
+      - VitaTrack.Core/Features/ServiceConnections/ServiceConnectionRepository.cs
+    views: []
+    js: []
+    unit_tests:
+      - VitaTrack.Tests/Features/ServiceConnections/ServiceConnectionRepositoryTests.cs
+    e2e_specs: []
+
 # Cross-cutting files that belong to no single feature slice. Listed here so
 # the ownership test does not flag them as orphans. Keep this minimal.
 allowlist:

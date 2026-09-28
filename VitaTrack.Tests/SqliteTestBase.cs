@@ -1,6 +1,7 @@
 using System.Data;
 using Microsoft.Data.Sqlite;
 using VitaTrack.Core.Data;
+using VitaTrack.Core.Features.ServiceConnections;
 
 namespace VitaTrack.Tests;
 
@@ -17,7 +18,10 @@ public abstract class SqliteTestBase : IDisposable
 
         // Create the schema exactly like the app does, but without seeding test data
         DbInit.EnsureCreated(Connection, seedData: false);
+        Repository = new ServiceConnectionRepository(Connection);
     }
+
+    protected ServiceConnectionRepository Repository { get; }
 
     public void Dispose()
     {

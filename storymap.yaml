@@ -10,7 +10,7 @@
 meta:
   project: VitaTrack
   description: Vitamin and Supplement Tracking Application
-  last_updated: 2026-09-14
+  last_updated: 2026-09-28
 
 activities:
   - name: Manage Family Members
@@ -430,4 +430,14 @@ activities:
         stories:
           - title: Show error page on unhandled exception
             status: done
+            priority: high
+
+  - name: Service Connection
+    tasks:
+      - id: SC-1
+        name: Save and verify a service connection
+        entry_point: n/a (backend persistence only; Settings UI lands with the tracer task)
+        stories:
+          - title: Persist a service connection with at-most-one-active enforcement
+            status: in progress
             priority: high

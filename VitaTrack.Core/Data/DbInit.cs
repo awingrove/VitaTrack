@@ -115,6 +115,28 @@ public static class DbInit
             }
         }
 
+        // ServiceConnections stores in-app service credentials. Deliberately no seed
+        // statement and no foreign keys: a credential is never seeded (the recorded
+        // AGENTS.md seed-rule exception, TD-021), and deleting a connection must never
+        // touch domain data. At-most-one-active is enforced by the repository, which
+        // deactivates every row before each save.
+        db.Execute(@"
+            CREATE TABLE IF NOT EXISTS ServiceConnections (
+                Id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                Service      TEXT    NOT NULL,
+                BaseUrl      TEXT    NOT NULL,
+                ApiKey       TEXT    NOT NULL,
+                Model        TEXT    NULL,
+                Variant      TEXT    NULL,
+                MaxTokens    INTEGER NOT NULL DEFAULT 16384,
+                Temperature  REAL    NOT NULL DEFAULT 1.0,
+                Verification TEXT    NOT NULL,
+                VerifiedAt   TEXT    NULL,
+                IsActive     INTEGER NOT NULL DEFAULT 0,
+                CreatedAt    TEXT    NOT NULL,
+                UpdatedAt    TEXT    NOT NULL
+            );");
+
         // Insert sample data only if ALL tables are empty (fresh database)
         if (seedData)
         {

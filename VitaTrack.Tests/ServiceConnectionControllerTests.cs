@@ -13,7 +13,7 @@ namespace VitaTrack.Tests;
 /// the form. Whether the write actually lands is the handler's and repository's
 /// tests, not this one's. <para>
 /// The connect surface. The picker surface — <c>SelectModel</c> and <c>Delete</c> — is
-/// <see cref="ServiceConnectionControllerPickerTests"/>; the two together are one
+/// <see cref="ServiceConnectionControllerProbeTests"/>; the two together are one
 /// controller split by the request under test.
 /// </para>
 /// </summary>

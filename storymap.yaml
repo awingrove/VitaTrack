@@ -542,6 +542,8 @@ activities:
               - unit: ProbeConnectionHandlerTests.ProbeAsync_ProbesTheSavedConnection_NotAnEmptyOne
               - unit: ProbeConnectionHandlerTests.ProbeAsync_AfterAVerifiedProbe_AFailedReprobeRemovesTheStamp
               - unit: ProbeConnectionHandlerTests.ProbeAsync_WhenTheCallerAbandonsTheProbe_StampsNothing
+              - unit: ServiceConnectionControllerCancellationTests.Connect_WhenTheClientDisconnects_StampsNoVerification
+              - unit: ServiceConnectionControllerCancellationTests.Connect_ProbesWithTheTokenTheActionWasGiven_NotAFreshOne
               - unit: ServiceConnectionControllerProbeTests.Connect_ValidProbe_StoresTheVerificationItReports
               - unit: ServiceConnectionControllerTests.Index_DoesNotProbe_TheServiceOnEveryPageLoad
           - title: Say in words that an unconfirmed connection is still usable
@@ -549,6 +551,8 @@ activities:
             priority: high
             tests:
               - unit: ProbeConnectionHandlerTests.ProbeAsync_FailedProbe_StampsUnverified_AndLeavesTheConnectionSaved
+              - unit: ServiceCatalogClientFailureTests.OnA200WithAnEmptyCatalog_ReturnsUnverified
+              - unit: ServiceCatalogClientFailureTests.OnA200WhoseEntriesAreAllUnusable_ReturnsUnverified
               - unit: ServiceConnectionControllerProbeTests.Connect_FailedProbe_RendersTheUnverifiedWarningAndSavesTheConnection
               - unit: ServiceConnectionControllerTests.Index_DoesNotProbe_TheServiceOnEveryPageLoad
               - e2e: service-connection::should save a connection from the Settings page and show it after reload
@@ -559,7 +563,7 @@ activities:
               - unit: ConnectionBadgeViewComponentTests.Invoke_WithAnUnverifiedConnection_ReportsUnverified
               - unit: ConnectionBadgeViewComponentTests.Invoke_WithAVerifiedConnection_ReportsVerified
               - unit: ConnectionBadgeViewComponentTests.Invoke_WithNoConnection_RendersNothing
-              - unit: ConnectionBadgeViewComponentTests.Invoke_ReadsTheActiveConnectionOnce
+              - unit: ConnectionBadgeViewComponentTests.Invoke_ReadsTheActiveConnectionOnce_NotOncePerPropertyOrPerPage
               - e2e: service-connection::should show the connection state on the page enrichment happens from
           - title: Pick a model the service listed, or name the model by hand
             status: done
@@ -595,9 +599,18 @@ activities:
             priority: medium
             tests:
               - unit: ServiceConnectionControllerProbeTests.Connect_WithoutHtmx_RedirectsToIndex_EvenThoughTheProbeRan
+              - unit: ServiceConnectionControllerProbeTests.SelectModel_WithoutHtmx_RedirectsToIndex_AndStillSavesTheModel
               - unit: ServiceConnectionControllerTests.Connect_InvalidModelState_OverHtmx_SwapsInTheRegionThatCarriesTheForm
               - unit: ServiceConnectionControllerTests.Connect_InvalidModelState_ReturnsTheFormWithErrors
               - e2e: service-connection::should reject a save with a blank URL and keep the connection unchanged
+              - e2e: service-connection::should save a model with htmx blocked, and land on a page that says so
+          - title: Stop a second submit while the first is still in flight, on every form
+            status: done
+            priority: medium
+            tests:
+              - e2e: service-connection::should disable the submit button while the connect is in flight
+              - e2e: service-connection::should guard the submit button again after a swap replaced the form
+              - e2e: service-connection::should re-enable the submit button when the response is not swapped in
           - title: Resolve the catalog probe from the container, not just the descriptor
             status: done
             priority: medium
@@ -609,3 +622,4 @@ activities:
             tests:
               - unit: ServiceConnectionFormTests.TheConnectFormAndTheModelPicker_LabelTheModelFieldDifferently
               - unit: ServiceConnectionFormTests.ConnectForm_LabelsTheServiceChoiceAsAChoice
+              - e2e: service-connection::should save a model and reasoning effort from the picker, then disconnect

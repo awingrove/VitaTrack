@@ -28,7 +28,7 @@ public class ShardOwnershipTests
     /// bind model with no owner is exactly the orphan the ownership check exists for.
     /// </summary>
     private static readonly string[] ArtifactKinds =
-        ["controller", "core", "views", "models", "js", "unit_tests", "e2e_specs"];
+        ["controller", "core", "views", "models", "view_components", "js", "unit_tests", "e2e_specs"];
 
     /// <summary>
     /// Floor on the total number of files the manifest's slices resolve to
@@ -232,6 +232,10 @@ public class ShardOwnershipTests
             // code as its repository: the first slice to put a file here (SC's
             // SavedConnection projection) was invisible to this check until now.
             Path.Combine(repoRoot, "VitaTrack.Web", "Models"),
+            // View components. Added for the same reason Models was: a type that lives
+            // outside every other scan root is invisible to the orphan check, and the
+            // honest answer to an invisible type is a claim, not an allowlist entry.
+            Path.Combine(repoRoot, "VitaTrack.Web", "ViewComponents"),
             Path.Combine(repoRoot, "VitaTrack.Web", "wwwroot", "js"),
             Path.Combine(repoRoot, "VitaTrack.Tests"),
             Path.Combine(repoRoot, "e2e-tests", "playwright", "tests"),

@@ -7,9 +7,12 @@ namespace VitaTrack.Web.Controllers;
 /// <summary>
 /// The two htmx POST targets. Each answers the same way: htmx gets the whole dynamic
 /// region of the page, and a browser without htmx gets a full render or a redirect.
-/// That is progressive enhancement rather than a nicety — the connect form is a real
-/// <c>&lt;form&gt;</c> with an action, so with the script blocked or still loading the
-/// submit works and the user lands somewhere that says what happened.
+/// That is progressive enhancement rather than a nicety, and it holds only because
+/// <em>both</em> forms are real <c>&lt;form&gt;</c> elements carrying
+/// <c>asp-action</c> and <c>method="post"</c> as well as <c>hx-post</c> — a form with
+/// only the htmx attribute degrades to a GET of the current URL, which throws the
+/// submission away without a word. The submit therefore works with the script blocked
+/// or still loading, and the user lands somewhere that says what happened.
 /// <para>
 /// One region rather than two is forced by the rejected case. A connect that fails
 /// validation reports field errors on the form, so answering with a fragment that held
@@ -23,10 +26,17 @@ public partial class ServiceConnectionController
 {
     /// <summary>The header htmx sets on a request it issued, and the only thing that
     /// tells this controller to answer with a fragment rather than a page. Written here
-    /// rather than read off a helper so the behaviour is visible at the branch.</summary>
-    private const string HtmxHeader = "HX-Request";
+    /// rather than read off a helper so the behaviour is visible at the branch.
+    /// <para>
+    /// <c>internal</c> rather than <c>private</c> so the controller tests send this same
+    /// value: a harness with its own copy of the header name would keep passing if the
+    /// name here changed, because every request it marked would then take the non-htmx
+    /// branch and still be answered — with a redirect, which each test already rejects.
+    /// So the duplication was a hazard, not a convenience, and one declaration is the fix.
+    /// </para></summary>
+    internal const string HtmxHeader = "HX-Request";
 
-    private const string HtmxHeaderValue = "true";
+    internal const string HtmxHeaderValue = "true";
 
     /// <summary>The region both POST targets answer into, and the one <c>Index</c> wraps
     /// in <c>#connection-state</c>. It is rendered whether or not anything is saved — an

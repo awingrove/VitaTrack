@@ -4,13 +4,18 @@
 @* The picker. A dropdown when the last probe listed models, free text when it did not —
    one signal (Models) decides, so the two branches cannot disagree about when a picker
    is offered. The variant list is the registry's fixed vocabulary rendered whole: there
-   is nothing to discover, because /v1/models carries no variants. *@
+   is nothing to discover, because /v1/models carries no variants.
+   asp-action/asp-controller/method are load-bearing, not decoration: hx-post is an
+   enhancement, and a form carrying only it degrades to a GET of the current URL, which
+   discards the choice with no error at all. With them, a browser without htmx posts for
+   real and the controller redirects to Index, which is where the saved model comes back. *@
 <h3>Model</h3>
 @if (Model.JustSaved)
 {
     <div class="alert alert-success" role="alert">Model and reasoning effort saved.</div>
 }
-<form hx-post="@Url.Action("SelectModel", "ServiceConnection")"
+<form asp-action="SelectModel" asp-controller="ServiceConnection" method="post"
+      hx-post="@Url.Action("SelectModel", "ServiceConnection")"
       hx-target="#connection-state" hx-swap="outerHTML"
       id="model-picker-form">
     @Html.AntiForgeryToken()

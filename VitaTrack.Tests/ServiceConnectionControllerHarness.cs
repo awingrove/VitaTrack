@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using VitaTrack.Core.Features.ServiceConnections;
+using VitaTrack.Tests.TestDoubles;
 using VitaTrack.Web.Controllers;
 using VitaTrack.Web.Models;
 
@@ -27,13 +31,6 @@ namespace VitaTrack.Tests;
 /// </summary>
 internal sealed class ServiceConnectionControllerHarness
 {
-    /// <summary>The header htmx sets on a request it issued, and the only thing that
-    /// tells the controller to answer with a fragment instead of a redirect. Written
-    /// here rather than in a helper so both classes read the same way.</summary>
-    public const string HtmxHeader = "HX-Request";
-
-    public const string HtmxHeaderValue = "true";
-
     private const int FirstRowId = 7;
 
     /// <summary>The id the stub gives the first row it is asked to save. Named here rather
@@ -42,24 +39,44 @@ internal sealed class ServiceConnectionControllerHarness
 
     private readonly List<ServiceConnection> _rows = [];
 
+    private readonly bool _htmx;
+
+    /// <summary>Set by <see cref="GivenTheProbeRunsThrough"/>. Null until then, in which
+    /// case the probe is driven by the <see cref="Catalog"/> mock.</summary>
+    private IServiceCatalogClient? _catalogClient;
+
     public Mock<IServiceConnectionRepository> Connections { get; } = new();
 
     public Mock<IServiceCatalogClient> Catalog { get; } = new();
 
-    public ServiceConnectionController Controller { get; }
+    /// <summary>Built on first use rather than in the constructor, because
+    /// <see cref="GivenTheProbeRunsThrough"/> replaces the catalog client the handler is
+    /// wired to — and a controller built eagerly would keep the mock forever.</summary>
+    public ServiceConnectionController Controller => _controller ??= new ServiceConnectionController(
+        Connections.Object,
+        new SaveConnectionHandler(Connections.Object),
+        new ProbeConnectionHandler(Connections.Object, _catalogClient ?? Catalog.Object))
+    {
+        ControllerContext = new ControllerContext { HttpContext = HtmxOrPlain() },
+    };
 
-    /// <param name="htmx">Whether the request under test carries <c>HX-Request</c>.</param>
+    private ServiceConnectionController? _controller;
+
+    /// <param name="htmx">Whether the request under test carries <c>HX-Request</c> — the
+    /// production constant, not a copy of it, so a rename on the controller side cannot
+    /// leave every "htmx" test quietly taking the redirect branch.</param>
     public ServiceConnectionControllerHarness(bool htmx = false)
     {
+        _htmx = htmx;
+    }
+
+    private DefaultHttpContext HtmxOrPlain()
+    {
         var http = new DefaultHttpContext();
-        if (htmx) http.Request.Headers[HtmxHeader] = HtmxHeaderValue;
-        Controller = new ServiceConnectionController(
-            Connections.Object,
-            new SaveConnectionHandler(Connections.Object),
-            new ProbeConnectionHandler(Connections.Object, Catalog.Object))
-        {
-            ControllerContext = new ControllerContext { HttpContext = http },
-        };
+        if (_htmx)
+            http.Request.Headers[ServiceConnectionController.HtmxHeader] =
+                ServiceConnectionController.HtmxHeaderValue;
+        return http;
     }
 
     /// <summary>Every row the stub has been asked to save, oldest first. The connect flow
@@ -99,6 +116,38 @@ internal sealed class ServiceConnectionControllerHarness
     {
         Catalog.Setup(c => c.ListModelsAsync(It.IsAny<ServiceConnection>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(catalog);
+        return this;
+    }
+
+    /// <summary>Drives the probe through the <em>real</em>
+    /// <see cref="ServiceCatalogClient"/> over the given handler, so cancellation is a
+    /// real in-flight abort rather than a mock that ignores the token. A stubbed catalog
+    /// cannot express cancellation at all, which is why a test written against one would
+    /// "prove" a token propagates when the code under test was never asked anything.
+    /// <para>Must be called before the first use of <see cref="Controller"/>.</para></summary>
+    public ServiceConnectionControllerHarness GivenTheProbeRunsThrough(HttpMessageHandler handler)
+    {
+        _catalogClient = new ServiceCatalogClient(
+            new SequencedHttpClientFactory(handler), new RecordingLogger<ServiceCatalogClient>());
+        return this;
+    }
+
+    /// <summary>Seeds <c>ModelState</c> from the bind model's <em>own</em> validation
+    /// rules — <c>[Required]</c> and <c>IValidatableObject.Validate</c> — the way MVC's
+    /// model validator does, rather than with a hand-written message.
+    /// <para>
+    /// This is the seam a hand-seeded error cannot reach. A test that types the message
+    /// itself passes even when the model has stopped rejecting the input at all; run
+    /// through the model, deleting the rule makes <c>ModelState.IsValid</c> true and the
+    /// controller writes the row the test says it must not.
+    /// </para></summary>
+    public ServiceConnectionControllerHarness GivenModelStateProducedByValidating(object model)
+    {
+        var results = new List<ValidationResult>();
+        Validator.TryValidateObject(model, new ValidationContext(model), results, validateAllProperties: true);
+        foreach (var result in results)
+            foreach (var member in result.MemberNames.DefaultIfEmpty(string.Empty))
+                Controller.ModelState.AddModelError(member, result.ErrorMessage ?? string.Empty);
         return this;
     }
 

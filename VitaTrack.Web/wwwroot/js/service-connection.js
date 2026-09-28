@@ -29,7 +29,10 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () { guard(document); });
-    // htmx re-executes an external <script src> found in a swapped fragment, so this
-    // document-level listener is registered once and the guard is re-run on each swap.
+    // Delegated on the body, which every swap leaves in place, so this is registered
+    // once for the page rather than once per fragment. htmx:afterSwap bubbles from the
+    // element it swapped in, so guarding that element's subtree covers the new form.
+    // Nothing in a fragment is re-executed here: no fragment in this slice carries a
+    // <script> tag, and htmx only re-runs one it actually finds.
     document.body.addEventListener('htmx:afterSwap', function (event) { guard(event.target); });
 })();

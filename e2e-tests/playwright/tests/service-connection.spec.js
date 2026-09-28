@@ -16,6 +16,22 @@ const { screenshot } = require('../helpers/screenshot');
 // (ConnectServiceRequest.BaseUrl -> "Base URL", .ApiKey -> "API key"). They are
 // asserted in ServiceConnectionFormTests.ConnectForm_LabelsSayBaseUrlAndApiKeyLikeTheRestOfTheScreen,
 // so a label change without a selector change fails a unit test, not this one.
+
+// Holds every matching request open until releaseOne() is called, once per request.
+// The rapid-click test needed one latch; the swap tests need a *second* latch on the
+// same route, and a hold that never re-armed would make the second assertion vacuous —
+// which is the exact failure mode these tests exist to catch. The optional responder
+// stands in for the server, so one helper covers "held open" and "held open, then 500".
+function holdRequests(page, pattern, respond = route => route.continue()) {
+  const state = { held: 0, released: 0 };
+  page.route(pattern, async route => {
+    state.held++;
+    while (state.released < state.held) await new Promise(resolve => setTimeout(resolve, 5));
+    await respond(route);
+  });
+  return { held: () => state.held, releaseOne: () => { state.released++; } };
+}
+
 test.describe.serial('Service Connection', () => {
   test('should save a connection from the Settings page and show it after reload', async ({ page }, testInfo) => {
     // Arrive by clicking, not by goto: the nav item is the entry point under test.
@@ -99,12 +115,30 @@ test.describe.serial('Service Connection', () => {
     await page.getByRole('link', { name: 'Settings' }).click();
     await expect(page.getByText('Saved connection')).toBeVisible();
 
+    // Two model fields share this page, and their ids have to differ or the <label for>
+    // association breaks for both: the connect form's is asp-for="Model" (id="Model"),
+    // so the picker's is prefixed. Asserted on the *rendered* accessible names and ids,
+    // not on the [Display] strings the form tests read, because the regression this pins
+    // is in the markup — and with a duplicated id both getByLabel selectors retarget to
+    // the same input, whose value then matches both expectations by luck.
+    const connectModelField = page.getByLabel('Model (optional)');
+    const pickerModelField = page.getByLabel('Model', { exact: true });
+    await expect(connectModelField).toHaveAttribute('id', 'Model');
+    await expect(pickerModelField).toHaveAttribute('id', 'picker-model');
+    await expect(connectModelField).toHaveAccessibleName('Model (optional)');
+    await expect(pickerModelField).toHaveAccessibleName('Model');
+
     // The picker came from a probe that listed nothing, so the model is free text. If a
     // future probe did list models this becomes a <select>, and the test says so by
     // failing on a select that has no free-text field.
-    const modelField = page.getByLabel('Model', { exact: true });
-    await expect(modelField).toBeVisible();
-    await modelField.fill('gpt-4o');
+    await expect(pickerModelField).toBeVisible();
+    await pickerModelField.fill('gpt-4o');
+    // The reasoning-effort vocabulary is rendered whole and there is nothing to
+    // discover, so the six values are pinned as rendered. A count would not do: a
+    // dropdown that quietly lost "xhigh" would still satisfy any assertion about how
+    // many options there are, and "xhigh" is a value the providers accept.
+    await expect(page.getByLabel('Reasoning effort').locator('option'))
+      .toHaveText(['none', 'low', 'medium', 'high', 'xhigh', 'max']);
     await page.getByLabel('Reasoning effort').selectOption('high');
     await page.getByRole('button', { name: 'Save model' }).click();
 
@@ -119,12 +153,31 @@ test.describe.serial('Service Connection', () => {
     await expect(page.getByLabel('Model', { exact: true })).toHaveValue('gpt-4o');
     await expect(page.getByLabel('Reasoning effort')).toHaveValue('high');
 
-    // Disconnect asks first — the confirm hook has to survive the swaps above, which
-    // replaced the very form it is attached to.
-    page.once('dialog', dialog => {
-      expect(dialog.message()).toContain('Disconnect this service?');
-      dialog.accept();
-    });
+    // One more save, so the Disconnect form below is a form a *swap* delivered rather
+    // than one this page load rendered. The reload above is the reason this step exists:
+    // without a swap immediately before the click, a confirm hook bound once at page load
+    // would be attached to exactly the right form and the test would pass with it broken.
+    await page.getByLabel('Reasoning effort').selectOption('low');
+    await page.getByRole('button', { name: 'Save model' }).click();
+    await expect(page.getByText('Model and reasoning effort saved.')).toBeVisible();
+
+    // Disconnect asks first, and the assertion is that asking *happened*: the first click
+    // must leave the connection standing, because a confirm hook that is not attached to
+    // the swapped-in form deletes with no dialog at all. A handler that only accepted
+    // could not tell the two apart, since the no-dialog case deletes anyway — so the
+    // dismissal is the discriminating step and the acceptance is the one after it.
+    let asked = [];
+    const dismiss = dialog => { asked.push(dialog.message()); dialog.dismiss(); };
+    page.once('dialog', dismiss);
+    await page.getByRole('button', { name: 'Disconnect' }).click();
+
+    await expect(page.getByText('Saved connection')).toBeVisible();
+    expect(asked).toHaveLength(1);
+    expect(asked[0]).toContain('Disconnect this service?');
+
+    // Having refused it, the user changes their mind: the same form, asked again.
+    asked = [];
+    page.once('dialog', dialog => { asked.push(dialog.message()); dialog.accept(); });
     await page.getByRole('button', { name: 'Disconnect' }).click();
     await expect(page.getByText('Saved connection')).toHaveCount(0);
     await expect(page.getByText('Connect a service')).toBeVisible();
@@ -160,13 +213,9 @@ test.describe.serial('Service Connection', () => {
     // DESIGN.md: "HTMX forms must disable their submit button while a request is in flight
     // and re-enable on response". The request is held open so the disabled state is
     // observed rather than raced past — without the hold the guard would have finished
-    // before the assertion ran, and this would pass with the guard deleted.
-    let release;
-    const held = new Promise(resolve => { release = resolve; });
-    await page.route('**/ServiceConnection/Connect', async route => {
-      await held;
-      await route.continue();
-    });
+    // before the assertion ran, and this would pass with the guard deleted. The re-enable
+    // half is pinned by the next test, which is the only shape in which it can fail.
+    const held = holdRequests(page, '**/ServiceConnection/Connect');
 
     await page.goto('/ServiceConnection/Index');
     await page.getByLabel('Base URL').fill('https://api.slow.example.com');
@@ -176,8 +225,118 @@ test.describe.serial('Service Connection', () => {
     await save.click();
     await expect(save).toBeDisabled();
 
-    release();
+    held.releaseOne();
     await expect(page.getByText('Saved connection')).toBeVisible();
+    // Not asserted here: `expect(save).toBeEnabled()`. The swap hands back a fresh
+    // enabled button, so that assertion passes with the re-enable deleted. The test
+    // below is where the re-enable is load-bearing.
+  });
+
+  test('should guard the submit button again after a swap replaced the form', async ({ page }) => {
+    // The line service-connection.js's own header names as the failure it exists to
+    // prevent. The guard is bound per form, and every connect swaps a fresh form into
+    // #connection-state, so a guard bound once at load leaves the second submit on this
+    // page with no protection at all. Deleting the htmx:afterSwap re-arm is what makes
+    // the second assertion below fail.
+    const held = holdRequests(page, '**/ServiceConnection/Connect');
+    const save = page.getByRole('button', { name: 'Save connection' });
+
+    await page.goto('/ServiceConnection/Index');
+    await page.getByLabel('Base URL').fill('https://api.reguard.example.com');
+    await page.getByLabel('API key').fill('sk-reguard-abcd1234');
+    await save.click();
+    await expect(save).toBeDisabled();
+    held.releaseOne();
+    await expect(page.getByText('Saved connection')).toBeVisible();
+
+    // The second submit, on the form that swap delivered. The key is re-entered because
+    // the saved state never carries it.
+    await page.getByLabel('API key').fill('sk-reguard-abcd5678');
+    await save.click();
+    await expect(save).toBeDisabled();
+
+    expect(held.held()).toBe(2);
+    held.releaseOne();
+    // The form came back empty, which is the swap having happened a second time.
+    await expect(page.getByLabel('API key')).toHaveValue('');
+  });
+
+  test('should re-enable the submit button when the response is not swapped in', async ({ page }) => {
+    // The other half of the DESIGN.md sentence, in the only shape where it can fail. On a
+    // successful connect the response replaces the form, so the button that comes back is
+    // a new one and "is it enabled?" proves nothing. A 500 is not swapped in by htmx, so
+    // the element asserted on below is the same element that was disabled — marked here so
+    // the test itself says so, since that is the whole reason it exists.
+    const held = holdRequests(page, '**/ServiceConnection/Connect',
+      route => route.fulfill({ status: 500, body: 'probe exploded' }));
+
+    await page.goto('/ServiceConnection/Index');
+    await page.getByLabel('Base URL').fill('https://api.broken.example.com');
+    await page.getByLabel('API key').fill('sk-broken-abcd1234');
+
+    const save = page.getByRole('button', { name: 'Save connection' });
+    await save.click();
+    await expect(save).toBeDisabled();
+    await save.evaluate(button => { button.setAttribute('data-in-flight-marker', 'set'); });
+
+    held.releaseOne();
     await expect(save).toBeEnabled();
+    await expect(save).toHaveAttribute('data-in-flight-marker', 'set');
+    // The marker surviving is the point: htmx does not swap a 500, so this is the same
+    // element that went disabled, and "enabled" is the guard's re-enable rather than a
+    // replacement. (The earlier tests in this serial run leave a connection saved, so the
+    // claim to check is that *this* one was not saved — the table still shows the
+    // previous URL, and the form still holds what was typed.)
+    await expect(page.getByText('https://api.broken.example.com', { exact: true })).toHaveCount(0);
+    await expect(page.getByLabel('Base URL')).toHaveValue('https://api.broken.example.com');
+  });
+
+  test('should save a model with htmx blocked, and land on a page that says so', async ({ page }, testInfo) => {
+    // Progressive enhancement, at the only level that can see it. htmx never loads, so
+    // hx-post is inert and both forms have to work as plain form posts. The picker is
+    // the half that did not: a form carrying hx-post and no asp-action/method falls back
+    // to a GET of the current URL, which discards the choice with no error and leaves
+    // the page looking exactly like a no-op.
+    await page.route('**/lib/htmx/**', route => route.abort());
+
+    // The test has to establish that htmx really is absent, or it passes just as well
+    // with htmx working — the assertions below hold either way, because an enhanced
+    // submit also saves the model. Without this, a mutation that removed the route
+    // abort would leave the test green and it would be pinning nothing.
+    await page.goto('/ServiceConnection/Index');
+    expect(await page.evaluate(() => typeof window.htmx)).toBe('undefined');
+
+    // A real form post navigates the document; an htmx post does not. Counting main-frame
+    // navigations is how "the browser submitted this itself" is told apart from "htmx
+    // submitted it and swapped a fragment in" — which is the whole difference between a
+    // working enhancement and a silently discarded choice.
+    let navigations = 0;
+    page.on('framenavigated', frame => { if (frame === page.mainFrame()) navigations++; });
+
+    await page.getByLabel('Base URL').fill('https://api.nohtmx.example.com');
+    await page.getByLabel('API key').fill('sk-nohtmx-abcd1234');
+    // The saved model, so that a picker which fails to save has something to be wrong
+    // about: the assertion below is a change from gpt-4o-mini to gpt-4o.
+    await page.getByLabel('Model (optional)').fill('gpt-4o-mini');
+    await page.getByRole('button', { name: 'Save connection' }).click();
+
+    // A real navigation, not a swap: the controller redirected, which is the whole
+    // point of the branch under test.
+    await expect(page).toHaveURL(/\/ServiceConnection(\/Index)?$/);
+    await expect(page.getByText('https://api.nohtmx.example.com', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Model (optional)')).toHaveValue('gpt-4o-mini');
+    expect(navigations).toBeGreaterThan(0);
+
+    await page.getByLabel('Model', { exact: true }).fill('gpt-4o');
+    await page.getByLabel('Reasoning effort').selectOption('high');
+    const before = navigations;
+    await page.getByRole('button', { name: 'Save model' }).click();
+
+    await expect(page).toHaveURL(/\/ServiceConnection(\/Index)?$/);
+    expect(navigations).toBeGreaterThan(before);
+    await expect(page.getByLabel('Model (optional)')).toHaveValue('gpt-4o');
+    await expect(page.getByLabel('Model', { exact: true })).toHaveValue('gpt-4o');
+    await expect(page.getByLabel('Reasoning effort')).toHaveValue('high');
+    await screenshot(page, testInfo, 'service-connection-no-htmx');
   });
 });

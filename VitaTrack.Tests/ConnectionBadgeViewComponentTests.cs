@@ -62,9 +62,13 @@ public class ConnectionBadgeViewComponentTests
 
     /// <summary>The read is a database round trip on every page that renders the badge, so
     /// the component must ask the repository exactly once — not once per property the
-    /// view reads.</summary>
+    /// view reads. The bound is the component's own, not the page's: Settings reads the
+    /// active connection once in the controller (for <c>Saved</c>, which the saved-state
+    /// table renders) and once here, so a page with a saved connection costs two reads
+    /// and this pins that neither of them multiplies. Asserting a total of one per page
+    /// would be asserting an aspiration the architecture has never claimed.</summary>
     [TestMethod]
-    public async Task Invoke_ReadsTheActiveConnectionOnce()
+    public async Task Invoke_ReadsTheActiveConnectionOnce_NotOncePerPropertyOrPerPage()
     {
         var connections = new Mock<IServiceConnectionRepository>();
         connections.Setup(c => c.GetActiveAsync(It.IsAny<CancellationToken>()))

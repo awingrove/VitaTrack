@@ -67,8 +67,8 @@ When adding new tables (or FK-like columns, via `CREATE TABLE` or `ALTER TABLE` 
 ## Adding New Features
 1. Add model (if needed) to the owning feature slice under `VitaTrack.Core/Features/<Slice>/`.
 2. Extend repository interface (if new entity) and implement.
-3. Register new interface/implementation in `VitaTrack.Web/Program.cs` via `builder.Services.AddScoped<...>()`.
-4. If external service, add it to the owning slice folder (e.g. `Features/LlmEnrichment/`) and register via `AddHttpClient<TInterface, TImplementation>()` (you may also need to register `HttpClient` separately if not already).
+3. Register new interface/implementation in `VitaTrack.Core/ServiceCollectionExtensions.cs` via `builder.Services.AddScoped<...>()`.
+4. If external service, add it to the owning slice folder (e.g. `Features/LlmEnrichment/`) and register it in `ServiceCollectionExtensions.AddCore` with `AddScoped<TInterface, TImplementation>()`. **Do not** reach for `AddHttpClient<TInterface, TImplementation>()`: the typed-client factory builds the implementation through `DefaultTypedHttpClientFactory<T>`, which requires a constructor taking an `HttpClient`. A type that takes `IHttpClientFactory` (as `ServiceCatalogClient` does) **compiles fine and throws at resolution** — the page, not the build — so `ServiceCollectionExtensionsTests.AddCore_RegistersAllRepositoriesAndServices` resolves each new one for real rather than reading the descriptor. Configure the client itself by *name* (`AddHttpClient("llm", …)`) and take `IHttpClientFactory` in the implementation.
 5. Write unit tests in `VitaTrack.Tests` before or after implementation (TDD encouraged).
 
 ## Build

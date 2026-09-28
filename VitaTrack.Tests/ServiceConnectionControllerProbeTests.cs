@@ -114,6 +114,29 @@ public class ServiceConnectionControllerProbeTests
             "the probe is about the connection, not about how the page is delivered");
     }
 
+    /// <summary>The picker's half of the same claim. <c>SelectModel</c> answers through
+    /// <c>Swapped</c>, so a plain form post redirects to the freshly rendered Index with
+    /// the choice saved — which is what makes the markup's <c>asp-action</c> and
+    /// <c>method="post"</c> load-bearing: with the script blocked the browser falls back
+    /// to them, and without them it would GET the current URL and drop the submission.
+    /// The markup is the half a controller test cannot see; the e2e pins that
+    /// (<c>should save a model with htmx blocked</c>).</summary>
+    [TestMethod]
+    public async Task SelectModel_WithoutHtmx_RedirectsToIndex_AndStillSavesTheModel()
+    {
+        var plain = new ServiceConnectionControllerHarness();
+        plain.GivenOneRowRepository(ServiceConnectionControllerHarness.Saved());
+
+        var result = await plain.Controller.SelectModel(
+            new SelectModelRequest { Model = "gpt-4o", Variant = "high" }, CancellationToken.None);
+
+        var redirect = result as RedirectToActionResult;
+        Assert.IsNotNull(redirect, "a fragment rendered into no target at all is how the choice would be lost");
+        Assert.AreEqual("Index", redirect.ActionName);
+        Assert.AreEqual("gpt-4o", plain.Rows[^1].Model,
+            "the redirect is about how the page is delivered, not about whether the choice was kept");
+    }
+
     [TestMethod]
     public async Task SelectModel_PersistsModelAndVariant()
     {
@@ -164,16 +187,23 @@ public class ServiceConnectionControllerProbeTests
         Assert.IsNotNull(_harness.Rows[^1].VerifiedAt);
     }
 
+    /// <summary>The variant vocabulary is enforced by the bind model, so the rejection the
+    /// controller acts on is produced <em>by the model</em> here rather than typed into
+    /// <c>ModelState</c> by the test. That is the difference between a test that pins the
+    /// controller's response to a rejection and one that pins the rejection itself:
+    /// delete the registry check from <c>SelectModelRequest.Validate</c> and
+    /// <c>ModelState.IsValid</c> goes true, the branch is never taken, and the write this
+    /// test forbids happens. (MVC's own binding of a validated model into
+    /// <c>ModelState</c> is framework behaviour every e2e POST exercises; what is in this
+    /// repo's hands is the rule and the branch, and both are pinned.)</summary>
     [TestMethod]
     public async Task SelectModel_RejectsAVariantOutsideTheRegistryVocabulary()
     {
         _harness.GivenOneRowRepository(ServiceConnectionControllerHarness.Saved());
-        // The error is seeded rather than produced: a hand-built request carries a valid
-        // ModelState, and what is under test is the controller's response to a rejection —
-        // which is where a post-discovered model error lands too.
-        Controller.ModelState.AddModelError(nameof(SelectModelRequest.Variant), SelectModelRequest.UnknownVariant);
+        var request = new SelectModelRequest { Model = "gpt-4o", Variant = "turbo" };
+        _harness.GivenModelStateProducedByValidating(request);
 
-        var result = await Controller.SelectModel(new SelectModelRequest { Model = "gpt-4o", Variant = "turbo" }, CancellationToken.None);
+        var result = await Controller.SelectModel(request, CancellationToken.None);
 
         Assert.AreEqual(1, _harness.Rows.Count, "a rejected variant must not write the column the registry owns");
         ServiceConnectionControllerHarness.FragmentOf<ServiceConnectionViewModel>(result, "_ConnectionState");

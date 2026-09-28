@@ -100,7 +100,15 @@ public class ServiceCatalogClient(IHttpClientFactory httpClientFactory, ILogger<
     /// shape. A body that parses but carries no catalog is not a verified connection:
     /// it would leave the user a picker with nothing in it. Entries that are not
     /// objects, or that carry no string id, are skipped rather than failing the whole
-    /// listing — a service that pads its array should still yield the ids it did name.</summary>
+    /// listing — a service that pads its array should still yield the ids it did name.
+    /// <para>
+    /// An array that yields <em>no</em> ids lands on the same answer as no array at all,
+    /// by the same argument: there is no catalog here, whatever the status code said. That
+    /// matters because the one signal that decides the picker is <c>Models.Count</c> and
+    /// the one that decides the badge is <c>Verified</c> — a 200 carrying an empty list
+    /// would otherwise put a verified badge above a free-text field with no explanation,
+    /// which is the disagreement the two signals must never have.
+    /// </para></summary>
     private static ModelCatalog ReadCatalog(string body)
     {
         using var document = JsonDocument.Parse(body);
@@ -113,7 +121,7 @@ public class ServiceCatalogClient(IHttpClientFactory httpClientFactory, ILogger<
             .Where(id => !string.IsNullOrWhiteSpace(id))
             .ToList();
 
-        return new ModelCatalog(models, true);
+        return models.Count == 0 ? ModelCatalog.Unverified : new ModelCatalog(models, true);
     }
 
     private static string? ModelId(JsonElement entry) =>

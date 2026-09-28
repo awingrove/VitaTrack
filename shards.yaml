@@ -22,7 +22,9 @@
 # models and view models that carry a slice's data into its views. They are
 # per-slice (one `SavedConnection` projection is not another slice's business),
 # so they are claimed rather than allowlisted. Every slice declares the key,
-# `[]` included: a key that is absent was never reviewed.
+# `[]` included: a key that is absent was never reviewed. `view_components` is
+# the same rule for `VitaTrack.Web/ViewComponents`, which is a scan root for the
+# same reason: a type the orphan check cannot see is not thereby cross-cutting.
 
 slices:
   - id: MF
@@ -40,6 +42,7 @@ slices:
     views:
       - VitaTrack.Web/Views/Family/**
     models: []
+    view_components: []
     js: []
     unit_tests:
       - VitaTrack.Tests/FamilyRepositoryTests.cs
@@ -68,6 +71,7 @@ slices:
     views:
       - VitaTrack.Web/Views/PrescribedDose/**
     models: []
+    view_components: []
     js:
       - VitaTrack.Web/wwwroot/js/multiplier-stepper.js
       - VitaTrack.Web/wwwroot/js/prescribed-dose-serving.js
@@ -111,6 +115,7 @@ slices:
       - VitaTrack.Web/Models/ConfirmSupplementRequest.cs
       - VitaTrack.Web/Models/ReplaceNutrientsRequest.cs
       - VitaTrack.Web/Models/SupplementEditorViewModel.cs
+    view_components: []
     js:
       - VitaTrack.Web/wwwroot/js/create.js
       - VitaTrack.Web/wwwroot/js/edit.js
@@ -146,6 +151,7 @@ slices:
     views:
       - VitaTrack.Web/Views/SupplementNutrient/**
     models: []
+    view_components: []
     js:
       - VitaTrack.Web/wwwroot/js/nutrient-editor.js
       - VitaTrack.Web/wwwroot/js/nutrient-form.js
@@ -188,6 +194,7 @@ slices:
     views:
       - VitaTrack.Web/Views/Reporting/**
     models: []
+    view_components: []
     js:
       - VitaTrack.Web/wwwroot/js/report-toggle.js
     unit_tests:
@@ -217,6 +224,7 @@ slices:
       - VitaTrack.Core/Features/LlmEnrichment/LlmResult.cs
     views: []
     models: []
+    view_components: []
     js: []
     unit_tests:
       - VitaTrack.Tests/LlmServiceTests.cs
@@ -242,6 +250,7 @@ slices:
     views:
       - VitaTrack.Web/Views/Home/**
     models: []
+    view_components: []
     js: []
     unit_tests: []
     e2e_specs:
@@ -277,6 +286,11 @@ slices:
       - VitaTrack.Web/Models/ServiceConnectionViewModel.cs
       - VitaTrack.Web/Models/ModelPickerViewModel.cs
       - VitaTrack.Web/Models/ConnectionBadgeViewModel.cs
+    # Claimed, not allowlisted, since ShardOwnershipTests gained
+    # VitaTrack.Web/ViewComponents as a scan root. It renders from two slices' views
+    # and is owned by this one, which is exactly what a claim is for.
+    view_components:
+      - VitaTrack.Web/ViewComponents/ConnectionBadgeViewComponent.cs
     js:
       - VitaTrack.Web/wwwroot/js/service-connection.js
     unit_tests:
@@ -290,6 +304,7 @@ slices:
       - VitaTrack.Tests/ServiceConnectionControllerProbeTests.cs
       - VitaTrack.Tests/ServiceConnectionControllerHarness.cs
       - VitaTrack.Tests/ConnectionBadgeViewComponentTests.cs
+      - VitaTrack.Tests/ServiceConnectionControllerCancellationTests.cs
       - VitaTrack.Tests/ServiceConnectionFormTests.cs
     e2e_specs:
       - e2e-tests/playwright/tests/service-connection.spec.js
@@ -298,15 +313,6 @@ slices:
 # the ownership test does not flag them as orphans. Keep this minimal.
 allowlist:
   - VitaTrack.Web/Program.cs
-  # A view component, owned by the SC slice and rendered on SC's Settings page and on
-  # the MS slice's enrichment pages. It lives outside every ShardOwnershipTests scan
-  # root (Controllers, Core, Views, Web/Models, Web/wwwroot/js, VitaTrack.Tests,
-  # e2e spec files), which is why it is here rather than claimed: the ownership check
-  # cannot see a file it does not scan, and adding the directory as a scan root is a
-  # change to that test, not to this manifest. No other Web-layer type is in this
-  # position — the gap is the directory, and it is recorded rather than worked around
-  # silently.
-  - VitaTrack.Web/ViewComponents/ConnectionBadgeViewComponent.cs
   - VitaTrack.Web/Views/Shared/**
   - VitaTrack.Web/Views/_ViewImports.cshtml
   - VitaTrack.Core/Data/DbInit.cs

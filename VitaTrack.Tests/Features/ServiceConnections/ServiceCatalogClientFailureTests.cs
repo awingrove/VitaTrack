@@ -91,6 +91,34 @@ public class ServiceCatalogClientFailureTests
             "a listing with no catalog in it is not a verified connection");
     }
 
+    /// <summary>The same verdict for the case the status code alone would get wrong. A
+    /// 200 that carries an empty array is a service that answered and offered nothing,
+    /// and the two halves of the answer are read by different parts of the UI:
+    /// <c>Models.Count</c> picks the free-text field, <c>Verified</c> picks the badge and
+    /// whether the unverified note appears. Reporting this as verified would put a
+    /// "verified" pill above a model field with nothing in it and no explanation — the
+    /// one-signal rule and the badge disagreeing, which is what this pins shut.</summary>
+    [TestMethod]
+    public async Task OnA200WithAnEmptyCatalog_ReturnsUnverified()
+    {
+        var client = Client(new RecordingHandler(HttpStatusCode.OK, @"{ ""object"": ""list"", ""data"": [] }"));
+
+        await AssertUnverified(await client.ListModelsAsync(Connection()),
+            "a catalog that names no model is not a catalog, whatever the status code said");
+    }
+
+    /// <summary>And the same verdict when the array is present but every entry is
+    /// unusable — which is the other way to arrive at no ids, and the reason the check is
+    /// on the parsed list rather than on the shape of the body.</summary>
+    [TestMethod]
+    public async Task OnA200WhoseEntriesAreAllUnusable_ReturnsUnverified()
+    {
+        var client = Client(new RecordingHandler(HttpStatusCode.OK, @"{ ""data"": [ ""junk"", { ""name"": ""no-id"" } ] }"));
+
+        await AssertUnverified(await client.ListModelsAsync(Connection()),
+            "no entry yielded an id, so there is still nothing to offer");
+    }
+
     [TestMethod]
     public async Task WhenTheRequestFails_ReturnsUnverified()
     {

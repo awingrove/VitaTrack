@@ -174,6 +174,66 @@ open:
       majority-product-code again, or when a `TD-`/`DL-` id is actually lost in a merge,
       which is the event this exists to catch.
 
+  - id: TD-022
+    title: >-
+      The connection badge explains itself only in a `title`, so a screen-reader user
+      reads "unverified" with nothing behind it
+    where: >-
+      `VitaTrack.Web/Views/ServiceConnection/_ConnectionBadge.cshtml`
+    what: >-
+      the badge renders one word (`verified` / `unverified`) in a pill, and the sentence
+      explaining what that word means — "your service has not answered the model-list test
+      with this key; enrichment can still work" — lives in the `title` attribute. A `title`
+      is hover-only: it is not reliably announced, and it is unreachable by keyboard and by
+      touch. On the Settings page the same fact is also stated in visible words
+      (`_Unverified.cshtml`), so a user there is told twice; on the enrichment pages —
+      the whole reason the badge exists — the badge is the *only* statement, and a
+      screen-reader user there gets the bare word.
+    interest: >-
+      low for a sighted keyboard user, who can hover; it bites exactly the users the
+      enrichment-flow badge was added to protect — someone about to spend a request on a
+      service nobody confirmed, who cannot see that "unverified" is a state rather than an
+      error. Nothing holds the current shape either way, so a future edit could equally
+      drop the sentence or move it further out of reach.
+    paydown: >-
+      Task 7 owns the `DESIGN.md` amendment for the badge; decide there between visible
+      text (a sentence under the pill, which is a design change and belongs in that
+      amendment) and an announced accessible name (an `aria-label` carrying the same
+      sentence, invisible, with `title` kept for hover). Whichever is chosen, add the
+      e2e assertion with it — the current spec checks the word, so a regression that
+      dropped the explanation entirely would still pass.
+
+  - id: TD-023
+    title: >-
+      `DESIGN.md:224-227` requires a spinner in the submit button; the rapid-click guard
+      implements the disable half only
+    where: >-
+      `VitaTrack.Web/wwwroot/js/service-connection.js`,
+      `DESIGN.md`
+    what: >-
+      the design contract says an htmx form "must disable their submit button while a request
+      is in flight and re-enable on response" *and* "show progress with
+      `spinner-border spinner-border-sm` injected into the button, never a full-screen
+      overlay". The guard does the first two halves: the button is disabled on
+      `htmx:beforeRequest` and re-enabled on `htmx:afterRequest`, and both are now pinned
+      (`should disable the submit button while the connect is in flight` and
+      `should re-enable the submit button when the response is not swapped in`). It adds no
+      spinner, and no spec asserts one. The contract therefore describes a behaviour this
+      slice does not implement, and Task 7's amendment has to settle which of the two the
+      project actually wants before the sentence can be called true.
+    interest: >-
+      the gap is a missing affordance, not a wrong one — a disabled button does say the
+      request is in flight. It matters because the contract is normative: as written it
+      tells the next agent to add a spinner to a form that already disables, and leaves
+      open whether a greyed button *plus* a spinner is the project's intent or two answers
+      to one question.
+    paydown: >-
+      Task 7's `DESIGN.md` amendment: either add the spinner in
+      `service-connection.js` (insert the Bootstrap markup alongside the disable, and pin it
+      in the e2e spec), or amend the sentence to say the disabled button is the whole
+      affordance. The two are not equivalent — one is a progress indicator, the other is a
+      duplicate-submit guard — and the contract currently reads as if it wanted both.
+
   - id: TD-016
     title: >-
       `FileSizeTests` attributes a whole file's lines to every type in it

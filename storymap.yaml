@@ -360,12 +360,13 @@ activities:
         name: Auto-extract nutrients from URL
         entry_point: Supplement Create/Edit -> Enrich button
         stories:
-          - title: Scrape manufacturer URL and extract nutrients via OpenRouter
+          - title: Scrape manufacturer URL and extract nutrients from the connected service
             status: done
             priority: medium
             tests:
               - unit: LlmServiceTests.EnrichSupplementAsync_ExtractsNutrients_WhenApiReturnsValidResponse
               - e2e: supplement-llm-integration::should extract nutrients from a real product URL using LLM
+              - e2e: service-connection::should post the chosen model and reasoning effort to the connection when enriching
           - title: Extract blends with nested children from product labels
             status: done
             priority: medium
@@ -389,6 +390,7 @@ activities:
               - unit: LlmServiceConnectionTests.EnrichSupplementAsync_WithNoConnection_PointsAtSettings_AndReachesNothing
               - unit: LlmServiceConnectionTests.EnrichSupplementAsync_WithNoModelChosen_PointsAtSettings_AndReachesNothing
               - unit: LlmClientRequestTests.PostChatAsync_WithNullModel_ReturnsErrorPointingAtSettings
+              - e2e: service-connection::should refuse an enrich with no connection at all, and name Settings as the fix
           - title: Refuse a connection naming a service this build does not ship
             status: done
             priority: low
@@ -546,6 +548,9 @@ activities:
               - unit: ServiceConnectionControllerCancellationTests.Connect_ProbesWithTheTokenTheActionWasGiven_NotAFreshOne
               - unit: ServiceConnectionControllerProbeTests.Connect_ValidProbe_StoresTheVerificationItReports
               - unit: ServiceConnectionControllerTests.Index_DoesNotProbe_TheServiceOnEveryPageLoad
+              - e2e: service-connection::should verify a connection against a service that lists its models, and pick one of them
+              - e2e: service-connection::should probe the same path for either form of the base URL trailing slash
+              - e2e: service-connection::should leave a connection unverified when the service answers with nothing usable, and still save it
           - title: Say in words that an unconfirmed connection is still usable
             status: done
             priority: high
@@ -572,6 +577,8 @@ activities:
               - unit: ServiceConnectionControllerProbeTests.Connect_ValidProbe_RendersModelPickerWithCatalogModels
               - unit: ServiceConnectionControllerTests.Index_WithActiveConnection_RendersTheModelPicker
               - e2e: service-connection::should save a model and reasoning effort from the picker, then disconnect
+              - e2e: service-connection::should verify a connection against a service that lists its models, and pick one of them
+              - e2e: service-connection::should post the chosen model and reasoning effort to the connection when enriching
           - title: Choose a reasoning effort from the six values the providers accept
             status: done
             priority: high

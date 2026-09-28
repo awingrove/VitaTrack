@@ -1,12 +1,21 @@
 const { test, expect } = require('@playwright/test');
 const { screenshot } = require('../helpers/screenshot');
+const { startLlmStub, reserveClosedPort } = require('../helpers/llm-stub');
 
-// What the Settings page can be made to show without an AI service to talk to: a
-// connection saved through the form, a probe that could not confirm it, the model picker
-// that follows, and a disconnect. Nothing here reaches a real endpoint — every base URL
-// is one that does not answer, which is the ordinary outcome for a provider with no
-// /v1/models and the case the unverified wording exists for. The verified half needs a
-// stub server and lands with that work.
+// The Settings page has two halves, and both are here. The first eight tests drive it
+// with base URLs that do not answer: a connection saved through the form, a probe that
+// could not confirm it, the model picker that follows, and a disconnect. That is the
+// ordinary outcome for a provider with no /v1/models and the case the unverified
+// wording exists for. The five after them drive the same page against a real listening
+// socket (helpers/llm-stub.js) — the probe that verifies, the catalog it comes back
+// with, the picker built from it, and the completion the enrichment flow makes.
+//
+// The stub stands in for the service the app dials, never for the app: the app is
+// unmodified, its status handling and JSON parsing are real, and the request that
+// arrives is recorded whole so a test can assert on the credential and the model
+// settings that travelled with it. The earlier tests do hold app requests open with
+// page.route; that is a browser-side state, not a substituted answer — see the no-mock
+// rule in the root AGENTS.md for where the line sits.
 //
 // Serial, and not a style choice: there is at most one active connection by design,
 // so these tests contend on a single row. Under fullyParallel they would demote
@@ -338,5 +347,267 @@ test.describe.serial('Service Connection', () => {
     await expect(page.getByLabel('Model', { exact: true })).toHaveValue('gpt-4o');
     await expect(page.getByLabel('Reasoning effort')).toHaveValue('high');
     await screenshot(page, testInfo, 'service-connection-no-htmx');
+  });
+
+  // ── The verified half, against a real service ──────────────────────────────────
+  // One stub per test, closed after it whatever happened. A describe-level variable
+  // because afterEach is the only hook that also runs after a failing test, and a stub
+  // left listening would hold its port — and the app's pooled keep-alive sockets to it
+  // — for the rest of the run.
+  let stub = null;
+  test.afterEach(async () => {
+    if (stub) await stub.close();
+    stub = null;
+  });
+
+  async function startStub(options) {
+    stub = await startLlmStub(options);
+    return stub;
+  }
+
+  // Connects through the form the way a user does, and waits for the badge that says
+  // what the probe concluded. Every test below needs this connect, and none of them
+  // care how it was made — the badge is the app's own answer, read from the page.
+  async function connectViaForm(page, baseUrl, apiKey, expectedBadge) {
+    await page.getByLabel('Base URL').fill(baseUrl);
+    await page.getByLabel('API key').fill(apiKey);
+    await page.getByRole('button', { name: 'Save connection' }).click();
+    await expect(page.locator('#connection-state .badge')).toHaveText(expectedBadge);
+  }
+
+  test('should verify a connection against a service that lists its models, and pick one of them', async ({ page }, testInfo) => {
+    const service = await startStub();
+    const apiKey = 'sk-stub-verify-1234';
+
+    await page.goto('/ServiceConnection/Index');
+    await connectViaForm(page, service.baseUrl, apiKey, 'verified');
+
+    // The badge, and the two things that must NOT be here with it. `exact` is what
+    // tells "verified" from "unverified" — a substring match on the first would be
+    // satisfied by the second, so the pair is the assertion and neither is alone.
+    await expect(page.getByText('unverified', { exact: true })).toHaveCount(0);
+    // The unverified note is per-response: this response answers a probe, and that
+    // probe verified, so there is nothing to explain about a free-text field.
+    await expect(page.getByText('Could not confirm the connection.')).toHaveCount(0);
+    await expect(page.getByText(service.baseUrl, { exact: true })).toBeVisible();
+    await expect(page.getByText('••••1234', { exact: true })).toBeVisible();
+
+    // The catalog the service listed, offered as a choice. The rendered option texts
+    // in order — not a count, which a dropdown that lost 'stub-model-b' would satisfy.
+    // These ids exist nowhere else in the app, so the only way they appear here is if
+    // they came back on the wire.
+    await expect(page.getByLabel('Model', { exact: true }).locator('option'))
+      .toHaveText(['stub-model-a', 'stub-model-b']);
+
+    // The probe really left the process, and carried the key the user typed rather than
+    // one the test made up. This is what a real socket buys over a badge: the badge
+    // could be green because the app believed something, and only the recorded request
+    // shows what was asked, where, and with which credential.
+    const probes = service.requests.filter(request => request.method === 'GET');
+    expect(probes).toHaveLength(1);
+    expect(probes[0].path).toBe('/v1/models');
+    expect(probes[0].headers.authorization).toBe(`Bearer ${apiKey}`);
+
+    // The raw key must not be anywhere in the document this swap produced — attributes
+    // included, which is why this reads the HTML rather than counting text matches (an
+    // <input> has no text, so a text count is zero by construction and would stay zero
+    // even if the key were rendered). Scoped to the saved path on purpose: on a
+    // *rejected* connect the key is what the user just typed into that field, and
+    // showing it back is the redisplay behaviour, not a leak.
+    expect(await page.content()).not.toContain(apiKey);
+    await screenshot(page, testInfo, 'service-connection-verified');
+  });
+
+  test('should probe the same path for either form of the base URL trailing slash', async ({ page }) => {
+    // ServiceEndpoint promises the two slash forms collapse to one URI, and a user types
+    // both — a pasted gateway URL usually arrives with its trailing slash. A
+    // form-sensitive combine would send "//v1/models" to one and "/v1/models" to the
+    // other, and the failure would depend on the typo.
+    //
+    // The two forms are the origin itself and the origin with a slash, which is the
+    // ambiguity that reaches the served path. A base URL carrying its own "/v1" is a
+    // different question and not this test: the app appends its own "v1/models", so that
+    // base asks for "/v1/v1/models" and the stub answers 404. The first draft of this
+    // test used that base and failed on an unverified badge — which is the stub's 404
+    // doing its job, and the reason the negative case below is a real observation
+    // rather than an assumption.
+    const service = await startStub();
+    const apiKey = 'sk-stub-slash-1234';
+
+    await page.goto('/ServiceConnection/Index');
+    for (const baseUrl of [service.baseUrl, `${service.baseUrl}/`]) {
+      await connectViaForm(page, baseUrl, apiKey, 'verified');
+      // The user-visible half of the promise too: the same two models, in the same
+      // order, from a base URL that differs only in one character.
+      await expect(page.getByLabel('Model', { exact: true }).locator('option'))
+        .toHaveText(['stub-model-a', 'stub-model-b']);
+    }
+
+    // Both requests, exactly, in order, and neither of them doubled or truncated. The
+    // stub answers 404 for a path it does not serve, so a wrong URI would have shown
+    // up as an unverified badge above rather than as a silently accepted 404.
+    expect(service.requests.map(request => request.path)).toEqual(['/v1/models', '/v1/models']);
+  });
+
+  test('should leave a connection unverified when the service answers with nothing usable, and still save it', async ({ page }, testInfo) => {
+    // Three answers that are not a model list, and the state each one has to produce.
+    // Without them the suite proves only that a 200 verifies, which a stub answering
+    // 200 to everything would also satisfy.
+    const service = await startStub({ models: [] });
+
+    await page.goto('/ServiceConnection/Index');
+
+    // (a) A success status carrying no catalog. The strongest of the three, because the
+    // status says yes: only the body can make this unverified, and the request count
+    // proves the 200 really came back rather than the probe never having been sent.
+    await connectViaForm(page, service.baseUrl, 'sk-stub-empty-1234', 'unverified');
+    expect(service.requests).toHaveLength(1);
+    expect(service.requests[0].path).toBe('/v1/models');
+    await expect(page.getByText('Could not confirm the connection.')).toBeVisible();
+    await expect(page.getByText(service.baseUrl, { exact: true })).toBeVisible();
+    // Free text, not an empty dropdown — the state a verified badge above an empty
+    // picker would contradict. tagName is the discriminator that survives either one.
+    await expect(page.locator('#picker-model')).toHaveJSProperty('tagName', 'INPUT');
+
+    // (b) A path the service does not serve. The app asked for
+    // {BaseUrl}/v1/models and got a 404, so the recorded path is the assertion: it
+    // says the probe was issued, and to where.
+    await connectViaForm(page, `${service.baseUrl}/elsewhere`, 'sk-stub-404-1234', 'unverified');
+    expect(service.requests.at(-1).path).toBe('/elsewhere/v1/models');
+    // And it was the 404 that decided it, not an absent probe: the only request to
+    // the served path is the one from (a).
+    expect(service.requests.filter(request => request.path === '/v1/models')).toHaveLength(1);
+    await expect(page.getByText(`${service.baseUrl}/elsewhere`, { exact: true })).toBeVisible();
+
+    // (c) Nothing listening at all — a refused connection rather than an unhappy one.
+    // A failed probe is not a failed connect, and the connection is still saved. The
+    // count not moving is the assertion: there was nowhere to send a request, so none
+    // was recorded. (The same rendering for a host that does not resolve is already
+    // pinned by the first test in this file; what is new here is the transport.)
+    const deadPort = await reserveClosedPort();
+    await connectViaForm(page, `http://127.0.0.1:${deadPort}`, 'sk-stub-dead-1234', 'unverified');
+    expect(service.requests).toHaveLength(2);
+    await expect(page.getByText(`http://127.0.0.1:${deadPort}`, { exact: true })).toBeVisible();
+    await expect(page.getByText('Could not confirm the connection.')).toBeVisible();
+    await screenshot(page, testInfo, 'service-connection-unverified-answers');
+  });
+
+  test('should refuse an enrich with no connection at all, and name Settings as the fix', async ({ page }, testInfo) => {
+    // The stub is running and is *not* asked for anything. That is the assertion: with
+    // no connection there is no service to enrich with, so the app must say so in
+    // words before it spends a request — and a refusal that silently did nothing else
+    // would look identical from the page unless the request count is read.
+    const service = await startStub();
+
+    await page.goto('/ServiceConnection/Index');
+    // The previous test left a connection saved; this one starts from none, which is
+    // the only state in which the message below is reachable.
+    page.once('dialog', dialog => dialog.accept());
+    await page.getByRole('button', { name: 'Disconnect' }).click();
+    await expect(page.getByText('Connect a service')).toBeVisible();
+
+    // Arrive by clicking, and reach the editor the way a user does: the nav, then the
+    // page's own create button. No deep URL, so the path a user has is one that works.
+    await page.getByRole('link', { name: 'Supplements' }).click();
+    await page.getByRole('link', { name: 'Add New Supplement' }).click();
+
+    await page.fill('input[name="Name"]', 'Stub Enrich Refusal');
+    await page.fill('input[name="Brand"]', 'StubBrand');
+    await page.fill('input[name="DailyDose"]', '1 capsule');
+    // A real public page, because the refusal has to be reached *before* anything is
+    // fetched: if it were ever fetched first, this test would start depending on the
+    // internet to prove something about the app.
+    await page.fill('input[name="ManufacturerUrl"]', 'https://example.com/');
+    await page.click('button#enrich-btn');
+
+    // The refusal names Settings, which is the one thing a user can act on, and says it
+    // is not the model they are missing — the two messages are separate for that reason.
+    await expect(page.locator('.alert-info')).toContainText('Add one in Settings');
+    await expect(page.locator('#nutrients-table .empty-row')).toBeVisible();
+    // Nothing was asked of the service, and no badge is drawn either: with no
+    // connection there is no state to report.
+    expect(service.requests).toHaveLength(0);
+    await expect(page.locator('span.badge')).toHaveCount(0);
+    await screenshot(page, testInfo, 'service-connection-enrich-no-connection');
+  });
+
+  test('should post the chosen model and reasoning effort to the connection when enriching', async ({ page }, testInfo) => {
+    // The whole path in one test, because that is what it is for: connect through the
+    // form, let the probe verify, choose a model the service listed, and watch the
+    // completion arrive at that service carrying the credential and the choice.
+    test.setTimeout(90000);
+    const service = await startStub();
+    const apiKey = 'sk-stub-enrich-1234';
+
+    await page.goto('/ServiceConnection/Index');
+    await connectViaForm(page, service.baseUrl, apiKey, 'verified');
+
+    // The picker's dropdown, not the free-text field: `selectOption` throws on anything
+    // that is not a <select>, so a probe that stopped listing models fails here rather
+    // than quietly saving a model nobody could have picked.
+    await page.getByLabel('Model', { exact: true }).selectOption('stub-model-b');
+    await page.getByLabel('Reasoning effort').selectOption('high');
+    await page.getByRole('button', { name: 'Save model' }).click();
+    await expect(page.getByText('Model and reasoning effort saved.')).toBeVisible();
+    await expect(page.getByLabel('Model (optional)')).toHaveValue('stub-model-b');
+
+    await page.getByRole('link', { name: 'Supplements' }).click();
+    await page.getByRole('link', { name: 'Add New Supplement' }).click();
+
+    await page.fill('input[name="Name"]', 'Stub Enrich Round Trip');
+    await page.fill('input[name="Brand"]', 'StubBrand');
+    await page.fill('input[name="DailyDose"]', '1 capsule');
+    // The one thing a loopback stub cannot stand in for. Enrichment scrapes the
+    // manufacturer page before it calls the service, and UrlSafetyValidator refuses
+    // anything that is not a public HTTPS address — by design, and pinned by
+    // UrlSafetyValidatorTests. So this half of the path needs a real page on the
+    // internet, and only this half does: the probe, the catalog and the picker's
+    // choices are all local, and the network fault below is the only reason to skip.
+    await page.fill('input[name="ManufacturerUrl"]', 'https://example.com/');
+    await page.click('button#enrich-btn');
+
+    await expect(page.locator('h4')).toContainText('Nutrients for', { timeout: 60000 });
+    const note = page.locator('.alert-info');
+    const noteText = (await note.count()) ? await note.innerText() : '';
+    // Exactly the two faults that mean "this machine has no route to that page", and
+    // nothing else. A broken stub produces a refusal from LlmClient, which is a
+    // different sentence and fails this test rather than skipping it.
+    const networkFaults = ['Failed to fetch manufacturer page', 'No content found on manufacturer page'];
+    test.skip(networkFaults.some(fault => noteText.includes(fault)),
+      'Skipping — no route to a public HTTPS manufacturer page from here. The local half '
+      + 'of this path (probe, catalog, picker) ran above; only the scrape could not.');
+
+    // No error at all: the enrichment succeeded, which is a stronger statement than
+    // the absence of a warning, because the note is the only channel it reports on.
+    expect(noteText).toBe('');
+
+    // What the service was asked for. `model` is the picker's choice and
+    // `reasoning_effort` the variant's, lifted onto the wire from the saved row — the
+    // whole reason the picker is on this page.
+    const completions = service.requests.filter(request => request.method === 'POST');
+    expect(completions).toHaveLength(1);
+    expect(completions[0].path).toBe('/v1/chat/completions');
+    expect(completions[0].headers.authorization).toBe(`Bearer ${apiKey}`);
+    expect(completions[0].headers['x-opencode-session']).toBeTruthy();
+    // The scraped page travelled in the prompt, so the chain is fetch -> prompt -> post
+    // and not a post with an empty context. The two things asserted are the ones this
+    // test controls — the form's own name and brand — plus the size of the section the
+    // scraped text goes in. What the page says is a third party's copy and is
+    // deliberately not pinned: an earlier draft of this assertion matched a sentence
+    // example.com used to carry and failed the day it reworded its own homepage, which
+    // says nothing about the app.
+    const sent = JSON.parse(completions[0].body);
+    expect(sent.model).toBe('stub-model-b');
+    expect(sent.reasoning_effort).toBe('high');
+    const userPrompt = sent.messages[1].content;
+    expect(userPrompt).toContain('Stub Enrich Round Trip');
+    const scraped = (userPrompt.split('Product Page Content:')[1] ?? '').split('Respond with ONLY')[0];
+    expect(scraped.trim().length).toBeGreaterThan(50);
+
+    // And the answer came back through the app's own parser into the editor, by name.
+    await expect(page.locator('input[name="nutrients[0].GenericName"]')).toHaveValue('Stub Vitamin C');
+    await expect(page.locator('input[name="nutrients[1].GenericName"]')).toHaveValue('Stub Zinc');
+    await expect(page.locator('input[name="nutrients[0].Dosage"]')).toHaveValue('80mg');
+    await screenshot(page, testInfo, 'service-connection-enriched');
   });
 });

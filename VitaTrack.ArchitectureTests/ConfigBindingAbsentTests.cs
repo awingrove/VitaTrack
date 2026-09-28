@@ -13,16 +13,23 @@ namespace VitaTrack.ArchitectureTests;
 /// <para>
 /// The scan covers the three source roots, and every exclusion is a decision rather
 /// than an inheritance. <c>docs/plans/</c> and <c>docs/superpowers/</c> are dated
-/// records of the decision itself and quote the old name on purpose — 37 of the 41
+/// records of the decision itself and quote the old names on purpose — 37 of the 38
 /// hits a repo-root scan reports live there. The root <c>AGENTS.md</c> is the
-/// exclusion that is temporary: it names <c>VitaTrackOptions</c> at line 58 and
-/// <c>VitaTrack__ApiKey</c> at line 98 — both prose saying the binding is gone, and
-/// both spellings a reintroducer would type — so naming the repo root in
-/// <see cref="ScanRoots"/> today would make this guard red over a documentation fix
-/// another task owns. The root's other files — <c>README.md</c>, <c>run.sh</c> —
-/// carry no token and would pass, and the last two hits are lines 7 and 141 of the
-/// <c>e2e-tests</c> enrichment spec. A repo-root scan names the file and line of
-/// each, which is the list to work through before that root is added.
+/// exclusion that is temporary: it names <c>VitaTrackOptions</c> at line 58, prose
+/// saying the binding is gone and a spelling a reintroducer would type, so naming the
+/// repo root in <see cref="ScanRoots"/> today would make this guard red over a
+/// documentation fix another task owns. The root's other files — <c>README.md</c>,
+/// <c>run.sh</c> — carry no token and would pass, and a repo-root scan names the file
+/// and line of each, which is the list to work through before that root is added.
+/// <para>
+/// The other two tokens no longer occur outside that excluded documentation at all, and
+/// where they were is the part worth keeping. <c>VitaTrack__ApiKey</c> appeared at
+/// <c>AGENTS.md</c>:98 and twice more, on the skip predicate of the real-provider e2e
+/// spec: one dead operand naming a variable the app stopped reading, and one line of CI
+/// prose telling a reader to add a repo secret under that same dead name. All three are
+/// gone, and both places now name the variables the spec actually reads. The count
+/// falling is the least interesting fact about it — every one of those hits was a
+/// sentence showing the next author how to bring the binding back.
 /// </para>
 /// <para>
 /// One token here is a JSON section key rather than one of the colon-form config

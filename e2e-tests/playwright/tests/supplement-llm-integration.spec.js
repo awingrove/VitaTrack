@@ -1,14 +1,83 @@
 const { test, expect } = require('@playwright/test');
 const { screenshot } = require('../helpers/screenshot');
 
+// The one spec that talks to a genuine provider. Every other service in this suite is
+// stood in for by a real local socket (see service-connection.spec.js), which is how the
+// app's own half is covered; this file covers the other half, and cannot without a
+// provider.
+//
+// The credential is LLM_API_KEY, and it is the *input* to a connect a user performs
+// rather than a proxy for capability. The app takes its connection from the database and
+// nothing binds a config key any more, so there is exactly one way an e2e can give it
+// one: type it into the Settings form, the same as a user would. A spec that seeded the
+// row would be asserting against a connection the app never agreed to, and a spec that
+// read the variable's presence as permission to run would fail for a reason that has
+// nothing to do with the code — which is what the second skip below exists to prevent.
+//
+// LLM_BASE_URL and LLM_MODEL are required alongside it for the same reason the model is
+// required by the app: there is no configured default left to fall back on, and a
+// completion with no model is refused rather than guessed at. test-e2e.sh prompts for
+// all three and exports all three empty in CI, so the whole file self-skips there.
+const apiKey = process.env.LLM_API_KEY;
+const baseUrl = process.env.LLM_BASE_URL;
+const model = process.env.LLM_MODEL;
+
+// Resolved before anything navigates. The skip is decided from the environment alone, so
+// it is settled before the first page.goto: a decision taken after a navigation can be
+// reached differently on a second run, when a connection row left behind by an earlier
+// test is what the page is showing.
+const missing = ['LLM_API_KEY', 'LLM_BASE_URL', 'LLM_MODEL'].filter(name => !process.env[name]);
+const skipWithoutProvider =
+  `Skipping — ${missing.join(', ')} not set in the environment. This is the only spec that needs a `
+  + 'real provider; every other service in the suite is a local socket.';
+
+/**
+ * Connects the app to the provider through its own form, and lets the app's probe say
+ * whether the connection is usable. Reads the badge rather than asserting a state: a
+ * credential that is set but not accepted — expired, mistyped, or aimed at a provider
+ * with no model list — is a reason this spec cannot say anything about the code, not a
+ * failure a developer can act on. That is the whole reason the earlier version of this
+ * file went red for a developer who simply had the variable exported.
+ */
+async function connectRealProvider(page) {
+  await page.goto('/ServiceConnection/Index');
+  await page.getByLabel('Base URL').fill(baseUrl);
+  await page.getByLabel('API key').fill(apiKey);
+  await page.getByLabel('Model (optional)').fill(model);
+  await page.getByRole('button', { name: 'Save connection' }).click();
+  await expect(page.getByText('Saved connection')).toBeVisible();
+
+  const badge = page.locator('#connection-state .badge');
+  await expect(badge).toBeVisible();
+  test.skip((await badge.innerText()).trim() !== 'verified',
+    `Skipping — the app's probe did not confirm the connection to ${baseUrl}. The key was not `
+    + 'accepted, or that provider does not list its models.');
+
+  await expect(page.getByText('Could not confirm the connection.')).toHaveCount(0);
+}
+
+// The suite shares one active connection and the design allows at most one, so this file
+// hands it back rather than leaving a developer's provider configured for the specs that
+// run after it.
+async function disconnect(page) {
+  await page.goto('/ServiceConnection/Index');
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Disconnect' }).click();
+  await expect(page.getByText('Connect a service')).toBeVisible();
+}
+
 test.describe('Supplement LLM Integration (Real API)', () => {
+  // Serial, not a style choice: the two provider tests each connect, and there is one
+  // connection row. Under fullyParallel they would demote each other's connection
+  // mid-test and fail for a reason that has nothing to do with the provider.
+  test.describe.configure({ mode: 'serial' });
 
   test('should extract nutrients from a real product URL using LLM', async ({ page }, testInfo) => {
-    const apiKey = process.env.LLM_API_KEY || process.env.VitaTrack__ApiKey;
-    test.skip(!apiKey, 'Skipping — no API key configured');
+    test.skip(missing.length > 0, skipWithoutProvider);
 
     test.setTimeout(180000);
 
+    await connectRealProvider(page);
     await page.goto('/Supplement');
     await expect(page.locator('table tbody tr').first()).toBeVisible();
     await page.click('text=Add New Supplement');
@@ -78,6 +147,8 @@ test.describe('Supplement LLM Integration (Real API)', () => {
     console.log(`Saved nutrient rows: ${savedRowCount}`);
     expect(savedRowCount).toBeGreaterThan(0);
     await screenshot(page, testInfo, 'llm-nutrients-saved');
+
+    await disconnect(page);
   });
 
   test('should allow manual nutrient entry when LLM fails', async ({ page }, testInfo) => {
@@ -138,11 +209,11 @@ test.describe('Supplement LLM Integration (Real API)', () => {
   });
 
   test('should extract blend with 6 sub-nutrients from G.I. Detox URL', async ({ page }, testInfo) => {
-    const apiKey = process.env.LLM_API_KEY || process.env.VitaTrack__ApiKey;
-    test.skip(!apiKey, 'Skipping — no API key configured');
+    test.skip(missing.length > 0, skipWithoutProvider);
 
     test.setTimeout(180000);
 
+    await connectRealProvider(page);
     await page.goto('/Supplement');
     await expect(page.locator('table tbody tr').first()).toBeVisible();
     await page.click('text=Add New Supplement');
@@ -193,5 +264,7 @@ test.describe('Supplement LLM Integration (Real API)', () => {
     }
 
     await screenshot(page, testInfo, 'gi-detox-blend-with-children');
+
+    await disconnect(page);
   });
 });

@@ -706,7 +706,7 @@ and the message names the id.
 
 **Interfaces:** consumes the shipped feature. Produces no new types.
 
-- [ ] **Step 1: Write the stub server**
+- [x] **Step 1: Write the stub server**
 
 `helpers/llm-stub.js` exports a factory that starts a **real Node `http` server on an ephemeral port** (listen on port `0`, read the assigned port back) and resolves to `{ baseUrl, close, requests }`. It serves:
 
@@ -716,24 +716,24 @@ and the message names the id.
 
 Per-test and ephemeral — **not** a second `webServer` entry, because `fullyParallel: true` means a fixed port is shared by every worker and recorded state would leak across parallel tests.
 
-- [ ] **Step 2: Write the spec**
+- [x] **Step 2: Write the spec**
 
 Drive the real UI: Settings → fill base URL with the stub's `http://127.0.0.1:<port>` and a dummy key → Connect → assert the model picker lists `stub-model-a` / `stub-model-b` → select a model and a variant → Save → **assert on `stub.requests`** that an `Authorization` header and the chosen `reasoning_effort` reached the server. Then the unverified path: connect to a port with nothing listening → assert the warning renders, the connection is still saved, and Enrich refuses with a message naming Settings.
 
-- [ ] **Step 3: Re-point the existing real-provider spec**
+- [x] **Step 3: Re-point the existing real-provider spec**
 
 `supplement-llm-integration.spec.js` currently skips on `process.env.LLM_API_KEY || process.env.VitaTrack__ApiKey`. Change it to skip when there is no active connection in the app. It stays the one test that talks to a genuine provider.
 
-- [ ] **Step 4: Amend the no-mock rule in `AGENTS.md`**
+- [x] **Step 4: Amend the no-mock rule in `AGENTS.md`**
 
 The current rule — *"Do not mock HTTP responses for these E2E tests"* — is aimed at faking the app's own HTTP layer. Rewrite it to make the distinction explicit: **never intercept the app's own HTTP; a test-double server standing in for an external dependency is fine.** The stub is a real listening socket; the app is unmodified; status codes and JSON parsing are real.
 
-- [ ] **Step 5: Run the gate**
+- [x] **Step 5: Run the gate**
 
 Run: `./test-e2e.sh`
 Expected: PASS. A red e2e that contradicts this plan is a **finding to report**, not something to paper over by loosening an assertion.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add e2e-tests/ AGENTS.md shards.yaml

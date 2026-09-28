@@ -436,7 +436,7 @@ activities:
     tasks:
       - id: SC-1
         name: Save and verify a service connection
-        entry_point: n/a (backend persistence only; Settings UI lands with the tracer task)
+        entry_point: n/a (backend persistence only; the Settings UI is SC-2)
         stories:
           - title: Persist a service connection with at-most-one-active enforcement
             status: done
@@ -453,3 +453,42 @@ activities:
               - unit: ServiceConnectionRepositoryTests.SaveAsync_WhenTheWriteFails_RollsBackTheDeactivation
               - unit: ServiceConnectionRepositoryTests.SaveAsync_WithUnknownId_ReportsNoRowWrittenAndKeepsTheActiveRow
               - unit: ServiceConnectionRepositoryTests.SaveAsync_InactiveRow_DeactivatesTheCurrentActive_LeavingNoneActive
+          - title: Report a write that matched no row as a failure
+            status: done
+            priority: high
+            tests:
+              - unit: SaveConnectionHandlerTests.HandleAsync_WhenNoRowIsWritten_ReportsFailureInsteadOfSuccess
+      - id: SC-2
+        name: Save a connection from the Settings page
+        entry_point: nav bar -> Settings
+        stories:
+          - title: Save a base URL, API key, and optional model and see it saved
+            status: done
+            priority: high
+            tests:
+              - unit: SaveConnectionHandlerTests.HandleAsync_ValidConnect_SavesAndActivates
+              - unit: SaveConnectionHandlerTests.HandleAsync_Reconnect_PreservesTheExistingModel
+              - unit: SaveConnectionHandlerTests.HandleAsync_Reconnect_WithANewModel_ReplacesIt
+              - unit: SaveConnectionHandlerTests.HandleAsync_FirstConnect_LeavesTheModelUnset
+              - unit: SaveConnectionHandlerTests.HandleAsync_TrimsWhitespaceFromFreeTextModel
+              - unit: SaveConnectionHandlerTests.HandleAsync_SetsVerificationToUnverified_BecauseNoProbeExistsYet
+              - unit: ServiceConnectionControllerTests.Index_WithNoConnection_RendersTheConnectForm
+              - unit: ServiceConnectionControllerTests.Connect_ValidRequest_SavesAndRedirectsToIndex
+              - e2e: service-connection::should save a connection from the Settings page and show it after reload
+          - title: Show the saved key masked, never in full
+            status: done
+            priority: high
+            tests:
+              - unit: ServiceConnectionControllerTests.Index_WithActiveConnection_RendersTheSavedConnection_WithMaskedKey
+              - unit: ServiceConnectionControllerTests.Index_WithActiveConnection_PrefillsTheFormButNotTheKey
+              - unit: ServiceConnectionControllerTests.Index_WithAKeyNoLongerThanTheMask_ShowsNoCharactersOfIt
+          - title: Refuse to save a blank base URL or API key
+            status: done
+            priority: high
+            tests:
+              - unit: SaveConnectionHandlerTests.HandleAsync_RejectsBlankBaseUrlOrKey
+              - unit: ServiceConnectionControllerTests.Connect_InvalidRequest_ReturnsTheFormWithErrors
+              - unit: ServiceConnectionControllerTests.Connect_Rejected_RedisplaysWhatWasTypedOverTheSavedValues
+              - unit: ServiceConnectionControllerTests.Connect_WhenTheHandlerRejects_ShowsTheErrorAndDoesNotRedirect
+              - unit: ServiceConnectionControllerTests.Connect_WhenNoRowIsWritten_ShowsTheErrorInsteadOfClaimingSuccess
+              - e2e: service-connection::should reject a save with a blank URL and keep the connection unchanged

@@ -50,8 +50,8 @@ When deleting a `SupplementNutrient` that is a blend parent, delete its children
 When adding new tables (or FK-like columns, via `CREATE TABLE` or `ALTER TABLE` migration in `DbInit`) with foreign keys, update the relevant `DeleteAsync` methods **in the same change** — a migration without its cascade update silently orphans or blocks deletes at runtime. Add cascade-delete unit tests alongside (`Delete_Parent_AlsoDeletesChildren` pattern).
 
 ## Transaction Handling
-- Currently each repository method opens/closes the connection via Dapper (connection is scoped from Web).
-- If multiple operations need a transaction, open a connection and use `IDbTransaction` (future work).
+- A single-statement repository method runs on the injected `IDbConnection` and lets Dapper open/close it. The connection is scoped from Web.
+- A method that must write more than one row as a unit opens the connection itself, begins an `IDbTransaction`, commits on success and rolls back on failure or when the batch reports no row written. `ServiceConnectionRepository.SaveAsync` is the exemplar: the deactivation of the previously active row and the new row land together, so a failed save cannot leave the user with no active connection.
 
 ## Dependencies
 - Packages: `Dapper`, `Microsoft.Data.Sqlite`, `Microsoft.Extensions.Configuration.Abstractions`, `Microsoft.Extensions.Http`.

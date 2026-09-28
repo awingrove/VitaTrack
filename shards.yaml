@@ -228,16 +228,24 @@ slices:
     name: Service Connections
     tables:
       - ServiceConnections
-    controller: []
+    controller:
+      - VitaTrack.Web/Controllers/ServiceConnectionController.cs
     core:
       - VitaTrack.Core/Features/ServiceConnections/ServiceConnection.cs
       - VitaTrack.Core/Features/ServiceConnections/IServiceConnectionRepository.cs
       - VitaTrack.Core/Features/ServiceConnections/ServiceConnectionRepository.cs
-    views: []
+      - VitaTrack.Core/Features/ServiceConnections/ConnectServiceRequest.cs
+      - VitaTrack.Core/Features/ServiceConnections/SaveConnectionResult.cs
+      - VitaTrack.Core/Features/ServiceConnections/SaveConnectionHandler.cs
+    views:
+      - VitaTrack.Web/Views/ServiceConnection/**
     js: []
     unit_tests:
       - VitaTrack.Tests/Features/ServiceConnections/ServiceConnectionRepositoryTests.cs
-    e2e_specs: []
+      - VitaTrack.Tests/Features/ServiceConnections/SaveConnectionHandlerTests.cs
+      - VitaTrack.Tests/ServiceConnectionControllerTests.cs
+    e2e_specs:
+      - e2e-tests/playwright/tests/service-connection.spec.js
 
 # Cross-cutting files that belong to no single feature slice. Listed here so
 # the ownership test does not flag them as orphans. Keep this minimal.

@@ -1,0 +1,35 @@
+@using VitaTrack.Core.Features.ServiceConnections
+@model ConnectServiceRequest
+
+@* The key is an operation-level failure, not a field error: the form is posted from
+   here, so a rejected save has no field of its own to hang on. *@
+<div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+<form asp-action="Connect" method="post">
+    <div class="mb-3">
+        <label class="control-label">Service</label>
+        <p class="form-control-plaintext mb-0">@SaveConnectionHandler.ServiceName</p>
+        @* Read-only because one service ships; the service registry and its selector
+           replace this row. *@
+        <div class="form-text text-muted">The only supported service today.</div>
+    </div>
+    <div class="mb-3">
+        <label asp-for="BaseUrl" class="control-label"></label>
+        <input asp-for="BaseUrl" class="form-control" />
+        <span asp-validation-for="BaseUrl" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="ApiKey" class="control-label"></label>
+        <input asp-for="ApiKey" class="form-control" type="password" />
+        <span asp-validation-for="ApiKey" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Model" class="control-label">Model (optional)</label>
+        <input asp-for="Model" class="form-control" />
+        <div class="form-text text-muted">Leave blank to keep the model you already chose.</div>
+        <span asp-validation-for="Model" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <input type="submit" value="Save connection" class="btn btn-success" />
+    </div>
+</form>

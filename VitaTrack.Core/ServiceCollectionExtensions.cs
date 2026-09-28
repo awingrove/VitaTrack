@@ -10,6 +10,7 @@ using VitaTrack.Core.Features.LlmEnrichment;
 
 using VitaTrack.Core.Features.Nutrients;
 using VitaTrack.Core.Features.Reporting;
+using VitaTrack.Core.Features.ServiceConnections;
 using VitaTrack.Core.Features.Supplements;
 
 namespace VitaTrack.Core;
@@ -51,9 +52,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISupplementRepository, SupplementRepository>();
         services.AddScoped<ISupplementNutrientRepository, SupplementNutrientRepository>();
         services.AddScoped<IPrescribedDoseRepository, PrescribedDoseRepository>();
+        services.AddScoped<IServiceConnectionRepository, ServiceConnectionRepository>();
         services.AddScoped<PrescribeDoseHandler>();
         services.AddScoped<AmendDoseHandler>();
         services.AddScoped<ImportSupplementsHandler>();
+        services.AddScoped<SaveConnectionHandler>();
 
         services.AddScoped<ISupplementNutrientService, SupplementNutrientService>();
         services.AddScoped<IReportingService, ReportingService>();

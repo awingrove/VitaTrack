@@ -1,0 +1,25 @@
+@{
+    ViewData["Title"] = "Settings";
+    Layout = "_Layout";
+}
+@using VitaTrack.Web.Models
+@model ServiceConnectionViewModel
+
+<h2>@ViewData["Title"]</h2>
+
+@if (Model.Saved is not null)
+{
+    <h3>Saved connection</h3>
+    <table class="table">
+        <tbody>
+            <tr><th scope="row">Service</th><td>@Model.Saved.Service</td></tr>
+            <tr><th scope="row">Base URL</th><td>@Model.Saved.BaseUrl</td></tr>
+            <tr><th scope="row">Model</th><td>@(Model.Saved.Model ?? "—")</td></tr>
+            <tr><th scope="row">API key</th><td>@Model.Saved.MaskedApiKey</td></tr>
+            <tr><th scope="row">Verification</th><td>@Model.Saved.Verification</td></tr>
+        </tbody>
+    </table>
+}
+
+<h3>Connect a service</h3>
+<partial name="_ConnectForm" model="Model.Form" />

@@ -53,7 +53,13 @@ public class DbInitTests
 
         DbInit.EnsureCreated(conn, seedData: false);
 
-        foreach (var table in new[] { "FamilyMembers", "Supplements", "SupplementNutrients", "PrescribedDoses" })
+        // Every table DbInit.EnsureCreated creates, so a new one cannot be added without
+        // this list noticing — which is why ServiceConnections belongs here even though
+        // this test passes seedData: false and the table is empty for that reason alone.
+        // It is the fifth table and the only one with no seed statement at all, because
+        // seeding a credential would put an API key in a committed source file (TD-024);
+        // DbInit.cs:118 records that, and the e2e creates its connection through the UI.
+        foreach (var table in new[] { "FamilyMembers", "Supplements", "SupplementNutrients", "PrescribedDoses", "ServiceConnections" })
         {
             Assert.AreEqual(1, conn.QuerySingle<int>(
                 "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = @table;",

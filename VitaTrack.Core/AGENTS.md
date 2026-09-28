@@ -13,7 +13,7 @@
 - Interfaces: prefix `I`, co-located with their implementation — feature slices own theirs under `VitaTrack.Core/Features/<Slice>/` (ADR-0006); shared infrastructure interfaces live in `VitaTrack.Core.Data`. There is no `VitaTrack.Core.Services` (retired).
 - Implementations: suffix `Repository` or `Service`, same namespace.
 - Models: plain POCOs with public get/set; default string values `string.Empty`. Feature-owned models live in their slice folder, not `VitaTrack.Core/Models`.
-- Constructor injection: receive `IDbConnection` (repositories) or `HttpClient` + `IConfiguration` (LLM service).
+- Constructor injection: receive `IDbConnection` (repositories) or `IHttpClientFactory` + `ILogger<T>` (the HTTP-touching types: `ServiceCatalogClient`, `LlmClient`, `HtmlScraperService`). **Nothing here takes `IConfiguration`** — connection state lives in the database (`ServiceConnections`), and the options type that used to carry it is deleted; `ConfigBindingAbsentTests` is the guard, and it scans this file, so do not name the deleted type here. The typed-client factory cannot build a type whose constructor takes `HttpClient` without `AddHttpClient<TInterface, TImplementation>()`; see "Adding New Features" step 4.
 - All I/O methods are `async` and return `Task<T>` or `Task<IReadOnlyList<T>>`.
 - Use `await _db.QueryAsync<T>(sql)` for reads.
 - Use `await _db.ExecuteAsync(sql, param)` for writes.
@@ -62,7 +62,7 @@ When adding new tables (or FK-like columns, via `CREATE TABLE` or `ALTER TABLE` 
 - Unit tests must pass before considering a feature complete; the aim of unit testing is to verify that a piece of functionality is defect‑free under the tested conditions.
 - Use **in‑memory SQLite** (`Microsoft.Data.Sqlite`) with connection string `Data Source=:memory:`.
 - Base class `SqliteTestBase` handles connection creation and schema initialization.
-- Mock `HttpClient` (with Moq) for `OpenRouterLlmService` tests.
+- For the LLM seam, supply connection state as a `ServiceConnection` plus `LlmRequestSettings` from `LlmTestData` (`VitaTrack.Tests/TestDoubles/LlmTestData.cs`) and fake the transport with a stub `HttpMessageHandler`, not a mocked `HttpClient` — there is nothing to configure, because the base URL, key and model travel per request. `VitaTrack.Tests/AGENTS.md` is the authority on the test side; `OpenRouterLlmService` is long gone.
 
 ## Adding New Features
 1. Add model (if needed) to the owning feature slice under `VitaTrack.Core/Features/<Slice>/`.

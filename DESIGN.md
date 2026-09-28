@@ -312,6 +312,17 @@ underneath it is free text right now.
 The model field is a **dropdown when the probe this response answers listed
 models, and free text when it did not** — one signal (`Models.Count`) decides
 which, so the two branches cannot disagree about when a picker is offered.
+The signal is **per response, not per connection**: it describes the catalog
+this response is the answer to, and the picker's own save answers with no
+catalog, so clicking **Save model** turns a dropdown into a free-text input
+carrying the model just saved. That is three individually-correct decisions
+interacting (a save is not a probe; a reload does not re-probe; `Models` is not
+stored), and it is why the field can never be a dropdown the user is looking
+at twice. The value is stored, prefilled and used either way — the demotion is
+a rendering change, not a lost choice. Whether that is the right interaction is
+a design question, not a bug report; the sentence here records what the app
+does so the next reader is not surprised, and changing it would be a
+`DESIGN.md` amendment of this paragraph rather than a quiet fix.
 "Models" is deliberately *not* a stored fact: a reload does not re-probe, so the
 same saved connection renders free text after a load and a dropdown right after
 the connect that discovered its models. Reasoning effort is always a

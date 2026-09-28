@@ -67,7 +67,7 @@ When a running app behaves in a way the source says is impossible (e.g., validat
 - Tests live in `e2e-tests/playwright/tests/`.
 - Run via `npx playwright test` from `e2e-tests/playwright/`.
 - **Never mock the app's own HTTP** — E2E tests hit the real running application, and nothing stands in for an app endpoint's answer. A **real local server standing in for an external dependency the app calls** is not that: see the no-mock rule in the root `AGENTS.md`, and `e2e-tests/playwright/helpers/llm-stub.js` for the worked example.
-- **DB Isolation:** `global-setup.js` deletes `VitaTrack.Test.db` before each run. The server loads `appsettings.Test.json` via `--environment Test`.
+- **DB Isolation:** there is no test DB *file* to isolate — `appsettings.Test.json` points at a named shared **in-memory** SQLite database (`Data Source=VitaTrack.Test.Memory;Mode=Memory;Cache=Shared`) kept alive for the process by the keep-alive singleton in `ServiceCollectionExtensions.AddCore`. `global-setup.js` is a no-op that prints "In-memory SQLite — no file cleanup needed", not a deleter. The server loads `appsettings.Test.json` via `--environment Test`.
 - **Shared DB state:** Tests run in parallel (4 workers) against one server. When mutating data, use dynamic assertions (`.first()`, `.last()`, relative counts) instead of exact values.
 - **Seeding:** Report tests depend on `PrescribedDoses` seed data in `DbInit.EnsureCreated`. If adding a new report, seed the required data there.
 - **Adding a new test file:** Create `tests/<feature>.spec.js`. Follow existing patterns (e.g., `home.spec.js` for simple navigation, `prescribed-dose.spec.js` for CRUD with create-before-edit/delete).

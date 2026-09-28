@@ -1,10 +1,11 @@
 @using VitaTrack.Web.Models
 @model ModelPickerViewModel
 
-@* The picker. A dropdown when the last probe listed models, free text when it did not —
-   one signal (Models) decides, so the two branches cannot disagree about when a picker
-   is offered. The variant list is the registry's fixed vocabulary rendered whole: there
-   is nothing to discover, because /v1/models carries no variants.
+@* The picker. A dropdown when the probe this response answers listed models, free text
+   when it did not — the catalog is null on a path that did not just probe, so a reload
+   renders free text. One signal (Models) decides, so the two branches cannot disagree
+   about when a picker is offered. The variant list is the registry's fixed vocabulary rendered
+   whole: there is nothing to discover, because /v1/models carries no variants.
    asp-action/asp-controller/method are load-bearing, not decoration: hx-post is an
    enhancement, and a form carrying only it degrades to a GET of the current URL, which
    discards the choice with no error at all. With them, a browser without htmx posts for

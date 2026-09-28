@@ -101,9 +101,10 @@ public class ConfigBindingAbsentTests
 
     /// <summary>
     /// Floor on the number of files the scan reads, so an over-broad exclusion cannot
-    /// turn this into a rule that passes by seeing nothing. 210 files are scanned
-    /// today, so 150 permits ordinary churn; below that, the scan is broken rather
-    /// than the repository shrinking, and this says so.
+    /// turn this into a rule that passes by seeing nothing. Roughly 209 files are
+    /// scanned today (the count moves with untracked local files), so 150 permits
+    /// ordinary churn; below that, the scan is broken rather than the repository
+    /// shrinking, and this says so.
     /// </summary>
     private const int MinScannedFiles = 150;
 

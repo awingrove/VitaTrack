@@ -1,12 +1,12 @@
 @using VitaTrack.Web.Models
 @model ServiceConnectionViewModel
 
-@* The whole dynamic region of the Settings page: what is saved, what the last probe
-   found, the model picker, and the connect form. It is one region rather than three
-   because the two POST targets answer into it and every one of their outcomes —
-   saved, rejected, unverified — has to be visible where the user is looking. A rejected
-   connect is the case that forces it: its errors are field errors on the form, so
-   swapping only the saved state would leave the message nowhere.
+@* The whole dynamic region of the Settings page: what is saved, what the probe this
+   response answers found, the model picker, and the connect form. It is one region
+   rather than three because the two POST targets answer into it and every one of their
+   outcomes — saved, rejected, unverified — has to be visible where the user is looking.
+   A rejected connect is the case that forces it: its errors are field errors on the form,
+   so swapping only the saved state would leave the message nowhere.
 
    The id is here, not in Index.cshtml, because htmx's outerHTML swap replaces the
    target element rather than its children: a wrapper Index owned would be gone after

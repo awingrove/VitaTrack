@@ -20,16 +20,6 @@ namespace VitaTrack.Tests;
 [TestClass]
 public class LlmServiceTests
 {
-    private static ServiceConnection Connection() => new()
-    {
-        Service = ServiceDescriptorRegistry.OpenCodeServiceId,
-        BaseUrl = "https://svc.example/v1",
-        ApiKey = "test-real-api-key",
-        Model = "test-model",
-        MaxTokens = 16384,
-        Temperature = 0.1
-    };
-
     private static Mock<IServiceConnectionRepository> ConnectionsWith(ServiceConnection? connection)
     {
         var connections = new Mock<IServiceConnectionRepository>();
@@ -44,7 +34,7 @@ public class LlmServiceTests
         var llmClient = new LlmClient(factory, new LlmSessionId(), new RecordingLogger<LlmClient>());
         var parser = new SupplementLabelParser(llmClient, new RecordingLogger<SupplementLabelParser>());
         return new LlmService(
-            ConnectionsWith(connection ?? Connection()).Object,
+            ConnectionsWith(connection ?? LlmTestData.Connection()).Object,
             scraper,
             parser,
             new RecordingLogger<LlmService>());
@@ -203,7 +193,7 @@ public class LlmServiceTests
         scraper.Setup(s => s.FetchCleanHtmlAsync(It.IsAny<string>()))
             .ThrowsAsync(new HttpRequestException("network down"));
         var service = new LlmService(
-            ConnectionsWith(Connection()).Object,
+            ConnectionsWith(LlmTestData.Connection()).Object,
             scraper.Object,
             Mock.Of<ISupplementLabelParser>(),
             new RecordingLogger<LlmService>());

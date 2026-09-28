@@ -13,6 +13,16 @@ public class LlmService(
     ISupplementLabelParser parser,
     ILogger<LlmService> logger) : ILlmService
 {
+    /// <summary>Single owner of the "there is no connection" message, which is a
+    /// different fault from <see cref="LlmRequestSettings.ModelRequired"/> and must not
+    /// read like it: it is worded here rather than on the shared record because
+    /// <see cref="LlmClient"/> can never see this state — it is handed a connection —
+    /// so no second surface could report it and there is nothing to share. "Choose a
+    /// model" is also the wrong advice for it, because the model picker is gated
+    /// behind having a connection at all.</summary>
+    private const string ConnectionRequired =
+        "No AI service connection is set up. Add one in Settings, then try again.";
+
     private readonly IServiceConnectionRepository _connections = connections;
     private readonly IHtmlScraperService _scraper = scraper;
     private readonly ISupplementLabelParser _parser = parser;
@@ -29,17 +39,22 @@ public class LlmService(
         }
 
         // Resolved here so the controller stays a caller of one method, and so the
-        // check happens before the page is fetched: a supplement with no usable
-        // connection should not cost a network round trip to the manufacturer.
+        // three checks happen before the page is fetched: a supplement with no usable
+        // connection should not cost a network round trip to the manufacturer. Three
+        // gates rather than one, because they are three faults the user can act on
+        // differently — see the three messages.
         var connection = await _connections.GetActiveAsync();
-        if (connection is null || string.IsNullOrWhiteSpace(connection.Model))
-        {
-            _logger.LogWarning(
-                "No active service connection with a model chosen, skipping LLM enrichment for {SupplementName}",
-                supplement.Name);
-            result.ExtractionError = LlmRequestSettings.ModelRequired;
-            return result;
-        }
+        if (connection is null)
+            return Refused(result, supplement, ConnectionRequired);
+
+        // A row naming a service the registry does not know: nothing can describe the
+        // headers that service needs, and LlmClient refuses to post a credential to
+        // it, so the fetch below would be spent finding that out here instead.
+        if (ServiceDescriptorRegistry.Find(connection.Service) is null)
+            return Refused(result, supplement, LlmRequestSettings.ServiceNotFound);
+
+        if (string.IsNullOrWhiteSpace(connection.Model))
+            return Refused(result, supplement, LlmRequestSettings.ModelRequired);
 
         var settings = new LlmRequestSettings(
             connection.Model,
@@ -99,6 +114,22 @@ public class LlmService(
             result.ExtractionError = "An error occurred while processing the supplement page.";
         }
 
+        return result;
+    }
+
+    /// <summary>Answers one failed gate and hands the result back, so each check in
+    /// <see cref="EnrichSupplementAsync"/> reads as a condition rather than a
+    /// repetition of the same four lines. <paramref name="message"/> is the const for
+    /// that specific fault — a user who has no connection and a user whose model was
+    /// never chosen can act on different things, and one message for both would send
+    /// the first to a picker they cannot reach yet. The log line names the reason
+    /// because the reason is one of these constants, never anything the user typed:
+    /// this call is about to be made with a credential.</summary>
+    private LlmResult Refused(LlmResult result, Supplement supplement, string message)
+    {
+        _logger.LogWarning(
+            "Skipping LLM enrichment for {SupplementName}: {Reason}", supplement.Name, message);
+        result.ExtractionError = message;
         return result;
     }
 }

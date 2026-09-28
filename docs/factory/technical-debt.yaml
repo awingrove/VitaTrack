@@ -685,3 +685,41 @@ defects:
       guards `shard-metrics.yaml`, nothing guards the register). Closes with the
       self-verifying-docs direction in `VISION.md`: register ids should be resolvable by
       a test (every referenced TD/DL id must exist). Restored in this change.
+
+  - id: DL-005
+    title: >-
+      the LLM seam logged the provider's raw error body, which quotes the rejected API key back
+    found: 2026-09-28
+    what: >-
+      `LlmClient.PostChatAsync` logged `LogWarning("LLM API error: {StatusCode} - {Content}", statusCode, rawBody)`
+      on every non-2xx, so a 401 body of the shape
+      `{"error":{"message":"Incorrect API key provided: sk-…"}}` reached the log verbatim.
+      Twenty lines below, the catch path passed the exception object to `LogError`, which
+      renders an `HttpRequestException`'s message — and that message is where .NET puts
+      the `host:port` of the base URL the user typed. Two lines, one file, one rule
+      broken twice. The line predated the service-connection slice; what the slice changed
+      was the *credential's* home, from a config value to a key the user pasted into a
+      form, which is what makes an echoing provider body a routine event rather than a
+      remote one. Fixed in the `46bcf02` fix round: the body is no longer an argument and
+      is no longer read at all on the non-2xx path, and the catch path logs
+      `ex.GetType().Name` with no exception attached.
+    injection_stage: >-
+      (found Sep 2026 in review of commit `46bcf02`; the code itself was pre-existing.)
+      Two conflicting instructions in one brief — step 1's "keep existing error behavior"
+      (glossed as scoped to the *returned* `LlmCompletion`) and the dispatch's global
+      "the credential must never be logged". The brief never mentioned logging, so
+      leaving the line was a reasonable reading; the conflict was never surfaced to
+      anyone as a conflict.
+    detection_stage: >-
+      code review. No test could have caught it: the pre-existing tests asserted the
+      returned error string, and nothing anywhere asserted what the logger was told.
+    systemic_gap: >-
+      the rule "a connection must never reach a log line" existed only as the doc
+      comment on `ServiceCatalogClient.LogFailure` and as one test in one slice. A rule
+      that lives in a code comment does not bind the file above it, and no architecture
+      test or manifest key mentioned it, so the LLM seam could add a logging line with
+      nothing to object. Closed in the root `AGENTS.md` logging rule (log the failure's
+      category, never the payload, never the exception object) and in
+      `LlmClientLoggingTests`, which pins the rule for the completion client the way
+      `ServiceCatalogClientFailureTests` already pins it for the probe.
+    closed_in: LlmClientLoggingTests.cs

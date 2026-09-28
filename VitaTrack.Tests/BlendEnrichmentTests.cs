@@ -101,7 +101,11 @@ public class BlendEnrichmentTests
     [TestMethod]
     public async Task ExtractNutrientsAsync_PromptContainsBlendInstructions()
     {
-        string? capturedPrompt = null;
+        // Seeded with a value the assertions cannot match, so a client that never calls
+        // back fails the same assertion a prompt missing "blend" would — there is no
+        // separate "was the callback reached at all" check to keep in step, and so no
+        // null-forgiving operator to justify.
+        var capturedPrompt = "callback never fired";
         var llmClient = new Mock<ILlmClient>();
         llmClient.Setup(c => c.PostChatAsync(
                 It.IsAny<string>(), It.IsAny<string>(), It.IsAny<ServiceConnection>(), It.IsAny<LlmRequestSettings>()))
@@ -111,8 +115,7 @@ public class BlendEnrichmentTests
 
         await ParseAsync(llmClient.Object);
 
-        Assert.IsNotNull(capturedPrompt);
-        Assert.IsTrue(capturedPrompt!.Contains("blend"), "extraction prompt should mention blends");
+        Assert.IsTrue(capturedPrompt.Contains("blend"), "extraction prompt should mention blends");
         Assert.IsTrue(capturedPrompt.Contains("children"), "schema should include a children array");
     }
 

@@ -207,6 +207,7 @@ slices:
       - VitaTrack.Core/Features/LlmEnrichment/ILlmService.cs
       - VitaTrack.Core/Features/LlmEnrichment/LlmClient.cs
       - VitaTrack.Core/Features/LlmEnrichment/ILlmClient.cs
+      - VitaTrack.Core/Features/LlmEnrichment/LlmRequestSettings.cs
       - VitaTrack.Core/Features/LlmEnrichment/LlmSessionId.cs
       - VitaTrack.Core/Features/LlmEnrichment/SupplementLabelParser.cs
       - VitaTrack.Core/Features/LlmEnrichment/ISupplementLabelParser.cs
@@ -222,6 +223,7 @@ slices:
       - VitaTrack.Tests/LlmServiceConnectionTests.cs
       - VitaTrack.Tests/LlmClientTests.cs
       - VitaTrack.Tests/LlmClientRequestTests.cs
+      - VitaTrack.Tests/LlmClientLoggingTests.cs
       - VitaTrack.Tests/LlmClientHeaderTests.cs
       - VitaTrack.Tests/UrlSafetyValidatorTests.cs
       - VitaTrack.Tests/HtmlScraperServiceTests.cs

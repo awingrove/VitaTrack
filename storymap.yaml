@@ -389,6 +389,18 @@ activities:
               - unit: LlmServiceConnectionTests.EnrichSupplementAsync_WithNoConnection_PointsAtSettings_AndReachesNothing
               - unit: LlmServiceConnectionTests.EnrichSupplementAsync_WithNoModelChosen_PointsAtSettings_AndReachesNothing
               - unit: LlmClientRequestTests.PostChatAsync_WithNullModel_ReturnsErrorPointingAtSettings
+          - title: Refuse a connection naming a service this build does not ship
+            status: done
+            priority: low
+            tests:
+              - unit: LlmClientRequestTests.PostChatAsync_WithAnUnknownService_SendsNoRequest
+              - unit: LlmServiceConnectionTests.EnrichSupplementAsync_WithAnUnknownService_ReachesNothing
+          - title: Never write the credential, the provider's error message or the base URL to the log
+            status: done
+            priority: low
+            tests:
+              - unit: LlmClientLoggingTests.OnANonSuccessStatus_LogsTheStatusAndNotTheBody
+              - unit: LlmClientLoggingTests.WhenTheRequestFails_LogsTheCategoryAndNothingIdentifying
           - title: Gracefully handle fetch failure
             status: done
             priority: low

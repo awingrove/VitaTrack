@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -8,10 +9,21 @@ namespace VitaTrack.Core.Features.LlmEnrichment;
 
 /// <summary>
 /// Posts a chat completion to whichever connection the caller hands over. The pooled
-/// handler is shared with the catalog probe and nothing about a destination or a
-/// credential is ever set on the client: the absolute URI, the authorization header
-/// and the descriptor's headers all travel per request, because they belong to the
-/// connection being called rather than to whichever connection used the client last.
+/// handler is shared with the catalog probe, and this class sets nothing about a
+/// destination or a credential on the client: the absolute URI, the authorization
+/// header and the descriptor's headers all travel per request, because they belong
+/// to the connection being called rather than to whichever connection used the
+/// client last.
+/// <para>
+/// Interim state, named because the code around it does not say so on its own: the
+/// <c>"llm"</c> named client still carries a configure delegate that sets a
+/// <c>BaseAddress</c> and a default <c>Authorization</c> from configuration, left
+/// behind in <c>ServiceCollectionExtensions</c> by the config-driven seam this
+/// replaces. Per-request headers already win — <c>LlmClientRequestTests</c> hands
+/// the client a deliberately stale address and authorization and shows both losing
+/// — so nothing is wrong today; the delegate is removed in Task 6, after which the
+/// client has nothing left to lose to.
+/// </para>
 /// </summary>
 /// <inheritdoc cref="ILlmClient"/>
 public class LlmClient(
@@ -51,32 +63,69 @@ public class LlmClient(
             // checked for being non-blank at save time, so a user can store one that
             // is not a URI. This class's contract is an error, never a throw.
             using var request = BuildRequest(systemPrompt, userPrompt, connection, settings, model);
+            if (request is null)
+                return new LlmCompletion(null, LlmRequestSettings.ServiceNotFound);
+
             var client = _httpClientFactory.CreateClient(ClientName);
             using var response = await client.SendAsync(request);
-            var rawBody = await response.Content.ReadAsStringAsync();
 
+            // The status is checked before the body is read, so an error body is never
+            // buffered at all — there is nothing here that would want it, and a
+            // provider's 401 is documented to quote the rejected key back.
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("LLM API error: {StatusCode} - {Content}", response.StatusCode, rawBody);
+                LogRefusal(response.StatusCode);
                 return new LlmCompletion(null, "The AI service returned an error. Please try again or enter nutrients manually.");
             }
 
-            return ReadCompletion(rawBody);
+            return ReadCompletion(await response.Content.ReadAsStringAsync());
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calling LLM API");
+            LogFailure(ex);
             return new LlmCompletion(null, "An error occurred while calling the AI service.");
         }
     }
 
-    private HttpRequestMessage BuildRequest(
+    /// <summary>Records that the service refused the completion and which status said
+    /// so — which is the only part of the answer an operator can act on without
+    /// writing down something identifying. <see cref="LogLevel.Warning"/> rather than
+    /// the probe's <c>Debug</c>: an unverified probe is a state, while a refused
+    /// completion is a real failure the user is told about. The status is logged as its
+    /// number because that is the form both a provider's own documentation and a
+    /// support thread use. The body is deliberately not an argument: most providers
+    /// echo the rejected key back in a 401, and this request carried it.</summary>
+    private void LogRefusal(HttpStatusCode statusCode) =>
+        _logger.LogWarning("LLM API refused the completion: the service answered {StatusCode}.",
+            (int)statusCode);
+
+    /// <summary>Records *that* the call failed and *what kind* of failure it was, and
+    /// nothing else — the rule <see cref="ServiceCatalogClient"/> documents for the
+    /// probe. The request carried the connection's key and the base URL the user
+    /// typed, and an <see cref="HttpRequestException"/> from a transport failure
+    /// carries that base URL's host back in its message, so neither the exception
+    /// object nor anything derived from the connection goes to the log. The type name
+    /// is the whole payload: it is what separates a DNS failure from a refused
+    /// connection, which is the only question this line exists to answer.</summary>
+    private void LogFailure(Exception failure) =>
+        _logger.LogError("Error calling the LLM API ({FailureCategory}).", failure.GetType().Name);
+
+    private HttpRequestMessage? BuildRequest(
         string systemPrompt,
         string userPrompt,
         ServiceConnection connection,
         LlmRequestSettings settings,
         string model)
     {
+        // A row naming a service the registry does not know gets no request, exactly
+        // as the catalog probe refuses to probe that id. No saved row can say it
+        // today — the connect form renders the registry's const — but ILlmClient is
+        // public, and the hole opens the day ServiceDescriptorRegistry.All gains a
+        // second entry. Refused here as well as in LlmService so a direct caller
+        // cannot spend the user's key on a service the app cannot describe.
+        var descriptor = ServiceDescriptorRegistry.Find(connection.Service);
+        if (descriptor is null) return null;
+
         var request = new HttpRequestMessage(
             HttpMethod.Post,
             ServiceEndpoint.Resolve(connection.BaseUrl, CompletionsPath))
@@ -96,14 +145,10 @@ public class LlmClient(
 
         // Whatever else the service needs, applied only for headers the request does
         // not already carry — the same reason the session header is skipped above.
-        var descriptor = ServiceDescriptorRegistry.Find(connection.Service);
-        if (descriptor is not null)
+        foreach (var header in descriptor.HeaderFactory())
         {
-            foreach (var header in descriptor.HeaderFactory())
-            {
-                if (!request.Headers.Contains(header.Key))
-                    request.Headers.TryAddWithoutValidation(header.Key, header.Value);
-            }
+            if (!request.Headers.Contains(header.Key))
+                request.Headers.TryAddWithoutValidation(header.Key, header.Value);
         }
 
         return request;

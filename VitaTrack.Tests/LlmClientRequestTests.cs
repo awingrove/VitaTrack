@@ -1,8 +1,6 @@
-using System;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using VitaTrack.Core.Features.LlmEnrichment;
@@ -17,9 +15,9 @@ namespace VitaTrack.Tests;
 /// settings handed to the call — nothing from configuration — and each test below
 /// pins one of those by reading the request the client actually built.
 /// <para>
-/// Reading the body needs <see cref="RecordingHandler.LastRequestBody"/> rather than
-/// the captured request: the client disposes the request it built, which takes the
-/// content with it.
+/// The connection and settings come from <see cref="LlmTestData"/>, and the body is
+/// read through <see cref="RecordingHandler.SentBody"/> rather than off the captured
+/// request: the client disposes the request it built, which takes the content with it.
 /// </para>
 /// </summary>
 [TestClass]
@@ -27,27 +25,8 @@ public class LlmClientRequestTests
 {
     private const string ReplyBody = @"{ ""choices"": [{ ""message"": { ""content"": ""hello"" } }] }";
 
-    private static ServiceConnection Connection(
-        string baseUrl = "https://svc.example/v1",
-        string apiKey = "sk-connection",
-        string service = ServiceDescriptorRegistry.OpenCodeServiceId) =>
-        new() { BaseUrl = baseUrl, ApiKey = apiKey, Service = service };
-
-    private static LlmRequestSettings Settings(
-        string? model = "some-model",
-        string? variant = null,
-        int maxTokens = 4096,
-        double temperature = 0.7) =>
-        new(model, variant, maxTokens, temperature);
-
     private static LlmClient Client(HttpMessageHandler handler) =>
         new(new SequencedHttpClientFactory(handler), new LlmSessionId(), new RecordingLogger<LlmClient>());
-
-    private static JsonElement SentBody(RecordingHandler handler)
-    {
-        Assert.IsNotNull(handler.LastRequestBody, "no request body was sent");
-        return JsonDocument.Parse(handler.LastRequestBody!).RootElement.Clone();
-    }
 
     /// <summary>Review Focus #1. The invariant, not a path: however the two slash forms
     /// are combined, they must request the same URI. A form-sensitive combine would
@@ -59,13 +38,13 @@ public class LlmClientRequestTests
         var withSlash = new RecordingHandler(HttpStatusCode.OK, ReplyBody);
         var withoutSlash = new RecordingHandler(HttpStatusCode.OK, ReplyBody);
 
-        await Client(withSlash).PostChatAsync("s", "u", Connection("https://svc.example/v1/"), Settings());
-        await Client(withoutSlash).PostChatAsync("s", "u", Connection("https://svc.example/v1"), Settings());
+        await Client(withSlash).PostChatAsync("s", "u", LlmTestData.Connection("https://svc.example/v1/"), LlmTestData.Settings());
+        await Client(withoutSlash).PostChatAsync("s", "u", LlmTestData.Connection(), LlmTestData.Settings());
 
-        var slashed = withSlash.LastRequest!.RequestUri!;
+        var slashed = withSlash.SentRequestUri();
         Assert.IsTrue(slashed.IsAbsoluteUri, "the request URI is absolute, so no BaseAddress took part in building it");
         Assert.AreEqual(
-            withoutSlash.LastRequest!.RequestUri,
+            withoutSlash.SentRequestUri(),
             slashed,
             "a trailing slash on the saved base URL must not change where the completion goes");
     }
@@ -84,11 +63,11 @@ public class LlmClientRequestTests
         var factory = new SequencedHttpClientFactory(new Uri("https://stale.example/v1"), handler);
         var client = new LlmClient(factory, new LlmSessionId(), new RecordingLogger<LlmClient>());
 
-        await client.PostChatAsync("s", "u", Connection("https://two.example/v1"), Settings());
+        await client.PostChatAsync("s", "u", LlmTestData.Connection("https://two.example/v1"), LlmTestData.Settings());
 
         Assert.AreEqual(
             "https://two.example/v1/v1/chat/completions",
-            handler.LastRequest!.RequestUri!.ToString(),
+            handler.SentRequestUri().ToString(),
             "the connection's host wins over the pooled client's BaseAddress");
     }
 
@@ -108,11 +87,11 @@ public class LlmClientRequestTests
             handler);
         var client = new LlmClient(factory, new LlmSessionId(), new RecordingLogger<LlmClient>());
 
-        await client.PostChatAsync("s", "u", Connection(apiKey: "sk-connection"), Settings());
+        await client.PostChatAsync("s", "u", LlmTestData.Connection(), LlmTestData.Settings());
 
-        var authorization = handler.LastRequest!.Headers.GetValues("Authorization").ToList();
+        var authorization = handler.SentRequest().Headers.GetValues("Authorization").ToList();
         Assert.AreEqual(1, authorization.Count, "one Authorization header, not the request's plus the client's");
-        Assert.AreEqual("Bearer sk-connection", authorization[0], "the key comes from the connection being called");
+        Assert.AreEqual($"Bearer {LlmTestData.ApiKey}", authorization[0], "the key comes from the connection being called");
     }
 
     [TestMethod]
@@ -120,9 +99,9 @@ public class LlmClientRequestTests
     {
         var handler = new RecordingHandler(HttpStatusCode.OK, ReplyBody);
 
-        await Client(handler).PostChatAsync("s", "u", Connection(), Settings(model: "vendor/model-x"));
+        await Client(handler).PostChatAsync("s", "u", LlmTestData.Connection(), LlmTestData.Settings(model: "vendor/model-x"));
 
-        Assert.AreEqual("vendor/model-x", SentBody(handler).GetProperty("model").GetString());
+        Assert.AreEqual("vendor/model-x", handler.SentBody().GetProperty("model").GetString());
     }
 
     [TestMethod]
@@ -130,9 +109,9 @@ public class LlmClientRequestTests
     {
         var handler = new RecordingHandler(HttpStatusCode.OK, ReplyBody);
 
-        await Client(handler).PostChatAsync("s", "u", Connection(), Settings(variant: "high"));
+        await Client(handler).PostChatAsync("s", "u", LlmTestData.Connection(), LlmTestData.Settings(variant: "high"));
 
-        Assert.AreEqual("high", SentBody(handler).GetProperty("reasoning_effort").GetString(),
+        Assert.AreEqual("high", handler.SentBody().GetProperty("reasoning_effort").GetString(),
             "the connection's variant is the request's reasoning_effort");
     }
 
@@ -141,9 +120,9 @@ public class LlmClientRequestTests
     {
         var handler = new RecordingHandler(HttpStatusCode.OK, ReplyBody);
 
-        await Client(handler).PostChatAsync("s", "u", Connection(), Settings(variant: null));
+        await Client(handler).PostChatAsync("s", "u", LlmTestData.Connection(), LlmTestData.Settings(variant: null));
 
-        Assert.IsFalse(SentBody(handler).TryGetProperty("reasoning_effort", out _),
+        Assert.IsFalse(handler.SentBody().TryGetProperty("reasoning_effort", out _),
             "an unchosen variant is an absent key, not a null-valued one");
     }
 
@@ -156,9 +135,10 @@ public class LlmClientRequestTests
     {
         var handler = new RecordingHandler(HttpStatusCode.OK, ReplyBody);
 
-        await Client(handler).PostChatAsync("s", "u", Connection(), Settings(maxTokens: 321, temperature: 0.125));
+        await Client(handler).PostChatAsync(
+            "s", "u", LlmTestData.Connection(), LlmTestData.Settings(maxTokens: 321, temperature: 0.125));
 
-        var body = SentBody(handler);
+        var body = handler.SentBody();
         Assert.AreEqual(321, body.GetProperty("max_tokens").GetInt32());
         Assert.AreEqual(0.125, body.GetProperty("temperature").GetDouble(), delta: 0.000001);
     }
@@ -174,10 +154,10 @@ public class LlmClientRequestTests
         var handler = new RecordingHandler(HttpStatusCode.OK, ReplyBody);
         var client = Client(handler);
 
-        await client.PostChatAsync("s", "u", Connection(), Settings());
-        await client.PostChatAsync("s", "u", Connection(), Settings());
+        await client.PostChatAsync("s", "u", LlmTestData.Connection(), LlmTestData.Settings());
+        await client.PostChatAsync("s", "u", LlmTestData.Connection(), LlmTestData.Settings());
 
-        var sent = handler.LastRequest!.Headers
+        var sent = handler.SentRequest().Headers
             .GetValues(ServiceDescriptorRegistry.SessionHeaderName).ToList();
         Assert.AreEqual(1, sent.Count, "the session header is sent once, not once per source that knows the value");
         Assert.AreEqual(ServiceDescriptorRegistry.SessionId, sent[0],
@@ -192,23 +172,50 @@ public class LlmClientRequestTests
     public async Task PostChatAsync_WithNullModel_ReturnsErrorPointingAtSettings()
     {
         var result = await Client(new RecordingHandler(HttpStatusCode.OK, ReplyBody))
-            .PostChatAsync("s", "u", Connection(), Settings(model: null));
+            .PostChatAsync("s", "u", LlmTestData.Connection(), LlmTestData.Settings(model: null));
 
         Assert.IsNull(result.Content);
-        Assert.IsNotNull(result.Error);
         StringAssert.Contains(result.Error, "Settings", "the error has to say where the model is chosen");
+        Assert.AreEqual(LlmRequestSettings.ModelRequired, result.Error,
+            "and it is the one message both surfaces must use for this fault, not a second wording");
     }
 
     [TestMethod]
     public async Task PostChatAsync_WithNullModel_SendsNoRequest()
     {
         var handler = new RecordingHandler(HttpStatusCode.OK, ReplyBody);
-        var factory = new SequencedHttpClientFactory(handler);
 
-        await new LlmClient(factory, new LlmSessionId(), new RecordingLogger<LlmClient>())
-            .PostChatAsync("s", "u", Connection(), Settings(model: null));
+        await Client(handler).PostChatAsync("s", "u", LlmTestData.Connection(), LlmTestData.Settings(model: null));
 
         Assert.IsNull(handler.LastRequest, "a call with no model must not reach the network at all");
+    }
+
+    /// <summary>A row naming a service the registry does not know gets no request. The
+    /// catalog probe already refuses that id; this pins the completion client refusing
+    /// it too, so a saved connection cannot spend the user's key against a service the
+    /// app has no descriptor for and therefore no headers for. Today only the connect
+    /// form can write a service id, and it writes the registry's const — so this is
+    /// unreachable from the app and reachable from the public seam, which is the whole
+    /// reason the check belongs here as well as in <c>LlmService</c>.
+    /// <para>
+    /// It failed before the fix: the descriptor headers were simply skipped and the
+    /// request went out to the base URL anyway.
+    /// </para></summary>
+    [TestMethod]
+    public async Task PostChatAsync_WithAnUnknownService_SendsNoRequest()
+    {
+        var handler = new RecordingHandler(HttpStatusCode.OK, ReplyBody);
+
+        var result = await Client(handler).PostChatAsync(
+            "s", "u", LlmTestData.Connection(service: "not-a-service"), LlmTestData.Settings());
+
+        Assert.IsNull(handler.LastRequest,
+            "the credential must not be posted to a service the registry cannot describe");
+        Assert.IsNull(result.Content);
+        Assert.AreEqual(LlmRequestSettings.ServiceNotFound, result.Error);
+        Assert.AreNotEqual(LlmRequestSettings.ModelRequired, result.Error,
+            "'no such service' and 'no model chosen' are different faults and must not read identically "
+            + "to a user who can act on neither");
     }
 
     [TestMethod]
@@ -216,7 +223,7 @@ public class LlmClientRequestTests
     {
         var handler = new RecordingHandler(HttpStatusCode.InternalServerError, @"{ ""error"": ""boom"" }");
 
-        var result = await Client(handler).PostChatAsync("s", "u", Connection(), Settings());
+        var result = await Client(handler).PostChatAsync("s", "u", LlmTestData.Connection(), LlmTestData.Settings());
 
         Assert.IsNull(result.Content);
         Assert.AreEqual(
@@ -229,7 +236,7 @@ public class LlmClientRequestTests
     {
         var handler = new RecordingHandler(HttpStatusCode.OK, @"{ ""choices"": [] }");
 
-        var result = await Client(handler).PostChatAsync("s", "u", Connection(), Settings());
+        var result = await Client(handler).PostChatAsync("s", "u", LlmTestData.Connection(), LlmTestData.Settings());
 
         Assert.IsNull(result.Content);
         Assert.AreEqual("No response from LLM", result.Error);
@@ -240,7 +247,7 @@ public class LlmClientRequestTests
     {
         var handler = new RecordingHandler(HttpStatusCode.OK, @"{ ""choices"": [{ ""message"": { ""content"": ""  "" } }] }");
 
-        var result = await Client(handler).PostChatAsync("s", "u", Connection(), Settings());
+        var result = await Client(handler).PostChatAsync("s", "u", LlmTestData.Connection(), LlmTestData.Settings());
 
         Assert.IsNull(result.Content);
         Assert.AreEqual("Empty response from LLM", result.Error);
@@ -251,7 +258,7 @@ public class LlmClientRequestTests
     {
         var handler = new ThrowingHandler(new HttpRequestException("connection refused"));
 
-        var result = await Client(handler).PostChatAsync("s", "u", Connection(), Settings());
+        var result = await Client(handler).PostChatAsync("s", "u", LlmTestData.Connection(), LlmTestData.Settings());
 
         Assert.IsNull(result.Content);
         Assert.AreEqual("An error occurred while calling the AI service.", result.Error);
@@ -265,7 +272,7 @@ public class LlmClientRequestTests
     public async Task PostChatAsync_WithAnUnusableBaseUrl_ReturnsAnErrorRatherThanThrowing()
     {
         var result = await Client(new RecordingHandler(HttpStatusCode.OK, ReplyBody))
-            .PostChatAsync("s", "u", Connection(baseUrl: "not a url"), Settings());
+            .PostChatAsync("s", "u", LlmTestData.Connection(baseUrl: "not a url"), LlmTestData.Settings());
 
         Assert.IsNull(result.Content);
         Assert.IsNotNull(result.Error);

@@ -1,0 +1,11 @@
+@* Why the model field is free text. A per-response note, not a stored one: it describes
+   the probe this response is the answer to, and the saved state already carries the
+   lasting truth in its badge. A plain page load therefore shows the picker with no note
+   rather than repeating a warning about a probe the user never asked for. *@
+@model string
+<div class="alert alert-warning" role="alert">
+    <strong>Could not confirm the connection.</strong>
+    Your service did not answer the model-list test. That is often nothing more than an
+    endpoint that does not offer one — it is not a sign of a bad key — and the connection
+    is saved and usable either way. Name the model yourself below.
+</div>

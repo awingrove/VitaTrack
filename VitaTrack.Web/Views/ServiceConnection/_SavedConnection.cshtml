@@ -1,0 +1,23 @@
+@using VitaTrack.Web.Models
+@model ServiceConnectionViewModel
+
+@* The whole saved-connection region: the badge, the table, and the disconnect button.
+   Rendered both by Index and by every swap into #connection-state, so a connect that
+   HTMX applied shows the same state a reload would. *@
+@if (Model.Saved is not null)
+{
+    <h3>Saved connection</h3>
+    <p class="mb-2">@await Component.InvokeAsync("ConnectionBadge")</p>
+    <table class="table">
+        <tbody>
+            <tr><th scope="row">Service</th><td>@Model.Saved.Service</td></tr>
+            <tr><th scope="row">Base URL</th><td>@Model.Saved.BaseUrl</td></tr>
+            <tr><th scope="row">Model</th><td>@(Model.Saved.Model ?? "—")</td></tr>
+            <tr><th scope="row">API key</th><td>@Model.Saved.MaskedApiKey</td></tr>
+        </tbody>
+    </table>
+    <form asp-action="Delete" asp-controller="ServiceConnection" method="post"
+          data-confirm-message="Disconnect this service? Supplements keep their nutrients; only the connection is removed.">
+        <input type="submit" value="Disconnect" class="btn btn-sm btn-danger" />
+    </form>
+}

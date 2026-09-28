@@ -254,6 +254,7 @@ slices:
       - ServiceConnections
     controller:
       - VitaTrack.Web/Controllers/ServiceConnectionController.cs
+      - VitaTrack.Web/Controllers/ServiceConnectionController.Probe.cs
     core:
       - VitaTrack.Core/Features/ServiceConnections/ServiceConnection.cs
       - VitaTrack.Core/Features/ServiceConnections/IServiceConnectionRepository.cs
@@ -261,6 +262,9 @@ slices:
       - VitaTrack.Core/Features/ServiceConnections/ConnectServiceRequest.cs
       - VitaTrack.Core/Features/ServiceConnections/SaveConnectionResult.cs
       - VitaTrack.Core/Features/ServiceConnections/SaveConnectionHandler.cs
+      - VitaTrack.Core/Features/ServiceConnections/SelectModelRequest.cs
+      - VitaTrack.Core/Features/ServiceConnections/ProbeConnectionHandler.cs
+      - VitaTrack.Core/Features/ServiceConnections/ProbeConnectionResult.cs
       - VitaTrack.Core/Features/ServiceConnections/ServiceDescriptor.cs
       - VitaTrack.Core/Features/ServiceConnections/ServiceDescriptorRegistry.cs
       - VitaTrack.Core/Features/ServiceConnections/ModelCatalog.cs
@@ -271,14 +275,21 @@ slices:
     models:
       - VitaTrack.Web/Models/SavedConnection.cs
       - VitaTrack.Web/Models/ServiceConnectionViewModel.cs
-    js: []
+      - VitaTrack.Web/Models/ModelPickerViewModel.cs
+      - VitaTrack.Web/Models/ConnectionBadgeViewModel.cs
+    js:
+      - VitaTrack.Web/wwwroot/js/service-connection.js
     unit_tests:
       - VitaTrack.Tests/Features/ServiceConnections/ServiceConnectionRepositoryTests.cs
       - VitaTrack.Tests/Features/ServiceConnections/SaveConnectionHandlerTests.cs
+      - VitaTrack.Tests/Features/ServiceConnections/ProbeConnectionHandlerTests.cs
       - VitaTrack.Tests/Features/ServiceConnections/ServiceDescriptorRegistryTests.cs
       - VitaTrack.Tests/Features/ServiceConnections/ServiceCatalogClientTests.cs
       - VitaTrack.Tests/Features/ServiceConnections/ServiceCatalogClientFailureTests.cs
       - VitaTrack.Tests/ServiceConnectionControllerTests.cs
+      - VitaTrack.Tests/ServiceConnectionControllerProbeTests.cs
+      - VitaTrack.Tests/ServiceConnectionControllerHarness.cs
+      - VitaTrack.Tests/ConnectionBadgeViewComponentTests.cs
       - VitaTrack.Tests/ServiceConnectionFormTests.cs
     e2e_specs:
       - e2e-tests/playwright/tests/service-connection.spec.js
@@ -287,6 +298,15 @@ slices:
 # the ownership test does not flag them as orphans. Keep this minimal.
 allowlist:
   - VitaTrack.Web/Program.cs
+  # A view component, owned by the SC slice and rendered on SC's Settings page and on
+  # the MS slice's enrichment pages. It lives outside every ShardOwnershipTests scan
+  # root (Controllers, Core, Views, Web/Models, Web/wwwroot/js, VitaTrack.Tests,
+  # e2e spec files), which is why it is here rather than claimed: the ownership check
+  # cannot see a file it does not scan, and adding the directory as a scan root is a
+  # change to that test, not to this manifest. No other Web-layer type is in this
+  # position — the gap is the directory, and it is recorded rather than worked around
+  # silently.
+  - VitaTrack.Web/ViewComponents/ConnectionBadgeViewComponent.cs
   - VitaTrack.Web/Views/Shared/**
   - VitaTrack.Web/Views/_ViewImports.cshtml
   - VitaTrack.Core/Data/DbInit.cs

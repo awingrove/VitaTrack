@@ -1,4 +1,7 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using VitaTrack.Core.Features.ServiceConnections;
@@ -22,6 +25,84 @@ public class ServiceConnectionFormTests
         Assert.AreEqual("API key", DisplayNameOf(nameof(ConnectServiceRequest.ApiKey)));
     }
 
+    /// <summary>The service picker is a <c>&lt;select&gt;</c> of descriptor ids, and the
+    /// label is the one word that says so. Left to the property name the field would
+    /// read "Service" beside two other sentences and mean nothing about the choice.</summary>
+    [TestMethod]
+    public void ConnectForm_LabelsTheServiceChoiceAsAChoice()
+    {
+        Assert.AreEqual("Service", DisplayNameOf(nameof(ConnectServiceRequest.Service)));
+    }
+
+    /// <summary>Two model fields share this page — the connect form's optional free text
+    /// and the picker's own control — so their labels must be told apart. Playwright's
+    /// <c>getByLabel</c> matches substrings, so "Model (optional)" also answers to
+    /// "Model": only <c>exact: true</c> separates them, and that only works if the
+    /// strings differ.</summary>
+    [TestMethod]
+    public void TheConnectFormAndTheModelPicker_LabelTheModelFieldDifferently()
+    {
+        var connectLabel = DisplayNameOf(typeof(ConnectServiceRequest), nameof(ConnectServiceRequest.Model));
+        var pickerLabel = DisplayNameOf(typeof(SelectModelRequest), nameof(SelectModelRequest.Model));
+
+        Assert.AreEqual("Model", pickerLabel);
+        Assert.AreEqual("Model (optional)", connectLabel);
+        Assert.AreNotEqual(connectLabel, pickerLabel,
+            "two fields on one page with one label are a strict-mode violation waiting for an e2e test");
+    }
+
+    /// <summary>The variant vocabulary is the registry's, and the model refuses anything
+    /// else rather than storing it. A value outside the six would be a
+    /// <c>reasoning_effort</c> the provider rejects at request time, long after the user
+    /// thought they had chosen.</summary>
+    [TestMethod]
+    public void SelectModel_RejectsAVariantTheRegistryDoesNotShip()
+    {
+        var errors = Validate(new SelectModelRequest { Model = "gpt-4o", Variant = "turbo" });
+
+        Assert.AreEqual(1, errors.Count, "one error: the model itself is fine, the variant is not");
+        Assert.AreEqual(SelectModelRequest.UnknownVariant, errors[0].ErrorMessage,
+            "the wording has one owner, so the model, the message and any future surface cannot word it differently");
+        Assert.AreEqual(nameof(SelectModelRequest.Variant),
+            string.Join(",", errors[0].MemberNames),
+            "the error belongs to the variant field, not to the form: a field error on the model would send the user to fix the wrong one");
+    }
+
+    [TestMethod]
+    public void SelectModel_AcceptsEveryVariantTheRegistryShips()
+    {
+        foreach (var variant in ServiceDescriptorRegistry.Variants)
+            Assert.AreEqual(0, Validate(new SelectModelRequest { Model = "gpt-4o", Variant = variant }).Count,
+                $"'{variant}' is in the registry's vocabulary, so the form must accept it");
+    }
+
+    [TestMethod]
+    public void SelectModel_RequiresAModel()
+    {
+        // Read through the same Validator the MVC layer uses for a bind model, so the
+        // attribute and the rendered error cannot drift. (MVC's implicit-[Required] layer
+        // for non-nullable reference types is suppressed in Program.cs; this is the
+        // explicit rule doing the work.)
+        Assert.IsTrue(
+            Validate(new SelectModelRequest { Model = "  ", Variant = "none" })
+                .Any(e => e.ErrorMessage == SelectModelRequest.ModelRequired),
+            "a blank model leaves the connection pointing at nothing, which is the state Settings exists to end");
+    }
+
+    private static IList<ValidationResult> Validate(object model)
+    {
+        var results = new List<ValidationResult>();
+        Validator.TryValidateObject(model, new ValidationContext(model), results, validateAllProperties: true);
+        return results;
+    }
+
+    private static string DisplayNameOf(string property) =>
+        DisplayNameOf(typeof(ConnectServiceRequest), property);
+
+    private static string DisplayNameOf(Type model, string property) =>
+        model.GetProperty(property)?.GetCustomAttribute<DisplayAttribute>()?.Name
+        ?? property;
+
     [TestMethod]
     public void ConnectForm_EachErrorMessageStartsWithItsOwnLabel()
     {
@@ -36,10 +117,6 @@ public class ServiceConnectionFormTests
                 .StartsWith(DisplayNameOf(nameof(ConnectServiceRequest.ApiKey)), StringComparison.Ordinal),
             "a stripped field (\"API key: ---\") must name the field the way the label does");
     }
-
-    private static string DisplayNameOf(string property) =>
-        typeof(ConnectServiceRequest).GetProperty(property)?.GetCustomAttribute<DisplayAttribute>()?.Name
-        ?? property;
 
     private static string RequiredMessageOf(string property) =>
         typeof(ConnectServiceRequest).GetProperty(property)?.GetCustomAttribute<RequiredAttribute>()?.ErrorMessage

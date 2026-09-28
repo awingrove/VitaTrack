@@ -7,19 +7,12 @@
 
 <h2>@ViewData["Title"]</h2>
 
-@if (Model.Saved is not null)
-{
-    <h3>Saved connection</h3>
-    <table class="table">
-        <tbody>
-            <tr><th scope="row">Service</th><td>@Model.Saved.Service</td></tr>
-            <tr><th scope="row">Base URL</th><td>@Model.Saved.BaseUrl</td></tr>
-            <tr><th scope="row">Model</th><td>@(Model.Saved.Model ?? "—")</td></tr>
-            <tr><th scope="row">API key</th><td>@Model.Saved.MaskedApiKey</td></tr>
-            <tr><th scope="row">Verification</th><td>@Model.Saved.Verification</td></tr>
-        </tbody>
-    </table>
-}
+@* The whole dynamic region, wrapper and all: it carries its own id so that an htmx
+   swap re-establishes it, and it is rendered whether or not anything is saved — an empty
+   target for a first connect to land in is the alternative, and it does not exist. *@
+<partial name="_ConnectionState" model="Model" />
 
-<h3>Connect a service</h3>
-<partial name="_ConnectForm" model="Model.Form" />
+@section Scripts {
+    <script src="~/js/service-connection.js" asp-append-version="true"></script>
+    <script src="~/js/delete-confirm.js" asp-append-version="true"></script>
+}

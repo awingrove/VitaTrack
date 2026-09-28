@@ -522,3 +522,90 @@ activities:
             priority: medium
             tests:
               - unit: SaveConnectionHandlerTests.HandleAsync_Reconnect_StampsTheNewRowInsteadOfCloningTheOldStamps
+      - id: SC-3
+        name: Confirm a connection and choose a model
+        entry_point: nav bar -> Settings
+        stories:
+          - title: Choose a service from the shipped list, not free text
+            status: done
+            priority: high
+            tests:
+              - unit: SaveConnectionHandlerTests.HandleAsync_RejectsUnknownServiceId
+              - unit: SaveConnectionHandlerTests.HandleAsync_StoresTheRegistrysSpellingOfTheChosenService
+              - unit: ServiceConnectionControllerTests.Connect_WithAServiceTheRegistryDoesNotKnow_ReturnsTheFormWithTheErrorAndWritesNothing
+              - unit: ServiceDescriptorRegistryTests.TheServiceIdTheSaveHandlerStores_ResolvesToAShippedDescriptor
+          - title: Test the service on connect and record whether the key was accepted
+            status: done
+            priority: high
+            tests:
+              - unit: ProbeConnectionHandlerTests.ProbeAsync_VerifiedProbe_StampsVerifiedAndVerifiedAt
+              - unit: ProbeConnectionHandlerTests.ProbeAsync_ProbesTheSavedConnection_NotAnEmptyOne
+              - unit: ProbeConnectionHandlerTests.ProbeAsync_AfterAVerifiedProbe_AFailedReprobeRemovesTheStamp
+              - unit: ProbeConnectionHandlerTests.ProbeAsync_WhenTheCallerAbandonsTheProbe_StampsNothing
+              - unit: ServiceConnectionControllerProbeTests.Connect_ValidProbe_StoresTheVerificationItReports
+              - unit: ServiceConnectionControllerTests.Index_DoesNotProbe_TheServiceOnEveryPageLoad
+          - title: Say in words that an unconfirmed connection is still usable
+            status: done
+            priority: high
+            tests:
+              - unit: ProbeConnectionHandlerTests.ProbeAsync_FailedProbe_StampsUnverified_AndLeavesTheConnectionSaved
+              - unit: ServiceConnectionControllerProbeTests.Connect_FailedProbe_RendersTheUnverifiedWarningAndSavesTheConnection
+              - unit: ServiceConnectionControllerTests.Index_DoesNotProbe_TheServiceOnEveryPageLoad
+              - e2e: service-connection::should save a connection from the Settings page and show it after reload
+          - title: Show the connection state on the page enrichment happens from
+            status: done
+            priority: high
+            tests:
+              - unit: ConnectionBadgeViewComponentTests.Invoke_WithAnUnverifiedConnection_ReportsUnverified
+              - unit: ConnectionBadgeViewComponentTests.Invoke_WithAVerifiedConnection_ReportsVerified
+              - unit: ConnectionBadgeViewComponentTests.Invoke_WithNoConnection_RendersNothing
+              - unit: ConnectionBadgeViewComponentTests.Invoke_ReadsTheActiveConnectionOnce
+              - e2e: service-connection::should show the connection state on the page enrichment happens from
+          - title: Pick a model the service listed, or name the model by hand
+            status: done
+            priority: high
+            tests:
+              - unit: ServiceConnectionControllerProbeTests.Connect_ValidProbe_RendersModelPickerWithCatalogModels
+              - unit: ServiceConnectionControllerTests.Index_WithActiveConnection_RendersTheModelPicker
+              - e2e: service-connection::should save a model and reasoning effort from the picker, then disconnect
+          - title: Choose a reasoning effort from the six values the providers accept
+            status: done
+            priority: high
+            tests:
+              - unit: ServiceConnectionControllerProbeTests.SelectModel_PersistsModelAndVariant
+              - unit: ServiceConnectionControllerProbeTests.SelectModel_TrimsTheModelItStores
+              - unit: ServiceConnectionControllerProbeTests.SelectModel_LeavesTheConnectionSettingsAlone
+              - unit: ServiceConnectionControllerProbeTests.SelectModel_RejectsAVariantOutsideTheRegistryVocabulary
+              - unit: ServiceConnectionControllerProbeTests.SelectModel_WithNoActiveConnection_ReportsItAndWritesNothing
+              - unit: ServiceConnectionFormTests.SelectModel_RejectsAVariantTheRegistryDoesNotShip
+              - unit: ServiceConnectionFormTests.SelectModel_AcceptsEveryVariantTheRegistryShips
+              - unit: ServiceConnectionFormTests.SelectModel_RequiresAModel
+              - unit: ServiceDescriptorRegistryTests.FindVariant_ResolvesEachShippedVariantToItself
+              - unit: ServiceDescriptorRegistryTests.FindVariant_CaseDoesNotMatter_BecauseTheValueComesFromAForm
+              - unit: ServiceDescriptorRegistryTests.FindVariant_UnknownOrBlank_ReturnsNull
+          - title: Disconnect, and touch no supplement
+            status: done
+            priority: medium
+            tests:
+              - unit: ServiceConnectionControllerProbeTests.Delete_ClearsTheActiveConnection
+              - unit: ServiceConnectionControllerProbeTests.Delete_WithNothingSaved_DoesNotWriteAndStillRedirects
+              - e2e: service-connection::should save a model and reasoning effort from the picker, then disconnect
+          - title: Work with the script blocked, and show a rejected submit where the form is
+            status: done
+            priority: medium
+            tests:
+              - unit: ServiceConnectionControllerProbeTests.Connect_WithoutHtmx_RedirectsToIndex_EvenThoughTheProbeRan
+              - unit: ServiceConnectionControllerTests.Connect_InvalidModelState_OverHtmx_SwapsInTheRegionThatCarriesTheForm
+              - unit: ServiceConnectionControllerTests.Connect_InvalidModelState_ReturnsTheFormWithErrors
+              - e2e: service-connection::should reject a save with a blank URL and keep the connection unchanged
+          - title: Resolve the catalog probe from the container, not just the descriptor
+            status: done
+            priority: medium
+            tests:
+              - unit: ServiceCollectionExtensionsTests.AddCore_RegistersAllRepositoriesAndServices
+          - title: Tell the connect form's model field and the picker's apart by label
+            status: done
+            priority: low
+            tests:
+              - unit: ServiceConnectionFormTests.TheConnectFormAndTheModelPicker_LabelTheModelFieldDifferently
+              - unit: ServiceConnectionFormTests.ConnectForm_LabelsTheServiceChoiceAsAChoice

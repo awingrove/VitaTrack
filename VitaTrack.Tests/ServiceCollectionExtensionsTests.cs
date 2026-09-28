@@ -12,6 +12,7 @@ using VitaTrack.Core.Features.Reporting;
 using VitaTrack.Core.Features.LlmEnrichment;
 
 using VitaTrack.Core.Features.Nutrients;
+using VitaTrack.Core.Features.ServiceConnections;
 using VitaTrack.Core.Features.Supplements;
 
 namespace VitaTrack.Tests;
@@ -107,6 +108,12 @@ public class ServiceCollectionExtensionsTests
         var labelParser = sp.GetRequiredService<ISupplementLabelParser>();
         var csvImport = sp.GetRequiredService<ICsvImportService>();
         var llmService = sp.GetRequiredService<ILlmService>();
+        // Resolved, not merely registered. `AddHttpClient<IServiceCatalogClient,
+        // ServiceCatalogClient>()` compiles and fails at resolution — the typed-client
+        // factory demands a constructor taking HttpClient, and this one takes an
+        // IHttpClientFactory — so nothing but an actual resolve catches that mistake.
+        var catalogClient = sp.GetRequiredService<IServiceCatalogClient>();
+        var probeHandler = sp.GetRequiredService<ProbeConnectionHandler>();
 
         Assert.IsNotNull(familyRepo);
         Assert.IsNotNull(supplementRepo);
@@ -119,6 +126,8 @@ public class ServiceCollectionExtensionsTests
         Assert.IsNotNull(labelParser);
         Assert.IsNotNull(csvImport);
         Assert.IsNotNull(llmService);
+        Assert.IsInstanceOfType(catalogClient, typeof(ServiceCatalogClient));
+        Assert.IsNotNull(probeHandler);
 
         // Each interface maps to its own concrete component.
         CollectionAssert.AllItemsAreUnique(
@@ -132,6 +141,17 @@ public class ServiceCollectionExtensionsTests
         // Scoped lifetime: same interface within one scope resolves to the same instance.
         Assert.AreSame(familyRepo, sp.GetRequiredService<IFamilyRepository>());
         Assert.AreSame(llmService, sp.GetRequiredService<ILlmService>());
+
+        // The catalog client must see the connection the user just saved, not one
+        // captured when the pooled handler was built.
+        Assert.AreSame(catalogClient, sp.GetRequiredService<IServiceCatalogClient>());
+
+        // One session id per process, shared with the descriptor the probe reads.
+        var sessionId = sp.GetRequiredService<LlmSessionId>();
+        Assert.AreSame(sessionId, sp.GetRequiredService<LlmSessionId>(),
+            "a second id would leave the x-opencode-session header correlating nothing");
+        Assert.AreEqual(ServiceDescriptorRegistry.SessionId, sessionId.Value,
+            "the session id is the registry's, not a second one minted beside it");
     }
 
     [TestMethod]

@@ -32,11 +32,47 @@ public class SaveConnectionHandlerTests : SqliteTestBase
         var result = await _handler.HandleAsync(Request("https://api.example.com", "sk-secret"));
 
         var saved = AssertRowSaved(await _repository.GetAllAsync(), result);
-        Assert.AreEqual(SaveConnectionHandler.ServiceName, saved.Service);
+        Assert.AreEqual(ServiceDescriptorRegistry.OpenCodeServiceId, saved.Service);
         Assert.AreEqual("https://api.example.com", saved.BaseUrl);
         Assert.AreEqual("sk-secret", saved.ApiKey);
         Assert.IsTrue(saved.IsActive, "the connection just saved is the active one");
         await AssertActiveIs(saved.Id);
+    }
+
+    /// <summary>The <c>Service</c> column stores a descriptor id, never free text, and
+    /// this handler is what writes it. A string the registry does not know would write a
+    /// row no probe could ever verify, and <c>ServiceCatalogClient</c> would answer
+    /// "unverified" to it forever — so the write is refused here, before it happens.</summary>
+    [TestMethod]
+    public async Task HandleAsync_RejectsUnknownServiceId()
+    {
+        var unknown = await _handler.HandleAsync(
+            Request("https://api.example.com", "sk-secret", service: "not-a-service"));
+        var blank = await _handler.HandleAsync(
+            Request("https://api.example.com", "sk-secret", service: string.Empty));
+
+        Assert.IsFalse(unknown.Succeeded, "a service the registry does not ship must not be written");
+        Assert.AreEqual(ConnectServiceRequest.UnknownService, unknown.Error);
+        Assert.IsFalse(blank.Succeeded, "no service chosen is no service id");
+        Assert.AreEqual(ConnectServiceRequest.UnknownService, blank.Error);
+        Assert.AreEqual(0, (await _repository.GetAllAsync()).Count,
+            "an unrecognised service id must not leave a row behind");
+    }
+
+    /// <summary>The id arrives from a <c>&lt;select&gt;</c> and a hand-typed request, so
+    /// it is matched case-insensitively — and what is stored is the registry's own
+    /// spelling. Storing what the user typed would let "OpenCode" and "opencode" become
+    /// two different values in one column that <c>ServiceDescriptorRegistry.Find</c>
+    /// happens to tolerate and a plain equality check would not.</summary>
+    [TestMethod]
+    public async Task HandleAsync_StoresTheRegistrysSpellingOfTheChosenService()
+    {
+        var result = await _handler.HandleAsync(
+            Request("https://api.example.com", "sk-secret", service: "OpenCode"));
+
+        var saved = AssertRowSaved(await _repository.GetAllAsync(), result);
+        Assert.AreEqual(ServiceDescriptorRegistry.OpenCodeServiceId, saved.Service,
+            "the stored id is the registry's, not the request's casing of it");
     }
 
     [TestMethod]
@@ -81,7 +117,7 @@ public class SaveConnectionHandlerTests : SqliteTestBase
         var seeded = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero);
         await _repository.SaveAsync(new ServiceConnection
         {
-            Service = SaveConnectionHandler.ServiceName,
+            Service = ServiceDescriptorRegistry.OpenCodeServiceId,
             BaseUrl = "https://api.example.com",
             ApiKey = "sk-first",
             CreatedAt = seeded,
@@ -159,7 +195,7 @@ public class SaveConnectionHandlerTests : SqliteTestBase
         // nothing in the app can do this yet, so the handler must not inherit it.
         await _repository.SaveAsync(new ServiceConnection
         {
-            Service = SaveConnectionHandler.ServiceName,
+            Service = ServiceDescriptorRegistry.OpenCodeServiceId,
             BaseUrl = "https://api.example.com",
             ApiKey = "sk-first",
             Verification = "verified",
@@ -182,7 +218,7 @@ public class SaveConnectionHandlerTests : SqliteTestBase
         // the handler's own inputs, so the repository is stubbed.
         var repository = new Mock<IServiceConnectionRepository>();
         repository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ServiceConnection { Id = 987_654, Service = SaveConnectionHandler.ServiceName });
+            .ReturnsAsync(new ServiceConnection { Id = 987_654, Service = ServiceDescriptorRegistry.OpenCodeServiceId });
         repository.Setup(r => r.SaveAsync(It.IsAny<ServiceConnection>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(IServiceConnectionRepository.NoRowWritten);
         var handler = new SaveConnectionHandler(repository.Object);
@@ -194,8 +230,12 @@ public class SaveConnectionHandlerTests : SqliteTestBase
         Assert.IsNotNull(result.Error);
     }
 
-    private static ConnectServiceRequest Request(string baseUrl, string apiKey, string? model = null) =>
-        new() { BaseUrl = baseUrl, ApiKey = apiKey, Model = model };
+    private static ConnectServiceRequest Request(
+        string baseUrl,
+        string apiKey,
+        string? model = null,
+        string? service = ServiceDescriptorRegistry.OpenCodeServiceId) =>
+        new() { BaseUrl = baseUrl, ApiKey = apiKey, Model = model, Service = service ?? string.Empty };
 
     /// <summary>The row the result names. Success and the id are unwrapped here once,
     /// so no call site needs the null-forgiving operator, and a save that reported no

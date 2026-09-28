@@ -9,6 +9,11 @@
     </div>
 }
 
+@* The service this page enriches with, and whether it was ever confirmed. See the note
+   in Views/Supplement/Review.cshtml — same component, same wording, so the two
+   enrichment surfaces cannot drift apart. *@
+<p class="mb-2">@await Component.InvokeAsync("ConnectionBadge")</p>
+
 @if (!string.IsNullOrWhiteSpace(Model.ExtractionError))
 {
     <div class="alert alert-info">

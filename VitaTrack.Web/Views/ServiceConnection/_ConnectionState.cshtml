@@ -1,0 +1,31 @@
+@using VitaTrack.Web.Models
+@model ServiceConnectionViewModel
+
+@* The whole dynamic region of the Settings page: what is saved, what the last probe
+   found, the model picker, and the connect form. It is one region rather than three
+   because the two POST targets answer into it and every one of their outcomes —
+   saved, rejected, unverified — has to be visible where the user is looking. A rejected
+   connect is the case that forces it: its errors are field errors on the form, so
+   swapping only the saved state would leave the message nowhere.
+
+   The id is here, not in Index.cshtml, because htmx's outerHTML swap replaces the
+   target element rather than its children: a wrapper Index owned would be gone after
+   the first swap, and the second one would find no target to swap into. Carried by the
+   partial, the region is re-established by every response — including the first, which
+   has to be able to land in it. *@
+<div id="connection-state">
+    <partial name="_SavedConnection" model="ViewData.Model" />
+    @if (Model.ProbeNote is not null)
+    {
+        @* A sibling of the picker, not a state of it: a provider with no /v1/models is
+           ordinary, and the user has to be told that in words rather than handed an
+           empty dropdown and left to guess. *@
+        <partial name="_Unverified" model="Model.ProbeNote" />
+    }
+    @if (Model.ModelPicker is not null)
+    {
+        <partial name="_ModelPicker" model="Model.ModelPicker" />
+    }
+    <h3>Connect a service</h3>
+    <partial name="_ConnectForm" model="Model.Form" />
+</div>

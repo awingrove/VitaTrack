@@ -1,0 +1,11 @@
+@* The connection's verification state, as a badge. One component, so the Settings page
+   and the enrichment pages cannot disagree about what "unverified" looks like. Renders
+   nothing when there is no connection at all: the enrichment flow already refuses in
+   words and names Settings as the fix. *@
+@model VitaTrack.Web.Models.ConnectionBadgeViewModel
+<span class="badge rounded-pill @(Model.Verified ? "bg-success" : "bg-warning text-dark")"
+      title="@(Model.Verified
+          ? "Your service answered the model-list test with this key."
+          : "Your service has not answered the model-list test with this key. Enrichment can still work — the endpoint may simply not offer a model list.")">
+    @(Model.Verified ? "verified" : "unverified")
+</span>

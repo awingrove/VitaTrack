@@ -1,18 +1,14 @@
 namespace VitaTrack.Core.Features.ServiceConnections;
 
 /// <summary>
-/// Saves the service connection: rejects a blank URL or key, keeps whatever the
-/// form does not expose, and lets the repository enforce at-most-one-active. It
-/// deliberately does not deactivate the previous connection — the repository does
-/// that inside the same transaction as the write.
+/// Saves the service connection: rejects a blank URL or key, rejects a service the
+/// registry does not ship, keeps whatever the form does not expose, and lets the
+/// repository enforce at-most-one-active. It deliberately does not deactivate the
+/// previous connection — the repository does that inside the same transaction as the
+/// write.
 /// </summary>
 public class SaveConnectionHandler(IServiceConnectionRepository connections)
 {
-    /// <summary>The one service that ships. A reference to the registry's id rather
-    /// than a literal of its own, so the two names cannot drift; the selector that
-    /// chooses among several services replaces this line entirely.</summary>
-    public const string ServiceName = ServiceDescriptorRegistry.OpenCodeServiceId;
-
     private const string SaveFailed = "The connection could not be saved. Please try again.";
 
     private readonly IServiceConnectionRepository _connections = connections;
@@ -29,6 +25,18 @@ public class SaveConnectionHandler(IServiceConnectionRepository connections)
         if (string.IsNullOrWhiteSpace(request.ApiKey))
             return SaveConnectionResult.Failed(ConnectServiceRequest.ApiKeyRequired);
 
+        // The Service column holds a descriptor id, and the registry is the only
+        // authority on what one is. The lookup is what replaced the const this handler
+        // used to carry: a literal here would be a second place naming a service, and a
+        // row naming one the registry does not know could never be probed, so it would
+        // sit at `unverified` forever and the badge would be telling the truth about a
+        // connection the app cannot use. What is stored is the registry's own spelling,
+        // so a differently-cased id from the form cannot become a second value in the
+        // column.
+        var descriptor = ServiceDescriptorRegistry.Find(request.Service);
+        if (descriptor is null)
+            return SaveConnectionResult.Failed(ConnectServiceRequest.UnknownService);
+
         // Each save is a new row: the repository demotes the previous one in the same
         // transaction, so the connection in use is always the one just saved. Starting
         // from the row being replaced carries forward what the form does not expose —
@@ -38,11 +46,12 @@ public class SaveConnectionHandler(IServiceConnectionRepository connections)
         var connection = (replaced ?? new ServiceConnection()) with
         {
             Id = 0,
-            Service = ServiceName,
+            Service = descriptor.ServiceId,
             BaseUrl = request.BaseUrl.Trim(),
             ApiKey = request.ApiKey.Trim(),
             Model = Trimmed(request.Model) ?? replaced?.Model,
-            // Unverified and never-verified, so the pair can never disagree.
+            // Never verified, and never-verified, so the pair can never disagree. The
+            // probe that follows a save is what writes the other value.
             Verification = ServiceConnection.Unverified,
             VerifiedAt = null,
             IsActive = true,

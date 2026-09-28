@@ -2,11 +2,12 @@ namespace VitaTrack.Core.Features.ServiceConnections;
 
 /// <summary>
 /// The shipped services, the values a connection's <c>Variant</c> may take, and the
-/// lookup that turns a stored service id back into a descriptor. This is the single
-/// authority for what a valid service id is: <c>SaveConnectionHandler.ServiceName</c>
-/// is a const reference to <see cref="OpenCodeServiceId"/> rather than a literal of its
-/// own, and the connect form renders that const, so no second place carries the id.
-/// A selector over <see cref="All"/> replaces that when a second service ships.
+/// lookups that turn a submitted value back into the registry's own spelling. This is
+/// the single authority for what a valid service id and a valid variant are:
+/// <see cref="SaveConnectionHandler"/> resolves the service through
+/// <see cref="Find"/> rather than naming one, and <see cref="SelectModelRequest"/>
+/// validates the variant through <see cref="FindVariant"/>, so no second place carries
+/// either vocabulary.
 /// </summary>
 public static class ServiceDescriptorRegistry
 {
@@ -44,6 +45,14 @@ public static class ServiceDescriptorRegistry
     /// shipped service. Case-insensitive: it comes from a form and a text column.</summary>
     public static ServiceDescriptor? Find(string serviceId) =>
         All.FirstOrDefault(d => string.Equals(d.ServiceId, serviceId, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>The registry's own spelling of a submitted variant, or null when it is
+    /// not one of the six. Both halves of the round trip live here: the form renders
+    /// <see cref="Variants"/> and the controller stores what this returns, so the value
+    /// in the column is always a value from the list rather than a differently-cased
+    /// copy of one. Case-insensitive for the same reason <see cref="Find"/> is.</summary>
+    public static string? FindVariant(string? variant) =>
+        Variants.FirstOrDefault(v => string.Equals(v, variant, StringComparison.OrdinalIgnoreCase));
 
     private static IReadOnlyDictionary<string, string> OpenCodeHeaders() =>
         new Dictionary<string, string> { [SessionHeaderName] = SessionId };

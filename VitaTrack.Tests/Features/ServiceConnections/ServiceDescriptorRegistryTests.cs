@@ -1,6 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.Data.Sqlite;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using VitaTrack.Core.Data;
 using VitaTrack.Core.Features.ServiceConnections;
 
 namespace VitaTrack.Tests.Features.ServiceConnections;
@@ -71,16 +74,65 @@ public class ServiceDescriptorRegistryTests
     }
 
     /// <summary>The registry is the authority for what a valid service id is, and the
-    /// save handler is what writes that column. A literal in the handler that the
-    /// registry does not know would write a row no probe could ever verify, so the two
-    /// are held together by this test rather than by a comment.</summary>
+    /// save handler is what writes that column. Storing a string the registry does not
+    /// know would write a row no probe could ever verify, so the two are held together
+    /// by this test rather than by a comment — and it is the registry's own spelling that
+    /// has to resolve, because <c>ServiceCatalogClient</c> looks the stored value up.</summary>
     [TestMethod]
-    public void TheServiceIdTheSaveHandlerWrites_ResolvesToAShippedDescriptor()
+    public async Task TheServiceIdTheSaveHandlerStores_ResolvesToAShippedDescriptor()
     {
-        var written = SaveConnectionHandler.ServiceName;
+        var stored = await WriteOneAndReadItBack();
 
-        Assert.IsNotNull(ServiceDescriptorRegistry.Find(written),
-            $"the save handler writes '{written}' into the Service column, and a row the registry does not know can never be verified");
+        Assert.IsNotNull(ServiceDescriptorRegistry.Find(stored),
+            $"the save handler stored '{stored}' into the Service column, and a row the registry does not know can never be verified");
+        Assert.AreEqual(ServiceDescriptorRegistry.OpenCodeServiceId, stored);
+    }
+
+    [TestMethod]
+    public void FindVariant_ResolvesEachShippedVariantToItself()
+    {
+        foreach (var variant in ServiceDescriptorRegistry.Variants)
+            Assert.AreEqual(variant, ServiceDescriptorRegistry.FindVariant(variant),
+                "the stored value is the vocabulary's own spelling, so the picker cannot invent a seventh form of one");
+    }
+
+    [TestMethod]
+    public void FindVariant_CaseDoesNotMatter_BecauseTheValueComesFromAForm()
+    {
+        Assert.AreEqual("xhigh", ServiceDescriptorRegistry.FindVariant("XHigh"));
+    }
+
+    [TestMethod]
+    public void FindVariant_UnknownOrBlank_ReturnsNull()
+    {
+        Assert.IsNull(ServiceDescriptorRegistry.FindVariant("turbo"),
+            "a variant the providers do not accept must not be storable");
+        Assert.IsNull(ServiceDescriptorRegistry.FindVariant(string.Empty));
+        Assert.IsNull(ServiceDescriptorRegistry.FindVariant(null));
+    }
+
+    /// <summary>Runs the real save handler over a real repository and returns the value
+    /// it stored, so this asserts the write rather than the handler's in-memory record.
+    /// A hand-built <see cref="ServiceConnection"/> would prove nothing about which
+    /// spelling reaches the column.</summary>
+    private static async Task<string> WriteOneAndReadItBack()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        DbInit.EnsureCreated(connection);
+        var repository = new ServiceConnectionRepository(connection);
+
+        var saved = await new SaveConnectionHandler(repository).HandleAsync(new ConnectServiceRequest
+        {
+            BaseUrl = "https://api.example.com",
+            ApiKey = "sk-test",
+            Service = "OpenCode",
+        });
+        Assert.IsTrue(saved.Succeeded, saved.Error);
+
+        var stored = await repository.GetActiveAsync();
+        Assert.IsNotNull(stored, "the row the handler reported writing is not there");
+        return stored.Service;
     }
 
     [TestMethod]

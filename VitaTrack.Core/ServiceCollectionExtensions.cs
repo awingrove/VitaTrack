@@ -57,6 +57,16 @@ public static class ServiceCollectionExtensions
         services.AddScoped<AmendDoseHandler>();
         services.AddScoped<ImportSupplementsHandler>();
         services.AddScoped<SaveConnectionHandler>();
+        services.AddScoped<ProbeConnectionHandler>();
+
+        // AddScoped, deliberately, not AddHttpClient<IServiceCatalogClient,
+        // ServiceCatalogClient>(). The typed-client factory builds the implementation
+        // through DefaultTypedHttpClientFactory<T>, which requires a constructor taking
+        // an HttpClient; this one takes an IHttpClientFactory and a logger. The wrong
+        // registration compiles and then throws at resolution — the settings page, not
+        // the build — so AddCore_RegistersAllRepositoriesAndServices resolves this one
+        // for real rather than reading the descriptor.
+        services.AddScoped<IServiceCatalogClient, ServiceCatalogClient>();
 
         // One session id per process, and it is the registry's: the completion client
         // and the catalog probe must send the same value for the header to correlate

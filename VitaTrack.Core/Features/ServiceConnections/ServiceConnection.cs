@@ -20,8 +20,13 @@ public sealed record ServiceConnection
     public DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset UpdatedAt { get; init; }
 
-    /// <summary>The only verification state a connection can be written in while
-    /// nothing probes the service. A probe adds the verified value beside this one;
-    /// it does not add a second definition of the unverified one.</summary>
+    /// <summary>Written only by <see cref="ProbeConnectionHandler"/>, and only when the
+    /// service answered a probe with a catalog this app could read.</summary>
+    public const string Verified = "verified";
+
+    /// <summary>The state a connection is written in whenever nothing has confirmed the
+    /// credential: a fresh connect, a failed probe, and a re-probe that stopped
+    /// answering. A probe adds the verified value beside this one; it does not add a
+    /// second definition of the unverified one, and it never removes this one.</summary>
     public const string Unverified = "unverified";
 }

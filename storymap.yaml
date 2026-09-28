@@ -551,7 +551,7 @@ activities:
               - e2e: service-connection::should verify a connection against a service that lists its models, and pick one of them
               - e2e: service-connection::should probe the same path for either form of the base URL trailing slash
               - e2e: service-connection::should leave a connection unverified when the service answers with nothing usable, and still save it
-          - title: Say in words that an unconfirmed connection is still usable
+          - title: Say in words that an unconfirmed connection is saved, and promise nothing about enrichment
             status: done
             priority: high
             tests:

@@ -78,9 +78,12 @@ test.describe.serial('Service Connection', () => {
     // The badge, not a table row: it is the one place the state is rendered, so a test
     // that counted two or zero of these would know the rendering had forked.
     await expect(page.getByText('unverified', { exact: true })).toBeVisible();
-    // And the words, because a badge alone does not tell a user that an unverified
-    // connection still works. The endpoint above does not implement /v1/models, which
-    // is the ordinary case this wording is for — not a bad key.
+    // And the words, because a badge alone does not tell a user *why* the connection is
+    // unverified. The endpoint above does not implement /v1/models, which is the
+    // ordinary case this wording is for — not a bad key. It does NOT say the connection
+    // still works: that claim was removed in 139f03f, and the sibling test below pins
+    // `enrich` absent in both directions, so putting it back here would contradict a
+    // pin rather than merely stale prose.
     await expect(page.getByText('Could not confirm the connection.')).toBeVisible();
     // Documentation, not evidence: an <input> has no text content, so this counts zero
     // by construction and would count zero even if the key were rendered. The

@@ -27,7 +27,7 @@ it, everything does.
 - **No `BaseAddress` on any `HttpClient`.** Every LLM request builds an absolute `Uri` from the connection's `BaseUrl`. The `AddHttpClient("llm", …)` configure delegate is deleted.
 - **`Authorization` and descriptor headers are set per request**, never on a cached handler.
 - **No foreign keys on `ServiceConnections`.** Deleting a connection must never touch a supplement.
-- **No seed row for `ServiceConnections`.** Seeding a credential is wrong. This is a recorded exception to the AGENTS.md seeding rule, written into the debt register in the same change (as **`TD-022`** — see Task 7; `TD-021` was claimed during Task 2's fix round).
+- **No seed row for `ServiceConnections`.** Seeding a credential is wrong. This is a recorded exception to the AGENTS.md seeding rule, written into the debt register in the same change (with **an id assigned at write time** — see Task 7. The id is deliberately not written down here: a reservation stated in a plan is outranked by the register's own "next free id" rule, which has now taken three of them.)
 - **The tracer comes second, not last.** `new-shard.md` step 3 requires a green vertical path before depth, and this plan originally ran three horizontal tasks first. Task 2 restores it: table → save-a-connection → *then* the probe, the seam, and the picker. **Task 2 must not change anything that works today** — `LlmClient` still reads configuration until Task 4, so the existing enrichment path is untouched while the tracer lands.
 - **`Service` is a descriptor id, not free text.** The user picks from the registry; the controller never accepts an arbitrary string.
 - **`IsActive` invariant: at most one row has `IsActive = 1`.** Enforced in the repository, not by convention.
@@ -621,14 +621,20 @@ git commit -m "refactor: delete VitaTrackOptions — the database is the only so
 > `closed` or `note`. **Every prose field is a folded `>-` scalar** — the text contains `": "` throughout,
 > which is a parse error in a plain scalar — with keys at four spaces and content at six.
 >
-> **The new id is `TD-022`.** Open entries are currently `TD-021`, `TD-017`, `TD-019`, `TD-020`, `TD-018`,
-> `TD-016`, `TD-010`; closed are `TD-001`–`TD-015`. **Two ids this plan once reserved are now taken:**
-> `TD-020` by PR #26 (which split `TD-019`), and `TD-021` by Task 2's fix round (the `with`-clone stamp
-> contract, filed under AGENTS.md directive 6). An earlier draft naming either would have produced a
-> duplicate-id build failure. Ids are unique across the whole register: **never reuse one and never
-> renumber an existing entry to make room** (`AGENTS.md`, Post-Mortem Capture). Append `TD-022`, and
-> **re-read the open list immediately before writing** — the generic "take the next free id" rule
-> overrides a reservation stated here, which is exactly how `TD-021` was taken.
+> **Do not name the id. Assign it at write time, from the file, in the same commit.** Ids are unique across
+> the whole register: never reuse one and never renumber an existing entry to make room (`AGENTS.md`,
+> Post-Mortem Capture). So: open `docs/factory/technical-debt.yaml`, read the actual `open` list, take the
+> next free id, and write it. Do not trust this document, a brief, a findings file, or your own memory for
+> what is taken.
+>
+> **This is the plan's third id collision, and the fix is structural, not another renumber.** `TD-020` was
+> taken by PR #26 splitting `TD-019`; `TD-021` by Task 2's fix round, for the `with`-clone stamp contract
+> filed under directive 6; `TD-022` by Task 5's fix round, for the hover-only badge. Each time this
+> document reserved a literal id and a later commit took it, and each time the cause was the same: an
+> executing subagent is handed the register's own "take the next free id" rule, and that generic rule
+> outranks a reservation stated in a file it may not have read. **A reservation written days before the
+> write is not a lock; it is a guess.** Renumbering a fourth time would only move the collision to Task 8,
+> so the reservation is removed instead — which is why the id template below is a placeholder.
 >
 > **Rule 5 will check this entry's `where` on the same build.** Backtick-delimited spans starting with a
 > known project root are stripped of any `:\d+` line suffix and must resolve. Every path named in the
@@ -654,12 +660,12 @@ Rewrite the secrets bullet — the key is a plaintext `TEXT` column, masked to t
 
 Add: the three-state connection indicator (disconnected / connected-verified / connected-unverified), the dependent model→variant dropdown, the Settings page as a nav destination, and the button intent classes used in Task 4.
 
-- [ ] **Step 6: Record the no-seed exception as `TD-022` in the register**
+- [ ] **Step 6: Record the no-seed exception in the register (id assigned at write time)**
 
 Append to the `open` collection in `docs/factory/technical-debt.yaml`. Content, as prose — this is
 deliberately not a decision-log line, because the interest is a real per-change cost:
 
-- `id: TD-022` · `title: >-` "`ServiceConnections` is deliberately unseeded, and nothing in code marks it"
+- `id: TD-0NN` · `title: >-`   # placeholder — resolve the real id from the file "`ServiceConnections` is deliberately unseeded, and nothing in code marks it"
 - `where: >-` `` `VitaTrack.Core/Data/DbInit.cs`, `AGENTS.md` `` — both resolve, so rule 5 stays green
 - `what: >-` Every other table `DbInit.EnsureCreated` creates carries a seed. This one does not, because
   seeding a credential is wrong. The AGENTS.md seeding rule has exactly one documented exception and it
@@ -684,7 +690,7 @@ git commit -m "docs: manifests, AGENTS, NFR, and DESIGN.md for the service-conne
 ```
 
 Expected: arch 27 / unit 234 plus whatever Tasks 1–5 added, 0 failed. **The register's rule 1 and rule 5
-run in that `dotnet test`** — if `TD-022`'s `where` names a path that does not resolve, the build is red
+run in that `dotnet test`** — if the entry's `where` names a path that does not resolve, the build is red
 and the message names the id.
 
 ---
@@ -756,11 +762,13 @@ git commit -m "test: e2e coverage for the connect flow against a real stub endpo
   left for the implementer to resolve.
 - **(8) `TD-020` is taken.** The no-seed entry was numbered before PR #26 split `TD-019` and consumed that id.
   `TechnicalDebtRegisterTests` rule 1 would have failed the build at Task 7, after ~20 commits, on a doc edit.
-  Renumbered to `TD-021`, and the instruction to re-read the open list before writing added, because the next
-  branch may claim it too. **It then did:** Task 2's fix round took `TD-021` for the `with`-clone stamp
-  contract under directive 6, so the no-seed entry is now `TD-022`. The generic "take the next free id"
-  instruction overrides a reservation stated in the plan — the fix is to name the id in the step itself
-  (done) and re-read the list immediately before writing (restated).
+  Renumbered to `TD-021`, then again to `TD-022`, each time because a later commit took the id —
+  `TD-020` by PR #26, `TD-021` by Task 2's fix round, `TD-022` by Task 5's. Every collision had the
+  same cause: a generic "take the next free id" instruction outranks a reservation stated
+  elsewhere, and a subagent reading only its brief cannot see the reservation. **The reservation
+  was then removed rather than renumbered a third time**, because a fourth would only move the
+  collision to Task 8. The rule now reads: read the file, take the next free id, write it, in the
+  same commit.
 - **(9) The freeze covers this branch and it passes.** `new-shard.md:115` freezes the next two branches: a
   branch whose non-product commits outnumber its product commits is not a product branch. This plan commits
   5 product (Tasks 1–5) against 2 non-product (Tasks 7–8), so it clears the trigger without an exception — and

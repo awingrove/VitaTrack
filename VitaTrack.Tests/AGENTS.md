@@ -37,7 +37,7 @@ When a table has foreign key dependencies, you **must** test that deleting a par
 This is critical — missing cascade delete tests leads to foreign key constraint failures at runtime.
 
 ## Writing Service Tests (LLM)
-- Mock `HttpClient` using `Moq.Protected().Setup<...>("SendAsync", ...)`.
+- **Never mock `HttpClient`** for the LLM seam — fake the transport with a stub `HttpMessageHandler` (`TestDoubles/RecordingHandler.cs`, `ThrowingHandler.cs`, and `SequencedHttpClientFactory` when the factory is what a test drives). There is nothing to configure on a client, because the base URL, key and model travel per request. Moq's `Protected()` is still the right tool on a bare `HttpMessageHandler` where a test only needs a status code (the `HtmlScraperService` tests do exactly that); it is the `HttpClient` that is retired.
 - Supply connection state as a `ServiceConnection` plus `LlmRequestSettings` via `LlmTestData` (`TestDoubles/LlmTestData.cs`); there is no configuration to bind.
 - Verify the service returns a `LlmResult` with expected fields.
 - Do **not** hit the real LLM API in unit tests.

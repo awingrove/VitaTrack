@@ -451,7 +451,7 @@ open:
 
   - id: TD-026
     title: >-
-      The 755-line `service-connection.spec.js` has no size guardrail, because
+      The 766-line `service-connection.spec.js` has no size guardrail, because
       `FileSizeTests` enumerates `*.cs` only
     where: >-
       `VitaTrack.ArchitectureTests/FileSizeTests.cs:76-89` (`EnumerateCsFiles`),
@@ -460,9 +460,11 @@ open:
       both rules in `FileSizeTests` walk `Directory.EnumerateFiles(root, "*.cs", ...)`,
       so the 300-line split trigger in the root `AGENTS.md` reaches no JavaScript at all
       and the e2e suite has no size rule of any kind. This spec is the file most likely
-      to grow without anyone noticing, for three reasons that compound: it is 755 lines,
-      it is `describe.serial` on a single shared database row, and its section markers
-      keep it legible well past the point where a reviewer would think to look.
+      to grow without anyone noticing, for three reasons that compound: it is 766
+      lines (measured with `wc -l` on the tree this commit ships; the figure is a
+      snapshot, the gap is not), it is `describe.serial` on a single shared
+      database row, and its section markers keep it legible well past the point
+      where a reviewer would think to look.
     interest: >-
       the split trigger exists to stop a unit from mushrooming, and an e2e spec is the
       same kind of unit — a serial file on one shared row carries an ordering dependency

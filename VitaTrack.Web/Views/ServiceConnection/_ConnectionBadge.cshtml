@@ -1,11 +1,25 @@
 @* The connection's verification state, as a badge. One component, so the Settings page
    and the enrichment pages cannot disagree about what "unverified" looks like. Renders
    nothing when there is no connection at all: the enrichment flow already refuses in
-   words and names Settings as the fix. *@
+   words and names Settings as the fix.
+
+   This title is the *durable* half of the unverified statement, and the wording has to be
+   true on its own terms. The note in _Unverified.cshtml is per-response and vanishes on
+   reload; the enrichment pages carry only this. It used to say "Enrichment can still work —
+   the endpoint may simply not offer a model list", which is false for a base URL that
+   already carried a version segment: the completion then posts to
+   /v1/v1/chat/completions, 404s, and no nutrient row is ever written. So it now names the
+   three causes the app cannot tell apart and promises none of them, in the same order the
+   note names them.
+   The hover-only reach of a `title` is a real accessibility gap and is recorded as an open
+   entry rather than fixed here: whether the sentence becomes visible text or an announced
+   accessible name is a design decision (a DESIGN.md amendment), and this copy change
+   settles nothing about it. The e2e pins the attribute's text on the enrichment page,
+   where a user actually reads it. *@
 @model VitaTrack.Web.Models.ConnectionBadgeViewModel
 <span class="badge rounded-pill @(Model.Verified ? "bg-success" : "bg-warning text-dark")"
       title="@(Model.Verified
           ? "Your service answered the model-list test with this key."
-          : "Your service has not answered the model-list test with this key. Enrichment can still work — the endpoint may simply not offer a model list.")">
+          : "Your service has not answered the model-list test with this key. The connection is saved but unconfirmed — an endpoint with no model list, a base URL it does not serve, and a rejected key all look the same here.")">
     @(Model.Verified ? "verified" : "unverified")
 </span>

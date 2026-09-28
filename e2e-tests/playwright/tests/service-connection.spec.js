@@ -225,7 +225,20 @@ test.describe.serial('Service Connection', () => {
     await page.getByRole('link', { name: 'Edit Nutrient Breakdown' }).click();
 
     await expect(page.getByRole('heading', { name: /Nutrients for/ })).toBeVisible();
-    await expect(page.getByText('unverified', { exact: true })).toBeVisible();
+    const badge = page.getByText('unverified', { exact: true });
+    await expect(badge).toBeVisible();
+    // The sentence behind the word, pinned here rather than only on Settings. The note in
+    // _Unverified.cshtml is per-response and gone on the next load, so on this page the
+    // `title` is the ONLY statement of what "unverified" means — which is why its wording
+    // has to be true on its own terms. It used to say "Enrichment can still work — the
+    // endpoint may simply not offer a model list", which is false for a base URL that
+    // already carried a version segment: the completion posts to /v1/v1/chat/completions,
+    // 404s, and no nutrient row is ever written. The two clauses below are the ones that
+    // revert fails on, and both are the causes the old wording denied rather than named.
+    // TD-022 records that a `title` is hover-only and unreachably so; that gap is a
+    // separate open question about the *shape* and this assertion settles nothing about it.
+    await expect(badge).toHaveAttribute('title', /a base URL it does not serve/);
+    await expect(badge).toHaveAttribute('title', /a rejected key/);
     await screenshot(page, testInfo, 'service-connection-badge-on-enrich-flow');
   });
 
@@ -446,6 +459,14 @@ test.describe.serial('Service Connection', () => {
     // tells "verified" from "unverified" — a substring match on the first would be
     // satisfied by the second, so the pair is the assertion and neither is alone.
     await expect(page.getByText('unverified', { exact: true })).toHaveCount(0);
+    // The sentence behind the word, in the verified direction, so the attribute is pinned
+    // as a whole rather than only in its unverified half: one partial renders both from
+    // the same ternary, and a refactor of that ternary would otherwise only ever be
+    // caught on the branch the enrichment pages show. The unverified half is pinned on the
+    // enrichment page above, which is the one place it is the *only* statement there is.
+    const badge = page.locator('#connection-state .badge');
+    await expect(badge).toHaveText('verified');
+    await expect(badge).toHaveAttribute('title', /answered the model-list test with this key/);
     // The unverified note is per-response: this response answers a probe, and that
     // probe verified, so there is nothing to explain about a free-text field.
     await expect(page.getByText('Could not confirm the connection.')).toHaveCount(0);
@@ -525,6 +546,20 @@ test.describe.serial('Service Connection', () => {
     expect(service.requests[0].path).toBe('/v1/models');
     await expect(page.getByText('Could not confirm the connection.')).toBeVisible();
     await expect(page.getByText(service.baseUrl, { exact: true })).toBeVisible();
+    // The picker came from a probe that listed nothing, so the model is free text — and
+    // the note that explains it is the other half of this state. Its wording is pinned
+    // because it was wrong once: it said the connection is "saved and usable either way",
+    // and for a base URL that already carried a version segment the completion posts to
+    // /v1/v1/chat/completions, 404s, and no nutrient row is written. The two clauses below
+    // are the causes that wording denied, so reverting it turns this red. The badge's own
+    // `title` is pinned on the enrichment page in the test above, which is the one place
+    // it is the *only* statement there is.
+    // Scoped to the swap target rather than the page: the note is a child of
+    // #connection-state and nothing else on this page is a warning (the form's validation
+    // summary is .alert-danger), so this resolves to exactly the partial under test.
+    const unverifiedNote = page.locator('#connection-state .alert-warning');
+    await expect(unverifiedNote).toContainText('a base URL your service does not serve');
+    await expect(unverifiedNote).toContainText('a key it rejected');
     // Free text, not an empty dropdown — the state a verified badge above an empty
     // picker would contradict. tagName is the discriminator that survives either one.
     await expect(page.locator('#picker-model')).toHaveJSProperty('tagName', 'INPUT');
@@ -582,7 +617,11 @@ test.describe.serial('Service Connection', () => {
 
     // The refusal names Settings, which is the one thing a user can act on, and says it
     // is not the model they are missing — the two messages are separate for that reason.
-    await expect(page.locator('.alert-info')).toContainText('Add one in Settings');
+    // .first() because toContainText respects strict mode and throws on a locator that
+    // resolves to more than one; a swap that ever rendered two notes should not take this
+    // test down with a Playwright error instead of a statement about the app. Same reason
+    // as the .first() in the last test, and this line had been left out of it.
+    await expect(page.locator('.alert-info').first()).toContainText('Add one in Settings');
     await expect(page.locator('#nutrients-table .empty-row')).toBeVisible();
     // Nothing was asked of the service, and no badge is drawn either: with no
     // connection there is no state to report.
@@ -590,9 +629,16 @@ test.describe.serial('Service Connection', () => {
     // Scoped to the editor region rather than to `span.badge` page-wide. The claim is
     // about the connection badge, and a page-wide count is broader than the claim: any
     // unrelated badge Bootstrap or a future field put on the Create page would fail this
-    // assertion for a reason that has nothing to do with the connection. The editor is
-    // where this component renders on the enrichment pages (Views/Supplement/
-    // _NutrientEditor.cshtml:15), so scoping there says exactly what is claimed.
+    // assertion for a reason that has nothing to do with the connection. The two pages
+    // that carry the container are Supplement/Create.cshtml:68 and
+    // Supplement/EditNutrients.cshtml:8 (the container is the whole page there), both of
+    // which render _NutrientEditor.cshtml:15, where this component appears.
+    //
+    // Review.cshtml:18 also renders the badge and is NOT in that list — it has no
+    // #nutrient-editor-container at all. So this selector is deliberately not a page-wide
+    // one, and if this assertion is ever moved to Review it will match nothing and pass
+    // vacuously. Reaching the badge on Review means `#review` or a new container, and the
+    // comment has to move with it.
     expect(service.requests).toHaveLength(0);
     await expect(page.locator('#nutrient-editor-container span.badge')).toHaveCount(0);
     await screenshot(page, testInfo, 'service-connection-enrich-no-connection');

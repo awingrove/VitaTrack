@@ -31,13 +31,20 @@ elif [[ -z "${LLM_API_KEY:-}" || -z "${LLM_BASE_URL:-}" || -z "${LLM_MODEL:-}" ]
         # "v1/models" (ServiceEndpoint.Resolve), so a base that already ends in /v1
         # asks for /v1/v1/models, comes back 404, and leaves the connection unverified
         # with a note blaming an endpoint that never got the question. A path is fine
-        # here — "https://gateway.example/openai" verifies — a version segment is not.
+        # here — a path is not a version segment, so "https://gateway.example/openai"
+        # resolves the same way the bare root does and a version segment does not.
+        #
+        # `read -rp` in all three prompts, and the flag is load-bearing twice over: `-r`
+        # keeps a backslash in the value literal, and `-p` is what *prints* the prompt.
+        # Without it the argument after `-r` is read as a variable name, and "> " is not
+        # a valid identifier, so read fails and `set -e` aborts the script before npx.
+        # That is not a cosmetic bug: this is the only place the base-URL rule is taught.
         echo "Provider base URL, gateway root with no /v1 on the end (e.g. https://gateway.example):"
-        read -r "> " LLM_BASE_URL
+        read -rp "> " LLM_BASE_URL
     fi
     if [[ -z "${LLM_MODEL:-}" ]]; then
         echo "Model that provider expects (e.g. kimi-k2.7-code):"
-        read -r "> " LLM_MODEL
+        read -rp "> " LLM_MODEL
     fi
     export LLM_API_KEY LLM_BASE_URL LLM_MODEL
 fi

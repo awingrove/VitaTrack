@@ -1,11 +1,25 @@
 @* Why the model field is free text. A per-response note, not a stored one: it describes
    the probe this response is the answer to, and the saved state already carries the
    lasting truth in its badge. A plain page load therefore shows the picker with no note
-   rather than repeating a warning about a probe the user never asked for. *@
+   rather than repeating a warning about a probe the user never asked for.
+
+   The wording is load-bearing and it was wrong once. It used to say the connection is
+   "saved and usable either way", which is false for a base URL that already carried a
+   version segment: the probe asks for {base}/v1/models, so a base ending in /v1 asks for
+   /v1/v1/models, comes back 404, and the completion would post to
+   /v1/v1/chat/completions and 404 too — the connection is saved, and enriching with it
+   fails. So this now names the three causes the app genuinely cannot tell apart (no model
+   list, a base URL the service does not serve, a rejected key) and promises none of them.
+   Whether the app should normalise a typed /v1 instead is a design question the register
+   carries as an open entry, not something this copy decides.
+   It also must not claim the opposite ("it is not a sign of a bad key"), because a
+   rejected key produces this exact badge. The e2e pins the two clauses that name the
+   causes the old wording denied, so the revert is red. *@
 @model string
 <div class="alert alert-warning" role="alert">
     <strong>Could not confirm the connection.</strong>
-    Your service did not answer the model-list test. That is often nothing more than an
-    endpoint that does not offer one — it is not a sign of a bad key — and the connection
-    is saved and usable either way. Name the model yourself below.
+    Your service did not answer the model-list test, so the connection is saved but
+    unconfirmed. The usual reason is an endpoint that does not offer a model list — but a base
+    URL your service does not serve, and a key it rejected, look exactly the same from here,
+    and enrichment will fail on any of the three. Name the model yourself below.
 </div>

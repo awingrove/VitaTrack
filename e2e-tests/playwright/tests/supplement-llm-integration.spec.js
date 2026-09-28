@@ -18,6 +18,23 @@ const { screenshot } = require('../helpers/screenshot');
 // required by the app: there is no configured default left to fall back on, and a
 // completion with no model is refused rather than guessed at. test-e2e.sh prompts for
 // all three and exports all three empty in CI, so the whole file self-skips there.
+//
+// The base URL is the gateway ROOT. The app appends its own "v1/models"
+// (ServiceEndpoint.Resolve), so a base that already ends in a version segment asks for
+// /v1/v1/models, gets a 404, and the connection comes back unverified — which looks
+// exactly like a rejected key and is the reason the skip reason below names three causes
+// rather than one. test-e2e.sh's prompt says so too; this says it where the value is read.
+//
+// CROSS-FILE HAZARD, if you add a test here that writes the connection: there is at most
+// one active connection, and service-connection.spec.js is a different file that also
+// writes it. `describe.configure({mode:'serial'})` below serialises only WITHIN this file —
+// under fullyParallel two workers can hold two copies of this file (or this file and
+// service-connection.spec.js) at once, and one will demote the other's connection
+// mid-test. The trigger is narrow today: these tests need a working provider key, and CI
+// runs workers:1, so neither is affected by default. It becomes live the moment someone
+// runs this file locally in parallel with a real key, or a second file starts connecting.
+// The fix is not more serial mode — it is that the second writer is a different file, and
+// the app allows one active row. Keep the write in one file.
 const apiKey = process.env.LLM_API_KEY;
 const baseUrl = process.env.LLM_BASE_URL;
 const model = process.env.LLM_MODEL;
@@ -38,6 +55,16 @@ const skipWithoutProvider =
  * with no model list — is a reason this spec cannot say anything about the code, not a
  * failure a developer can act on. That is the whole reason the earlier version of this
  * file went red for a developer who simply had the variable exported.
+ *
+ * The reason below names all THREE causes, because the badge alone distinguishes none of
+ * them and the third is the one the environment is most likely to hand you. An unverified
+ * badge says the probe did not confirm; it does not say why, and the page's own note cannot
+ * be trusted to say either — it tells the user the connection is "saved and usable either
+ * way", which is false for a base URL that already carried its own /v1, because the
+ * completion would post to a doubled path and 404 too. So a skip naming only the key and
+ * the model list would send the next person to re-paste a credential that was never the
+ * problem. Cause (2) is also deliberately generous, and it was priced: a valid key against
+ * a provider with no model list at all lands there too.
  */
 async function connectRealProvider(page) {
   await page.goto('/ServiceConnection/Index');
@@ -50,8 +77,13 @@ async function connectRealProvider(page) {
   const badge = page.locator('#connection-state .badge');
   await expect(badge).toBeVisible();
   test.skip((await badge.innerText()).trim() !== 'verified',
-    `Skipping — the app's probe did not confirm the connection to ${baseUrl}. The key was not `
-    + 'accepted, or that provider does not list its models.');
+    `Skipping — the app's probe did not confirm the connection to ${baseUrl}, so these tests `
+    + `cannot say anything about the code. Three causes produce this badge and only the first `
+    + `is a credential problem: (1) the key was not accepted; (2) the provider does not serve a `
+    + `model list at the path the app asks for; (3) nothing is listening on that host. Cause (2) `
+    + `includes a base URL that already ends in a version segment — the app appends its own `
+    + `v1/models, so it asked for ${baseUrl}/v1/models, and a /v1 on the end of the base makes `
+    + `that a doubled path that 404s. Drop the /v1 and re-run. Re-pasting the key fixes neither.`);
 
   await expect(page.getByText('Could not confirm the connection.')).toHaveCount(0);
 }

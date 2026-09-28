@@ -22,14 +22,16 @@ namespace VitaTrack.ArchitectureTests;
 /// <c>run.sh</c> — carry no token and would pass, and a repo-root scan names the file
 /// and line of each, which is the list to work through before that root is added.
 /// <para>
-/// The other two tokens no longer occur outside that excluded documentation at all, and
-/// where they were is the part worth keeping. <c>VitaTrack__ApiKey</c> appeared at
-/// <c>AGENTS.md</c>:98 and twice more, on the skip predicate of the real-provider e2e
-/// spec: one dead operand naming a variable the app stopped reading, and one line of CI
-/// prose telling a reader to add a repo secret under that same dead name. All three are
-/// gone, and both places now name the variables the spec actually reads. The count
-/// falling is the least interesting fact about it — every one of those hits was a
-/// sentence showing the next author how to bring the binding back.
+/// Five of the six tokens — every one except <c>VitaTrackOptions</c> itself, which the
+/// line above accounts for — and the JSON section key now occur nowhere outside that
+/// excluded documentation. The one that was, and where it was, is the part worth keeping.
+/// <c>VitaTrack__ApiKey</c> appeared at <c>AGENTS.md</c>:98 and twice more, on the skip
+/// predicate of the real-provider e2e spec: one dead operand naming a variable the app
+/// stopped reading, and one line of CI prose telling a reader to add a repo secret under
+/// that same dead name. All three are gone, and both places now name the variables the
+/// spec actually reads. The count falling is the least interesting fact about it — every
+/// one of those hits was a sentence showing the next author how to bring the binding
+/// back.
 /// </para>
 /// <para>
 /// One token here is a JSON section key rather than one of the colon-form config

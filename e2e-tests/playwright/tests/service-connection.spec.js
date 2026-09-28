@@ -14,8 +14,17 @@ const { startLlmStub, reserveClosedPort } = require('../helpers/llm-stub');
 // unmodified, its status handling and JSON parsing are real, and the request that
 // arrives is recorded whole so a test can assert on the credential and the model
 // settings that travelled with it. The earlier tests do hold app requests open with
-// page.route; that is a browser-side state, not a substituted answer — see the no-mock
-// rule in the root AGENTS.md for where the line sits.
+// page.route and let the app answer them; one also lets the app's own router 404 a POST
+// the form made, which is a real response rather than a written one. Neither writes the
+// app's answer, which is the single forbidden act — see the no-mock rule in the root
+// AGENTS.md for where the line sits and what the two legal shapes are.
+//
+// A limit worth naming: nothing here can assert "the app made no request at all", only
+// "it made no request to this stub". The stub watches one port, so a request the app sent
+// anywhere else would be invisible to it; every route to the network in LlmService passes
+// the `connection is null` check first, which is what makes the assertion carry, and that
+// check has no e2e mutation of its own because no app-side change reaches the request
+// count without tripping the message assertion one line earlier.
 //
 // Serial, and not a style choice: there is at most one active connection by design,
 // so these tests contend on a single row. Under fullyParallel they would demote
@@ -30,7 +39,9 @@ const { startLlmStub, reserveClosedPort } = require('../helpers/llm-stub');
 // The rapid-click test needed one latch; the swap tests need a *second* latch on the
 // same route, and a hold that never re-armed would make the second assertion vacuous —
 // which is the exact failure mode these tests exist to catch. The optional responder
-// stands in for the server, so one helper covers "held open" and "held open, then 500".
+// still lets the app answer, so one helper covers "held open" and "held open, then sent
+// somewhere real" — and what it must never do is WRITE the app's answer, which is the
+// act the no-mock rule in the root AGENTS.md forbids. See the re-enable test below.
 function holdRequests(page, pattern, respond = route => route.continue()) {
   const state = { held: 0, released: 0 };
   page.route(pattern, async route => {
@@ -273,11 +284,28 @@ test.describe.serial('Service Connection', () => {
   test('should re-enable the submit button when the response is not swapped in', async ({ page }) => {
     // The other half of the DESIGN.md sentence, in the only shape where it can fail. On a
     // successful connect the response replaces the form, so the button that comes back is
-    // a new one and "is it enabled?" proves nothing. A 500 is not swapped in by htmx, so
-    // the element asserted on below is the same element that was disabled — marked here so
+    // a new one and "is it enabled?" proves nothing. A response htmx does not swap in
+    // leaves the element asserted on below as the one that was disabled — marked here so
     // the test itself says so, since that is the whole reason it exists.
-    const held = holdRequests(page, '**/ServiceConnection/Connect',
-      route => route.fulfill({ status: 500, body: 'probe exploded' }));
+    //
+    // The response is a REAL one. htmx's responseHandling leaves 4xx and 5xx unswapped
+    // (htmx 2.0.4's defaults), so letting the app's own POST continue to a path its
+    // router does not serve produces exactly the state this test is for — and it is the
+    // running application that produces it. The alternative, which this test used to do,
+    // was `route.fulfill({status: 500})`, which is the app's answer written by the test
+    // and is the one act the no-mock rule forbids on an app endpoint. There is no real 500
+    // to reach here: a rejected connect answers 200 with field errors on the form, and
+    // antiforgery fails a request the rendered form cannot make, so a 404 from the app's
+    // own router is the honest substitute for a fabricated failure rather than a weaker
+    // one. `continue` still runs the app: the request leaves the browser, the response
+    // comes back, and the assertions are on what the UI did with it.
+    const toUnroutedPath = route => {
+      const url = new URL(route.request().url());
+      url.pathname = '/__no-such-endpoint__';
+      return route.continue({ url: url.toString() });
+    };
+
+    const held = holdRequests(page, '**/ServiceConnection/Connect', toUnroutedPath);
 
     await page.goto('/ServiceConnection/Index');
     await page.getByLabel('Base URL').fill('https://api.broken.example.com');
@@ -291,11 +319,12 @@ test.describe.serial('Service Connection', () => {
     held.releaseOne();
     await expect(save).toBeEnabled();
     await expect(save).toHaveAttribute('data-in-flight-marker', 'set');
-    // The marker surviving is the point: htmx does not swap a 500, so this is the same
+    // The marker surviving is the point: htmx does not swap a 404, so this is the same
     // element that went disabled, and "enabled" is the guard's re-enable rather than a
     // replacement. (The earlier tests in this serial run leave a connection saved, so the
-    // claim to check is that *this* one was not saved — the table still shows the
-    // previous URL, and the form still holds what was typed.)
+    // claim to check is that *this* one was not saved — no action ran, so there was
+    // nothing to save; the table still shows the previous URL, and the form still holds
+    // what was typed.)
     await expect(page.getByText('https://api.broken.example.com', { exact: true })).toHaveCount(0);
     await expect(page.getByLabel('Base URL')).toHaveValue('https://api.broken.example.com');
   });
@@ -373,6 +402,37 @@ test.describe.serial('Service Connection', () => {
     await page.getByLabel('API key').fill(apiKey);
     await page.getByRole('button', { name: 'Save connection' }).click();
     await expect(page.locator('#connection-state .badge')).toHaveText(expectedBadge);
+  }
+
+  // The app's scraper User-Agent, repeated here so the question below is asked as nearly
+  // as possible the way the app will ask it. A page that answers these two callers
+  // differently is a real possibility and is named at the skip; a page that answers only
+  // one of them because of the UA is a third-party accident, not a product one, so
+  // matching it removes the largest single source of a false red.
+  const ScraperUserAgent = 'VitaTrack/1.0 (supplement tracker)';
+
+  // Whether THIS MACHINE can fetch a public HTTPS page — asked from the Playwright
+  // worker process, over Node's own fetch, before any page is opened and with the app
+  // nowhere in the request path.
+  //
+  // Why not the app's own answer: because the two questions are different, and this test
+  // got them confused. "Can this machine reach a public page?" is about the environment
+  // and is the only thing a skip is allowed to report. "Did the app scrape it?" is the
+  // thing under test. Reading the app's verdict to decide the skip meant a product
+  // failure reported itself as an environment fault — removing `?? document.Body` from
+  // HtmlScraperService.CleanHtml, so the page fetched fine and extracted to nothing,
+  // turned this test SKIPPED rather than red. A gate that reports the wrong thing is
+  // worse than no gate: the suite stayed green over a broken scraper.
+  async function pageIsReachable(url) {
+    try {
+      const response = await fetch(url, {
+        headers: { 'User-Agent': ScraperUserAgent },
+        signal: AbortSignal.timeout(10000),
+      });
+      return response.ok && (await response.text()).trim().length > 0;
+    } catch {
+      return false;
+    }
   }
 
   test('should verify a connection against a service that lists its models, and pick one of them', async ({ page }, testInfo) => {
@@ -526,8 +586,15 @@ test.describe.serial('Service Connection', () => {
     await expect(page.locator('#nutrients-table .empty-row')).toBeVisible();
     // Nothing was asked of the service, and no badge is drawn either: with no
     // connection there is no state to report.
+    //
+    // Scoped to the editor region rather than to `span.badge` page-wide. The claim is
+    // about the connection badge, and a page-wide count is broader than the claim: any
+    // unrelated badge Bootstrap or a future field put on the Create page would fail this
+    // assertion for a reason that has nothing to do with the connection. The editor is
+    // where this component renders on the enrichment pages (Views/Supplement/
+    // _NutrientEditor.cshtml:15), so scoping there says exactly what is claimed.
     expect(service.requests).toHaveLength(0);
-    await expect(page.locator('span.badge')).toHaveCount(0);
+    await expect(page.locator('#nutrient-editor-container span.badge')).toHaveCount(0);
     await screenshot(page, testInfo, 'service-connection-enrich-no-connection');
   });
 
@@ -536,6 +603,17 @@ test.describe.serial('Service Connection', () => {
     // form, let the probe verify, choose a model the service listed, and watch the
     // completion arrive at that service carrying the credential and the choice.
     test.setTimeout(90000);
+
+    // The environment gate, and the only skip in this file. It asks the machine, not the
+    // app, and it runs first so an offline worker never starts a stub or opens a page.
+    const manufacturer = 'https://example.com/';
+    test.skip(!(await pageIsReachable(manufacturer)),
+      'Skipping — this machine has no route to a public HTTPS page, so the scrape half of '
+      + 'this path cannot run. Asked from the test process rather than from the app, because '
+      + 'an app that cannot scrape a page the test process just fetched is a product failure '
+      + 'and must not report itself as an environment fault. The local half — probe, catalog, '
+      + 'picker, model, reasoning effort — is stubbed and is asserted on either way.');
+
     const service = await startStub();
     const apiKey = 'sk-stub-enrich-1234';
 
@@ -562,24 +640,27 @@ test.describe.serial('Service Connection', () => {
     // anything that is not a public HTTPS address — by design, and pinned by
     // UrlSafetyValidatorTests. So this half of the path needs a real page on the
     // internet, and only this half does: the probe, the catalog and the picker's
-    // choices are all local, and the network fault below is the only reason to skip.
-    await page.fill('input[name="ManufacturerUrl"]', 'https://example.com/');
+    // choices are all local, and the preflight above is the only reason to skip.
+    await page.fill('input[name="ManufacturerUrl"]', manufacturer);
     await page.click('button#enrich-btn');
 
     await expect(page.locator('h4')).toContainText('Nutrients for', { timeout: 60000 });
-    const note = page.locator('.alert-info');
+    // .first() because strict mode throws on a locator that resolves to more than one,
+    // and a swap that ever rendered two notes would take this test down with a
+    // Playwright error rather than a statement about the app. The code means "the note".
+    const note = page.locator('.alert-info').first();
     const noteText = (await note.count()) ? await note.innerText() : '';
-    // Exactly the two faults that mean "this machine has no route to that page", and
-    // nothing else. A broken stub produces a refusal from LlmClient, which is a
-    // different sentence and fails this test rather than skipping it.
-    const networkFaults = ['Failed to fetch manufacturer page', 'No content found on manufacturer page'];
-    test.skip(networkFaults.some(fault => noteText.includes(fault)),
-      'Skipping — no route to a public HTTPS manufacturer page from here. The local half '
-      + 'of this path (probe, catalog, picker) ran above; only the scrape could not.');
 
-    // No error at all: the enrichment succeeded, which is a stronger statement than
-    // the absence of a warning, because the note is the only channel it reports on.
-    expect(noteText).toBe('');
+    // No note at all, and a failure if there is one. This is the assertion the old
+    // network-fault skip was quietly replacing: "Failed to fetch manufacturer page" and
+    // "No content found on manufacturer page" are what LlmService returns for a fetch
+    // that never landed, but they are ALSO what it returns for a CleanHtml that extracts
+    // nothing from a page that loaded, and for a UrlSafetyValidator that blocks the URL.
+    // The preflight already settled which of those is the environment's fault, so here
+    // every one of them is the app's. The one residual this cannot rule out is
+    // example.com answering the preflight and not the app's request; then the fix is a
+    // different page, not a quieter test, and the message says which page.
+    expect(noteText, `the app could not scrape ${manufacturer}, which the test process had just fetched`).toBe('');
 
     // What the service was asked for. `model` is the picker's choice and
     // `reasoning_effort` the variant's, lifted onto the wire from the saved row — the

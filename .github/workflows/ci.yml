@@ -72,6 +72,17 @@ jobs:
         working-directory: e2e-tests/playwright
 
       - name: E2E tests
+        # The real-provider spec reads these three from the environment and types them
+        # into the Settings form; the app itself binds none of them, which is why they
+        # are not a connection string. An unset secret resolves to the empty string,
+        # which is the self-skip case — so adding the secrets is the only change needed
+        # to run that spec in CI, and removing them restores the skip. LLM_BASE_URL must
+        # be the gateway root with no /v1 on the end: the app appends its own
+        # v1/models, so a base carrying a version segment probes a doubled path.
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
         run: ./test-e2e.sh
 
       - name: Upload Playwright report

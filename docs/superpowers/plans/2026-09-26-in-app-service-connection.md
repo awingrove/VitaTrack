@@ -266,8 +266,9 @@ Expected: FAIL — types do not exist.
 - [ ] **Step 3: Implement `ConnectServiceRequest` and `SaveConnectionHandler`**
 
 `ConnectServiceRequest` carries `BaseUrl`, `ApiKey`, and an optional free-text `Model` — **no `Service` field
-yet**. The handler writes `Service = "opencode"` as a literal; Task 3 replaces that literal with a registry
-lookup and Task 5 adds the selector. It validates non-blank URL and key, trims the model, then saves — the
+yet**. The handler writes `Service = "opencode"` as a literal; **Task 5** replaces that literal with a registry
+lookup and adds the selector (its test list carries `HandleAsync_RejectsUnknownServiceId`). It validates
+non-blank URL and key, trims the model, then saves — the
 repository already deactivates the previous active row, so the handler does not duplicate that.
 
 **One design question, decided here to keep Task 5 small:** the tracer's controller uses a plain form POST and
@@ -473,14 +474,15 @@ git commit -m "refactor: LLM seam takes the connection per call; drop the config
 > column mean anything.
 
 **Files:**
-- Create: `.../ServiceConnections/{ConnectServiceRequest,SelectModelRequest,SaveConnectionHandler,ProbeConnectionHandler}.cs`
-- Create: `VitaTrack.Web/Controllers/ServiceConnectionController.cs`
-- Create: `VitaTrack.Web/Views/ServiceConnection/{Index,_ConnectForm,_ModelPicker}.cshtml`
-- Modify: `VitaTrack.Web/Views/Shared/_Layout.cshtml` (nav item — **required**, `UiReachabilityTests` fails an orphan page)
+- Create: `.../ServiceConnections/{SelectModelRequest,ProbeConnectionHandler}.cs`
+- Modify: `.../ServiceConnections/{ConnectServiceRequest,SaveConnectionHandler}.cs` (tracer files — swap the `Service` literal for a registry lookup, add registry validation)
+- Modify: `VitaTrack.Web/Controllers/ServiceConnectionController.cs` (add the two HTMX POST targets)
+- Create: `VitaTrack.Web/Views/ServiceConnection/_ModelPicker.cshtml`
+- Modify: `VitaTrack.Web/Views/ServiceConnection/{Index,_ConnectForm}.cshtml` (add the model/variant controls and the unverified branch)
 - Modify: `VitaTrack.Core/ServiceCollectionExtensions.cs` (register the new services + set the `HttpClientFactory` seam)
-- Modify: `shards.yaml` (claim all new files)
-- Test: `VitaTrack.Tests/Features/ServiceConnections/SaveConnectionHandlerTests.cs`
-- Test: `VitaTrack.Tests/ServiceConnectionControllerTests.cs`
+- Modify: `shards.yaml` (claim the new files)
+- Test: `VitaTrack.Tests/Features/ServiceConnections/SaveConnectionHandlerTests.cs` (extend — `ProbeAsync_*` cases and `HandleAsync_RejectsUnknownServiceId`)
+- Test: `VitaTrack.Tests/ServiceConnectionControllerTests.cs` (extend — the two HTMX targets, the unverified branch, `SelectModel`, `Delete`)
 
 **Interfaces:** consumes `ServiceConnection` (Task 1), the save path (Task 2), `ServiceDescriptorRegistry` and
 `IServiceCatalogClient` (Task 3). Produces no new public types.
@@ -686,9 +688,9 @@ and the message names the id.
 
 **Files:**
 - Create: `e2e-tests/playwright/helpers/llm-stub.js`
-- Create: `e2e-tests/playwright/tests/service-connection.spec.js`
+- Modify: `e2e-tests/playwright/tests/service-connection.spec.js` (the tracer's spec — add the probe and model-selection cases against the stub)
 - Modify: `e2e-tests/playwright/tests/supplement-llm-integration.spec.js`
-- Modify: `shards.yaml` (claim the new spec under `SC` `e2e_specs:`)
+- Modify: `shards.yaml` (claim the new helper and spec under `SC` `e2e_specs:`)
 - Modify: `AGENTS.md` (amend the no-mock rule — see Step 4)
 
 **Interfaces:** consumes the shipped feature. Produces no new types.

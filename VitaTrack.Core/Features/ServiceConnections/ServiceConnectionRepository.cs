@@ -10,10 +10,18 @@ namespace VitaTrack.Core.Features.ServiceConnections;
 /// Dapper persistence for <see cref="ServiceConnection"/>. Enforces the
 /// at-most-one-active invariant: every save first issues the single
 /// <c>UPDATE ... SET IsActive = 0 WHERE IsActive = 1</c> deactivation, then the
-/// insert/update, in the same parameterised command batch.
+/// insert/update, in one transaction — so a save that fails cannot demote the
+/// connection that is live right now.
 /// </summary>
 public class ServiceConnectionRepository(IDbConnection db) : IServiceConnectionRepository
 {
+    /// <summary>SaveAsync's "no row was written" answer. Ids come from an
+    /// AUTOINCREMENT column, so 0 is never a real id.</summary>
+    private const int UnknownRow = 0;
+
+    /// <summary>Round-trip ("o") ISO-8601, written and read back unchanged.</summary>
+    private const string RoundTripFormat = "o";
+
     private readonly IDbConnection _db = db;
 
     public async Task<ServiceConnection?> GetActiveAsync(CancellationToken ct = default)
@@ -23,7 +31,7 @@ SELECT Id, Service, BaseUrl, ApiKey, Model, Variant, MaxTokens, Temperature, Ver
 FROM ServiceConnections
 WHERE IsActive = 1
 LIMIT 1;";
-        var row = await _db.QuerySingleOrDefaultAsync<ServiceConnectionRow>(Abortable(sql, ct));
+        var row = await _db.QuerySingleOrDefaultAsync<ServiceConnectionRow>(WithCancellation(sql, ct));
         return row is null ? null : ToConnection(row);
     }
 
@@ -33,51 +41,105 @@ LIMIT 1;";
 SELECT Id, Service, BaseUrl, ApiKey, Model, Variant, MaxTokens, Temperature, Verification, VerifiedAt, IsActive, CreatedAt, UpdatedAt
 FROM ServiceConnections
 ORDER BY UpdatedAt DESC, Id DESC;";
-        var rows = await _db.QueryAsync<ServiceConnectionRow>(Abortable(sql, ct));
+        var rows = await _db.QueryAsync<ServiceConnectionRow>(WithCancellation(sql, ct));
         var connections = new List<ServiceConnection>();
         foreach (var row in rows) connections.Add(ToConnection(row));
         return connections;
     }
 
-    public async Task<int> SaveAsync(ServiceConnection connection, CancellationToken ct = default)
-    {
-        var now = DateTimeOffset.UtcNow;
-        // Stamps are caller-controlled and defaulted to now: rows saved without
-        // stamps get CreatedAt == UpdatedAt == now; rows that carry them are
-        // persisted verbatim so a loaded record round-trips unchanged.
-        var createdAt = connection.CreatedAt == default ? now : connection.CreatedAt;
-        var updatedAt = connection.UpdatedAt == default ? now : connection.UpdatedAt;
-        if (connection.Id == 0)
-        {
-            const string sql = @"
-UPDATE ServiceConnections SET IsActive = 0 WHERE IsActive = 1;
-INSERT INTO ServiceConnections (Service, BaseUrl, ApiKey, Model, Variant, MaxTokens, Temperature, Verification, VerifiedAt, IsActive, CreatedAt, UpdatedAt)
-VALUES (@Service, @BaseUrl, @ApiKey, @Model, @Variant, @MaxTokens, @Temperature, @Verification, @VerifiedAt, @IsActive, @CreatedAt, @UpdatedAt);
-SELECT last_insert_rowid();";
-            return await _db.ExecuteScalarAsync<int>(new CommandDefinition(sql, SaveParameters(connection, updatedAt, createdAt), cancellationToken: ct));
-        }
-
-        const string updateSql = @"
-UPDATE ServiceConnections SET IsActive = 0 WHERE IsActive = 1;
-UPDATE ServiceConnections
-SET Service = @Service, BaseUrl = @BaseUrl, ApiKey = @ApiKey, Model = @Model, Variant = @Variant,
-    MaxTokens = @MaxTokens, Temperature = @Temperature, Verification = @Verification, VerifiedAt = @VerifiedAt,
-    IsActive = @IsActive, CreatedAt = @CreatedAt, UpdatedAt = @UpdatedAt
-WHERE Id = @Id;";
-        await _db.ExecuteAsync(new CommandDefinition(updateSql, SaveParameters(connection, updatedAt, createdAt), cancellationToken: ct));
-        return connection.Id;
-    }
+    public Task<int> SaveAsync(ServiceConnection connection, CancellationToken ct = default) =>
+        WriteAsync(
+            transaction => connection.Id == 0
+                ? InsertAsync(connection, transaction, ct)
+                : UpdateAsync(connection, transaction, ct),
+            ct);
 
     public async Task<bool> DeleteAsync(int id, CancellationToken ct = default)
     {
         const string sql = "DELETE FROM ServiceConnections WHERE Id = @Id;";
-        var rows = await _db.ExecuteAsync(new CommandDefinition(sql, new { Id = id }, cancellationToken: ct));
+        var rows = await _db.ExecuteAsync(WithCancellation(sql, new { Id = id }, ct));
         return rows > 0;
     }
 
-    private static CommandDefinition Abortable(string sql, CancellationToken ct) => new(sql, cancellationToken: ct);
+    /// <summary>Runs one write batch in a transaction. The deactivation and the
+    /// write either both land or neither does — an unknown id must not leave the
+    /// user with no active connection and no save.</summary>
+    private async Task<int> WriteAsync(Func<IDbTransaction, Task<int>> write, CancellationToken ct)
+    {
+        var wasClosed = _db.State == ConnectionState.Closed;
+        if (wasClosed) _db.Open();
 
-    private static object SaveParameters(ServiceConnection connection, DateTimeOffset updatedAt, DateTimeOffset createdAt) => new
+        using var transaction = _db.BeginTransaction();
+        try
+        {
+            var id = await write(transaction);
+            if (id == UnknownRow)
+            {
+                transaction.Rollback();
+                return UnknownRow;
+            }
+
+            transaction.Commit();
+            return id;
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
+        finally
+        {
+            if (wasClosed) _db.Close();
+        }
+    }
+
+    private async Task<int> InsertAsync(ServiceConnection connection, IDbTransaction transaction, CancellationToken ct)
+    {
+        const string sql = @"
+UPDATE ServiceConnections SET IsActive = 0 WHERE IsActive = 1;
+INSERT INTO ServiceConnections (Service, BaseUrl, ApiKey, Model, Variant, MaxTokens, Temperature, Verification, VerifiedAt, IsActive, CreatedAt, UpdatedAt)
+VALUES (@Service, @BaseUrl, @ApiKey, @Model, @Variant, @MaxTokens, @Temperature, @Verification, @VerifiedAt, @IsActive, @CreatedAt, @UpdatedAt);
+SELECT last_insert_rowid();";
+        // One clock read for both stamps, so a caller who supplies neither gets
+        // CreatedAt == UpdatedAt; a caller who supplies both keeps them verbatim.
+        var now = DateTimeOffset.UtcNow;
+        var createdAt = connection.CreatedAt == default ? now : connection.CreatedAt;
+        var updatedAt = connection.UpdatedAt == default ? now : connection.UpdatedAt;
+        var parameters = SaveParameters(connection, createdAt: createdAt, updatedAt: updatedAt);
+        return await _db.ExecuteScalarAsync<int>(new CommandDefinition(sql, parameters, transaction, cancellationToken: ct));
+    }
+
+    /// <summary>CreatedAt is deliberately absent from the SET clause: it is immutable
+    /// once written, so a caller-built update record cannot blank or back-date it.
+    /// UpdatedAt is unconditionally now, never the caller's value, so it advances on
+    /// every update and <c>GetAllAsync</c>'s recency order means something.</summary>
+    private async Task<int> UpdateAsync(ServiceConnection connection, IDbTransaction transaction, CancellationToken ct)
+    {
+        // SELECT changes() is the trailing statement on purpose: a command's own affected-row
+        // count covers the whole batch, so it cannot say whether *this* update matched a row.
+        const string sql = @"
+UPDATE ServiceConnections SET IsActive = 0 WHERE IsActive = 1;
+UPDATE ServiceConnections
+SET Service = @Service, BaseUrl = @BaseUrl, ApiKey = @ApiKey, Model = @Model, Variant = @Variant,
+    MaxTokens = @MaxTokens, Temperature = @Temperature, Verification = @Verification, VerifiedAt = @VerifiedAt,
+    IsActive = @IsActive, UpdatedAt = @UpdatedAt
+WHERE Id = @Id;
+SELECT changes();";
+        var parameters = SaveParameters(connection, createdAt: null, updatedAt: DateTimeOffset.UtcNow);
+        var updatedRows = await _db.ExecuteScalarAsync<int>(new CommandDefinition(sql, parameters, transaction, cancellationToken: ct));
+        return updatedRows == 0 ? UnknownRow : connection.Id;
+    }
+
+    private static CommandDefinition WithCancellation(string sql, CancellationToken ct) => new(sql, cancellationToken: ct);
+
+    private static CommandDefinition WithCancellation(string sql, object parameters, CancellationToken ct) =>
+        new(sql, parameters, cancellationToken: ct);
+
+    /// <summary>Parameters for both write branches. <paramref name="createdAt"/> is null
+    /// on update: CreatedAt is immutable, so it is absent from the update SET clause and
+    /// Dapper never binds the parameter. The stamps are named at every call site so the
+    /// two same-typed values cannot be transposed.</summary>
+    private static object SaveParameters(ServiceConnection connection, DateTimeOffset? createdAt, DateTimeOffset updatedAt) => new
     {
         connection.Id,
         connection.Service,
@@ -88,10 +150,10 @@ WHERE Id = @Id;";
         connection.MaxTokens,
         connection.Temperature,
         connection.Verification,
-        VerifiedAt = connection.VerifiedAt?.ToString("o", CultureInfo.InvariantCulture),
+        VerifiedAt = connection.VerifiedAt?.ToString(RoundTripFormat, CultureInfo.InvariantCulture),
         connection.IsActive,
-        CreatedAt = createdAt.ToString("o", CultureInfo.InvariantCulture),
-        UpdatedAt = updatedAt.ToString("o", CultureInfo.InvariantCulture)
+        CreatedAt = createdAt?.ToString(RoundTripFormat, CultureInfo.InvariantCulture),
+        UpdatedAt = updatedAt.ToString(RoundTripFormat, CultureInfo.InvariantCulture)
     };
 
     private static ServiceConnection ToConnection(ServiceConnectionRow row) => new()
@@ -111,10 +173,12 @@ WHERE Id = @Id;";
         UpdatedAt = ParseRequiredDate(row.Id, row.UpdatedAt, nameof(ServiceConnection.UpdatedAt))
     };
 
+    /// <summary>Round-trip parse, so the stored UTC offset survives. A value that is not
+    /// round-trip ISO-8601 reads as null rather than as a shifted instant.</summary>
     private static DateTimeOffset? ParseDate(string? value) =>
-        string.IsNullOrEmpty(value)
-            ? null
-            : DateTimeOffset.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+        DateTimeOffset.TryParseExact(value, RoundTripFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)
+            ? parsed
+            : null;
 
     /// <summary>NOT NULL date columns are always stamped at write time here; a parse
     /// failure means a row written by hand, and a loud error beats a silently wrong date.</summary>
@@ -123,7 +187,7 @@ WHERE Id = @Id;";
         ?? throw new InvalidOperationException($"ServiceConnections row {id} has a {column} that is not a round-trip ISO-8601 value.");
 
     /// <summary>Raw row shape: dates are TEXT, IsActive and MaxTokens are INTEGER,
-    /// Temperature is REAL. The rank projection lets SQLite compute recency.</summary>
+    /// Temperature is REAL.</summary>
     private sealed record ServiceConnectionRow(
         long Id,
         string Service,

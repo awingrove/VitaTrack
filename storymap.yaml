@@ -439,5 +439,17 @@ activities:
         entry_point: n/a (backend persistence only; Settings UI lands with the tracer task)
         stories:
           - title: Persist a service connection with at-most-one-active enforcement
-            status: in progress
+            status: done
             priority: high
+            tests:
+              - unit: ServiceConnectionRepositoryTests.SaveAsync_ThenGetActive_ReturnsRow
+              - unit: ServiceConnectionRepositoryTests.SaveAsync_SecondActiveConnection_DeactivatesTheFirst
+              - unit: ServiceConnectionRepositoryTests.SaveAsync_UpdatesExistingRow_WhenIdIsNonZero
+              - unit: ServiceConnectionRepositoryTests.GetActiveAsync_WithNoRows_ReturnsNull
+              - unit: ServiceConnectionRepositoryTests.DeleteAsync_RemovesTheRow_AndGetActiveThenReturnsNull
+              - unit: ServiceConnectionRepositoryTests.SaveAsync_StampsCreatedAtAndUpdatedAt
+              - unit: ServiceConnectionRepositoryTests.SaveAsync_UpdateById_DeactivatesTheOtherActiveRow
+              - unit: ServiceConnectionRepositoryTests.SaveAsync_UpdateById_KeepsCreatedAtImmutableAndAdvancesUpdatedAt
+              - unit: ServiceConnectionRepositoryTests.SaveAsync_WhenTheWriteFails_RollsBackTheDeactivation
+              - unit: ServiceConnectionRepositoryTests.SaveAsync_WithUnknownId_ReportsNoRowWrittenAndKeepsTheActiveRow
+              - unit: ServiceConnectionRepositoryTests.SaveAsync_InactiveRow_DeactivatesTheCurrentActive_LeavingNoneActive

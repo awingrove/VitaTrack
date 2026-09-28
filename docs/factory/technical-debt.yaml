@@ -783,3 +783,45 @@ defects:
       `LlmClientLoggingTests`, which pins the rule for the completion client the way
       `ServiceCatalogClientFailureTests` already pins it for the probe.
     closed_in: LlmClientLoggingTests.cs
+
+  - id: DL-006
+    title: >-
+      a test comment claimed a guarantee no assertion provided, and the suite stayed green
+      with the claim false
+    found: 2026-09-28
+    what: >-
+      The doc comment on `AddCore_LlmClient_CarriesNoBaseAddressAndNoAuthorization` said
+      resolving `IHttpClientFactory` for the name `"llm"` "is also what pins that the
+      registration itself still exists; drop it and this throws rather than quietly
+      returning an unconfigured client". The reviewer deleted
+      `services.AddHttpClient("llm");` and ran the whole solution: arch 29 / unit 357 / 0
+      failed. `DefaultHttpClientFactory.CreateClient` on an unknown name returns a fresh
+      unconfigured client and never throws. Five more comments overstate their reach the
+      same way: `LlmClient`'s class doc ("registered with no configure delegate", stronger
+      than two value asserts), the seam test's "the state any other caller of that name
+      could put it in" when the name has one user, `ConfigBindingAbsentTests`' token
+      rationale (three tokens it described as named "in a binding, an appsettings reader
+      or a doc sentence", none of which had a location anywhere), its JSON section token
+      unanchored so `"name": "VitaTrack"` in `package-lock.json` was a violation, and
+      the guard's scope note, which disclosed the root `AGENTS.md` exclusion as an
+      inheritance rather than as the decision it is.
+    injection_stage: >-
+      (found Sep 2026 in review round 1 of the service-connection slice, Task 6.) The
+      delete-configuration task rewrote comments to describe the post-deletion state and
+      checked each against the *code*; it did not check each against the *assertions
+      standing behind it*. The same round recorded a test limitation in its report as
+      "cannot be made red by any mutation available to me", which one line of delegate
+      falsified.
+    detection_stage: >-
+      code review, and only because the reviewer mutated the comment's claim — deleted
+      the registration — and re-ran the suite. No test could have caught it: a comment
+      has no assertions, and a green suite is indistinguishable from a guarantee that
+      holds.
+    systemic_gap: >-
+      a comment stating a guarantee reads as a test, and nothing checks it: mutation runs
+      on code, not prose, so the only available method is a human inverting the sentence
+      and seeing whether anything goes red. Not closed by this fix — six comments are now
+      true and one assertion stands in for the registration, which is a specific repair,
+      not a gate. The transferable rule for the next agent: a comment being rewritten is a
+      claim under review, and the mutation that checks it is to invert the sentence and
+      re-run.

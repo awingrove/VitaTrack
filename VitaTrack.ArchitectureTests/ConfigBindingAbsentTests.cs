@@ -11,10 +11,17 @@ namespace VitaTrack.ArchitectureTests;
 /// config block is inert JSON, the env var is read by a shell script — and each one
 /// is a second place the credential lives, which is the thing this slice removed.
 /// <para>
-/// The scan covers the three source roots only. <c>docs/plans/</c> and
-/// <c>docs/superpowers/</c> are dated records of the decision itself and quote the old
-/// name on purpose; the root <c>AGENTS.md</c>, <c>README.md</c> and <c>run.sh</c> are
-/// prose and scripts that a later documentation task owns.
+/// The scan covers the three source roots, and every exclusion is a decision rather
+/// than an inheritance. <c>docs/plans/</c> and <c>docs/superpowers/</c> are dated
+/// records of the decision itself and quote the old name on purpose — 37 of the 41
+/// hits a repo-root scan reports live there. The root <c>AGENTS.md</c> is the
+/// exclusion that is temporary: it still names <c>IOptions&lt;VitaTrackOptions&gt;</c>
+/// at line 57 and <c>VitaTrack__ApiKey</c> at line 93, so naming the repo root in
+/// <see cref="ScanRoots"/> today would make this guard red over a documentation fix
+/// another task owns. The root's other files — <c>README.md</c>, <c>run.sh</c> —
+/// carry no token and would pass, and the last two hits are lines 7 and 141 of the
+/// <c>e2e-tests</c> enrichment spec. A repo-root scan names the file and line of
+/// each, which is the list to work through before that root is added.
 /// </para>
 /// <para>
 /// One token here is a JSON section key rather than one of the colon-form config
@@ -23,7 +30,10 @@ namespace VitaTrack.ArchitectureTests;
 /// <c>VitaTrack:ApiKey</c> will find. Without that token the block's removal would be
 /// an unverified step in the diff, and a future block would be free to reappear.
 /// It is therefore matched only in <c>.json</c> files, where it means the section
-/// key, and never in code — where the same quotes are just a string.
+/// key, and never in code — where the same quotes are just a string. The trailing
+/// colon is load-bearing, not decoration: unanchored, the token also matches
+/// <c>package-lock.json</c>'s <c>"name": "VitaTrack"</c> value, which is this
+/// project's own name and has nothing to do with a connection.
 /// </para>
 /// </summary>
 [TestClass]
@@ -36,11 +46,20 @@ public class ConfigBindingAbsentTests
     };
 
     /// <summary>
-    /// Every way this configuration named itself. <c>VitaTrackOptions</c> subsumes
-    /// <c>IOptions&lt;VitaTrackOptions&gt;</c> and the three <c>VitaTrack:*</c> paths
-    /// are each listed because they are named separately in a binding, an
-    /// <c>appsettings</c> reader or a doc sentence, and losing one name from the list
-    /// would silently stop guarding the spelling that is still in use.
+    /// Every way this configuration named itself, kept as a list rather than one
+    /// pattern because they are separate spellings and a reintroducer picks one of
+    /// them. <c>VitaTrackOptions</c> subsumes <c>IOptions&lt;VitaTrackOptions&gt;</c>,
+    /// so the first entry is redundant by design rather than by accident.
+    /// <para>
+    /// Four of these six had <em>no</em> pre-deletion location inside the three scan
+    /// roots: the binding named the section once and read the leaves through
+    /// <c>VitaTrackOptions</c>, so <c>VitaTrack:ApiKey</c> and its siblings never
+    /// appeared as text in code, an <c>appsettings</c> reader or a doc line here. They
+    /// are kept because <c>IConfiguration["VitaTrack:ApiKey"]</c> is exactly what a
+    /// reintroducer writes, and a guard has to be able to go red on a spelling it has
+    /// never seen. Dropping one because nothing in the repository says it today would
+    /// leave the spelling most likely to be typed unguarded.
+    /// </para>
     /// </summary>
     private static readonly string[] ForbiddenTokens =
     {
@@ -52,9 +71,11 @@ public class ConfigBindingAbsentTests
         "VitaTrack__ApiKey",
     };
 
-    /// <summary>The <c>"VitaTrack"</c> section key, which is what an
-    /// <c>appsettings</c> file actually contains. Checked in <c>.json</c> only.</summary>
-    private const string JsonSectionToken = "\"VitaTrack\"";
+    /// <summary>The <c>"VitaTrack":</c> section key, which is what an
+    /// <c>appsettings</c> file actually contains. Checked in <c>.json</c> only, and
+    /// anchored on the colon so a <c>"VitaTrack"</c> appearing as a value — this
+    /// repository's own name in <c>package-lock.json</c> — is not a violation.</summary>
+    private const string JsonSectionToken = "\"VitaTrack\":";
 
     private static readonly string[] ScannedExtensions =
     {

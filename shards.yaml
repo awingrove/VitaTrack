@@ -255,6 +255,11 @@ slices:
       - VitaTrack.Core/Features/ServiceConnections/ConnectServiceRequest.cs
       - VitaTrack.Core/Features/ServiceConnections/SaveConnectionResult.cs
       - VitaTrack.Core/Features/ServiceConnections/SaveConnectionHandler.cs
+      - VitaTrack.Core/Features/ServiceConnections/ServiceDescriptor.cs
+      - VitaTrack.Core/Features/ServiceConnections/ServiceDescriptorRegistry.cs
+      - VitaTrack.Core/Features/ServiceConnections/ModelCatalog.cs
+      - VitaTrack.Core/Features/ServiceConnections/ServiceEndpoint.cs
+      - VitaTrack.Core/Features/ServiceConnections/ServiceCatalogClient.cs
     views:
       - VitaTrack.Web/Views/ServiceConnection/**
     models:
@@ -264,6 +269,8 @@ slices:
     unit_tests:
       - VitaTrack.Tests/Features/ServiceConnections/ServiceConnectionRepositoryTests.cs
       - VitaTrack.Tests/Features/ServiceConnections/SaveConnectionHandlerTests.cs
+      - VitaTrack.Tests/Features/ServiceConnections/ServiceDescriptorRegistryTests.cs
+      - VitaTrack.Tests/Features/ServiceConnections/ServiceCatalogClientTests.cs
       - VitaTrack.Tests/ServiceConnectionControllerTests.cs
       - VitaTrack.Tests/ServiceConnectionFormTests.cs
     e2e_specs:

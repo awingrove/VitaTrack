@@ -12,6 +12,16 @@
 #   cost_usd         dollar spend reported by opencode for the session (0 = free tier)
 # Extract from the executor session: `opencode session list` to find the session id,
 # `opencode export <sessionID>` → info.tokens / info.cost (see metrics.md).
+#
+# SHELL (Application Shell) is shipped — `shards.yaml:244`, with SHELL-1..3 all
+# `done` in storymap.yaml — and deliberately has no entry here. Its
+# `human_interventions`, `guardrail_failures` and `fix_commits` are not derivable
+# from this repository's record, so none were invented: a guessed flattering
+# number is exactly what the SC entry's own notes condemn. Owner: the next pass
+# that touches the shell slice and has the counters in hand. Until then the
+# dashboard's red "Missing ledger" badge for SHELL is the pressure metrics.md
+# intends (a shipped slice without an entry fails `verify-shard` past three
+# entries), not a bug to suppress by filling the cell in.
 
 shards:
   - id: PD
@@ -174,15 +184,18 @@ shards:
     agent: cheap
     human_interventions: 16
     guardrail_failures: 3
-    fix_commits: 15
+    fix_commits: 17
     defects_escaped: 0
     agent_model: opencode-go/glm-5.3-flash (Task 1 implementer) then
       opencode/opencode/space-bunny-free (every subagent from Task 1's review onward)
     notes: >
       Slice conversion plus the credential move per
       docs/superpowers/plans/2026-09-26-in-app-service-connection.md
-      (8 tasks + 3 fix rounds + a whole-branch review pass). 31 commits on the
-      branch: 4 feat, 15 fix, 8 docs, 3 refactor, 1 test.
+      (8 tasks + 3 fix rounds + a whole-branch review pass). 33 commits on the
+      branch at `d0b108e` (the tip of the before-merge pass 2 corrections):
+      4 feat, 17 fix, 8 docs, 3 refactor, 1 test. The one commit after that base
+      is the `docs:` commit carrying this entry, so the branch is 34 at HEAD with
+      the same 17.
 
       **agent_model is a split pair and is recorded that way deliberately.** Task 1's
       implementer ran on `opencode-go/glm-5.3-flash`; the reviewer's GLM quota was then
@@ -214,10 +227,17 @@ shards:
       on this branch and was found only by mutating the *claim* and re-running — which is
       why the whole-branch review pass, and this ledger entry, exist.
 
-      **fix_commits = 15** is the count of `fix:` subjects on the branch (31 commits
-      total, 4 feat). Read as "rework commits after a done claim", not as 15 red
-      regressions: most are review findings applied, and the subject prefix is the only
-      machine-derivable signal available.
+      **fix_commits = 17** is the count of `fix:` subjects on the branch, measured at
+      `d0b108e` with `git log --format=%s main..d0b108e | grep -c '^fix:'` (33 commits
+      there, 4 feat). **The field names its base deliberately:** a count written in one
+      commit is invalidated by the next, and the count this entry last wrote was
+      invalidated by its own commit — 15 was correct at `12d1e30`, the tree it was
+      measured on, and stale by one the moment `1c6f28c` landed. Re-run the derivation
+      at any base rather than trusting the field. The base named here is a `fix:`
+      commit and the one commit after it is this `docs:` one, so HEAD derives the same
+      17. Read as "rework commits after a done claim", not as 17 red regressions: most
+      are review findings applied, and the subject prefix is the only machine-derivable
+      signal available.
 
       **guardrail_failures = 3 is a floor, not a count.** Three are citable from the
       branch record — `35f4f47` (the pre-commit TechnicalDebtRegisterTests red on

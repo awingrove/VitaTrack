@@ -420,7 +420,7 @@ New `LlmClientRequestTests` against a stub handler. Assert:
 - `PostChatAsync_SendsModelFromSettings` — `settings.Model` appears as `model` in the body.
 - `PostChatAsync_SendsVariantAsReasoningEffort_AndOmitsWhenNull` — `Variant = "high"` → body has `reasoning_effort: "high"`; `Variant = null` → key absent.
 - `PostChatAsync_UsesMaxTokensAndTemperatureFromSettings` — a `settings` override changes both in the body, proving the values are no longer read from configuration.
-- `PostChatAsync_SendsXOpencodeSessionHeader_FromTheSessionSingleton` — the value is the `LlmSessionId` singleton's, stable across two calls.
+- `PostChatAsync_SendsXOpencodeSessionHeader_FromTheSessionSingleton` — the value is the `LlmSessionId` singleton's, stable across two calls **and** `AreEqual(ServiceDescriptorRegistry.SessionId, …)`. Stability alone does not catch a second `Guid`: a per-construction id satisfies it, so the identity assertion is what pins the one home.
 - `PostChatAsync_WithNullModel_ReturnsErrorPointingAtSettings` — no `gpt-4o-mini` fallback; the error text names Settings.
 - `PostChatAsync_KeepsExistingErrorAndEmptyResponseBehavior` — non-2xx, empty choices, and empty content still return their existing `LlmCompletion` errors.
 
@@ -431,7 +431,7 @@ Expected: FAIL — signatures do not match.
 
 - [ ] **Step 3: Add `LlmSessionId`**
 
-A registered singleton exposing one `Guid` generated at construction, exposed as a string. One id per process, stable across every request, fresh across restarts.
+`LlmSessionId` is a thin DI wrapper that **returns** `ServiceDescriptorRegistry.SessionId` — it does not own, generate, or store an id of its own. One id per process, stable across every request, fresh across restarts, and the same value the `HeaderFactory` at `ServiceDescriptorRegistry` already sends. Do not add a `Guid` field to it.
 
 - [ ] **Step 4: Rewrite `ILlmClient` / `LlmClient`**
 
@@ -530,7 +530,7 @@ Thin controller: bind the DTO, call the handler, return a view or partial. Two H
 
 - [ ] **Step 7: Register the services in `ServiceCollectionExtensions`**
 
-`AddScoped` for `IServiceCatalogClient` (`AddHttpClient<IServiceCatalogClient, ServiceCatalogClient>()` — it takes `IHttpClientFactory` and `ILogger<ServiceCatalogClient>` by constructor, so DI supplies both); `AddSingleton` for `LlmSessionId`, which must wrap `ServiceDescriptorRegistry.SessionId` rather than mint a second id. The registry has no `HttpClientFactory` seam to set: it was declared in the Interfaces block above and deleted in Task 3's fix round as unread. The repository and `SaveConnectionHandler` were registered by the tracer (Task 2) — extend, do not duplicate. **Do not add a configure delegate to the `"llm"` client** — that is Task 6's deletion, and this task only adds the new registrations.
+`AddScoped<IServiceCatalogClient, ServiceCatalogClient>()` for the catalog client (it takes `IHttpClientFactory` and `ILogger<ServiceCatalogClient>` by constructor, so DI supplies both — **not** `AddHttpClient<TInterface, TImpl>()`: that overload builds the client through `DefaultTypedHttpClientFactory<T>`, which requires a constructor taking `HttpClient`, and it fails at resolution, not at compile time); `AddSingleton` for `LlmSessionId`, which must wrap `ServiceDescriptorRegistry.SessionId` rather than mint a second id. The registry has no `HttpClientFactory` seam to set: it was declared in the Interfaces block above and deleted in Task 3's fix round as unread. The repository and `SaveConnectionHandler` were registered by the tracer (Task 2) — extend, do not duplicate. **Do not add a configure delegate to the `"llm"` client** — that is Task 6's deletion, and this task only adds the new registrations.
 
 - [ ] **Step 8: Run the full gate**
 

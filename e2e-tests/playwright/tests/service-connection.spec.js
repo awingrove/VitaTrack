@@ -197,6 +197,14 @@ test.describe.serial('Service Connection', () => {
     await expect(page.getByText('Saved connection')).toBeVisible();
     expect(asked).toHaveLength(1);
     expect(asked[0]).toContain('Disconnect this service?');
+    // The retention clause. Every connect is a new row (SaveConnectionHandler sets
+    // Id = 0) and Delete removes the active one only, so a key from an earlier
+    // connection survives the disconnect — a fact the confirm used to deny outright
+    // ("only the connection is removed"). Pinned in the same dialog that is already
+    // being read, so a future copy edit that drops the clause is red here. Which of
+    // the two answers to "should a superseded credential survive at all" the product
+    // takes is TD-028; this clause is worded to be true under either.
+    expect(asked[0]).toContain('a key from an earlier connection stays on record');
 
     // Having refused it, the user changes their mind: the same form, asked again.
     asked = [];

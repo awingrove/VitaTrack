@@ -16,8 +16,18 @@
             <tr><th scope="row">API key</th><td>@Model.Saved.MaskedApiKey</td></tr>
         </tbody>
     </table>
+    @* The confirm names the retention, because "only the connection is removed" was
+       false and nobody had written down what is true instead. `SaveConnectionHandler`
+       sets `Id = 0`, so every connect is a NEW row and the previous one is demoted, not
+       deleted; `Delete` removes the ACTIVE row only. Three connects then Disconnect
+       leaves two superseded rows holding plaintext API keys, and the page reads
+       "not connected" because nothing renders them. Retention is deliberate — storymap
+       records "keeping the previous connection on record" as a done story — so the copy
+       states it rather than the code stopping it. Whether a superseded *credential*
+       should survive is TD-028; this sentence is true under either answer, and the e2e
+       pins the retention clause so a future "fix" that only changes the words is red. *@
     <form asp-action="Delete" asp-controller="ServiceConnection" method="post"
-          data-confirm-message="Disconnect this service? Supplements keep their nutrients; only the connection is removed.">
+          data-confirm-message="Disconnect this service? Supplements keep their nutrients. The connection in use and its key are removed; a key from an earlier connection stays on record.">
         <input type="submit" value="Disconnect" class="btn btn-sm btn-danger" />
     </form>
 }

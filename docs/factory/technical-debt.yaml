@@ -370,6 +370,78 @@ open:
       URI-building is already unit-pinned, and a rewrite there would break those pins
       while the design question it answers is still open.
 
+  - id: TD-028
+    title: >-
+      A superseded API key stays in `ServiceConnections` forever, and the product has
+      deliberately picked neither "keep it" nor "erase it"
+    where: >-
+      `VitaTrack.Core/Features/ServiceConnections/SaveConnectionHandler.cs:46-48` (`Id = 0`,
+      the always-insert),
+      `VitaTrack.Web/Controllers/ServiceConnectionController.cs:38-45` (`Delete`, the
+      active-only delete)
+    what: >-
+      Every connect writes a **new** row — `SaveConnectionHandler` sets `Id = 0` and
+      `ServiceConnectionRepository.InsertAsync` demotes the previous active row in the same
+      transaction rather than reusing it — and `Delete` removes **only** the active row.
+      Measured on a real SQLite database through the real handler and repository: three
+      connects followed by Disconnect leave rows `(1, 'sk-KEY-1-1111', IsActive 0)` and
+      `(2, 'sk-KEY-2-1111', IsActive 0)` behind a page that now reads "not connected".
+      The keys are stored as typed, in plaintext, exactly as the live one is.
+
+      Two facts that are easy to get backwards, both measured rather than assumed.
+      `IServiceConnectionRepository.DeleteAsync(int id)` is a general per-id delete and
+      **does** remove a superseded row (it returned `true` on row 1 in the same probe), so
+      the gap is not a missing capability — it is that no UI, and no production caller of
+      any kind, ever names a superseded id. And `GetAllAsync` is the only method that
+      could enumerate the residue, and it has **zero production callers**: the residue is
+      invisible to the app, not merely unrendered. Retention itself is not an oversight —
+      `storymap.yaml` carries "Reconnect by saving again, keeping the previous connection
+      on record" as a `done` story.
+
+      What was missing until this entry is that the thing being retained is a
+      **credential**, and that the Disconnect confirm read "only the connection is
+      removed", which is false. That sentence has been corrected to state the retention
+      and is pinned by the e2e; this entry is about the decision, not the copy.
+    interest: >-
+      **Both branches are reasonable, which is why this may not be settled in passing.**
+      Erasing superseded keys is defensible because what is retained is not an audit record
+      but a live secret: a key the user rotated away from, or revoked at the provider, sits
+      in a SQLite file in plaintext with no UI, no expiry and no way to tell it is dead —
+      and a local-database app whose whole credential story is "paste a key" makes the
+      residue a liability the user was never shown. Retaining them is defensible because
+      it is the only record of what the app was configured against: `SaveConnectionHandler`
+      reuses the active row to carry forward `Variant`, `MaxTokens` and `Temperature`, a
+      reconnect after a bad paste should be recoverable, and an audit trail of which
+      endpoint a request went to is exactly what a settings page ought to keep.
+
+      The cost of each is symmetric and neither is free. Erasing loses the history and
+      breaks any future "what did I have set up last week" or "which base URL failed"
+      debugging, and it must happen at the write choke (`SaveConnectionHandler`, where the
+      demotion already is) or the retention will reappear through another insert path.
+      Retaining means the credential footprint grows with every save, unbounded and
+      invisible, while the page reports "not connected". The decision belongs to a human
+      specifically because it is a product promise about stored secrets rather than a
+      refactor; this pass corrected the copy that misstated it, and a behaviour change
+      hidden inside a copy fix would be the worst available outcome. The same shape as
+      TD-025, and deliberately the same treatment: registered, not decided.
+    paydown: >-
+      take the decision the way TD-025's is taken — an ADR under `docs/adr/` or a
+      `DESIGN.md` amendment, never an edit to an existing one — and land **the e2e for
+      whichever branch is chosen in the same change**, because none exists today. The two
+      branches need opposite tests, and picking the wrong one silently pins the other:
+      *Erase*: a spec that connects twice, disconnects, and asserts `GetAllAsync` comes
+      back empty (or, if a history UI is added, that the retained rows carry no `ApiKey`),
+      so residue cannot come back unnoticed. *Retain*: a spec that connects twice,
+      disconnects, and asserts the superseded row is still there **and** that the Settings
+      page says so in words — otherwise the retention is exactly as invisible as it is
+      today, and the corrected confirm is the only thing standing between the user and a
+      false reading. Either way, `SaveConnectionHandler`'s `Id = 0` and the comment above
+      it are the place the decision lands, and `ServiceConnectionRepository.cs:111` /
+      `SaveConnectionHandler.cs:62` justify the current design *by appeal to
+      `GetAllAsync`'s recency order* — a justification that is only reachable from the
+      retained-rows branch and becomes moot under the other. Re-read both comments when
+      the decision is taken; neither may be left asserting a shape the code no longer has.
+
   - id: TD-026
     title: >-
       The 740-line `service-connection.spec.js` has no size guardrail, because

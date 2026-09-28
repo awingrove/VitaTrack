@@ -46,6 +46,13 @@ LLM Prompt Triggers when a step involves a design, refactoring, or gate judgment
    `core`, `views`, `js`, `unit_tests`, `e2e_specs`. Resolve every path to a real file
    (ShardOwnershipTests errors on globs that match nothing). Add a matching
    `storymap.yaml` task with an `entry_point`.
+1b. **If this shard adds a guardrail** (a new class in `VitaTrack.ArchitectureTests/`),
+   it must carry both halves of *Guardrail discipline* above: a non-vacuity assertion and one
+   negative-path proof. This is a step rather than a clause on purpose — it is the rule most
+   likely to be missed, because adding a class looks like ordinary feature work rather than
+   factory work, and it is the only thing preventing a nineteenth unmarked class. A step can
+   be skipped *visibly*; a paragraph can be missed silently. If you are grandfathering onto
+   an existing guard instead, note why in its docstring rather than adding it to the list.
 2. **Model + repository in the slice dir.**
    `VitaTrack.Core/Features/<Name>/<Entity>.cs`, `I<Entity>Repository.cs`,
    `<Entity>Repository.cs`. Repos are Dapper-only; delete child rows before parents (FK
@@ -70,12 +77,58 @@ LLM Prompt Triggers when a step involves a design, refactoring, or gate judgment
    `goto` deep URLs). Exercise each model-validation rule at every binding surface.
 7. **Run the verify-shard gate** (below) and keep it green.
 
+## Guardrail discipline
+
+A guardrail is only as good as its ability to *fail*. Two requirements, and both halves
+matter — the second is the one a reviewer cannot verify by reading.
+
+1. **Non-vacuity.** The rule must assert that a known thing is inside its selection: a named
+   type, a file-count floor, a named claimed file, a count floor. A rule whose selection is
+   empty passes without testing anything, and that is not a hypothetical — `ServicesLayeringTests`
+   sat green over a namespace that no longer existed for two slice conversions (TD-006). Prefer
+   a *derived* invariant ("every slice declaring `tables:` also declares `core:`") over a
+   hard-coded name, which rots when the type or file is legitimately split.
+2. **One negative-path proof.** The rule must be observed red against an input it should
+   reject. Without it, a rule that cannot fail is indistinguishable from one that is passing.
+   Prove it by mutating the real input (manifest, register, source tree), observing red, and
+   reverting — not by asserting it from memory.
+
+**Layer-3 prohibition.** No test asserts on another test's *assertions*. Reading another
+test's *source* as data is layer 2 and is acceptable (`StoryMapConsistencyTests` resolves
+method names; `RetiredNamespaceTests` scans sources). Running another test and asserting on
+its result is layer 3, is forbidden, and has no stable place to stop — once allowed, every
+layer invites the next.
+
+**Grandfathered exceptions (dated 2026-09-27).** Six of the fourteen arch test classes predate
+this rule and lack a non-vacuity guard: `ControllerHygieneTests`, `FileSizeTests`,
+`RepositoryNamingTests`, `ShardMetricsLedgerTests`, `StoryMapConsistencyTests`,
+`UiReachabilityTests`. `TechnicalDebtRegisterTests` has a negative-path proof but no
+non-vacuity guard; `DebtRegisterShapeTests` is the reverse. The six were left as-is on
+purpose: a freeze whose first act is retroactive compliance is not a freeze. **Revisit any
+of them the next time its file is touched for another reason** — this is a standing note, not
+a queue. Delete this paragraph when the list is empty; that is what dating it is for.
+
+**This list is review-enforced and carries no test.** A test that asserted every arch class
+had a marker would itself be layer 3, which is why it is prose. It will drift unless a
+reviewer reads it, and the commit-mix freeze below is what keeps the drift visible.
+
+## Freeze (agreed 2026-09-27, next two branches)
+
+A branch whose non-product commits (tests, docs, guardrails) outnumber its product commits is
+**not a product branch** — stop and ask what the ratio is doing. This covers the technical-debt
+register as well as the guardrails: a branch that opens five register entries and closes none
+is not product work, whatever its commit subjects say. The meta-layer is the runaway path
+here — not a test that checks a test, but a register that keeps justifying the next entry,
+one honest-sounding entry at a time. Only the commit-mix trigger is machine-checkable (ten
+seconds with `git log --oneline main..HEAD`); the guardrail discipline above is judgement, and
+is written down so at least the disagreement is visible.
+
 ## verify-shard gate (same checks CI runs)
 
 ```bash
 dotnet format VitaTrack.sln --verify-no-changes   # format
 dotnet build VitaTrack.sln -c Release             # build
-dotnet test VitaTrack.sln -c Release              # arch (15) + unit (~210)
+dotnet test VitaTrack.sln -c Release              # arch (27) + unit (234)
 cd e2e-tests/playwright && npx playwright test tests/<name>.spec.js
 ```
 

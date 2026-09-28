@@ -1,20 +1,19 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using VitaTrack.Core;
+using VitaTrack.Core.Features.ServiceConnections;
 using VitaTrack.Core.Features.Supplements;
 using VitaTrack.Core.Primitives;
 
 namespace VitaTrack.Core.Features.LlmEnrichment;
 
 public class LlmService(
-    IOptions<VitaTrackOptions> options,
+    IServiceConnectionRepository connections,
     IHtmlScraperService scraper,
     ISupplementLabelParser parser,
     ILogger<LlmService> logger) : ILlmService
 {
-    private readonly VitaTrackOptions _options = options.Value;
+    private readonly IServiceConnectionRepository _connections = connections;
     private readonly IHtmlScraperService _scraper = scraper;
     private readonly ISupplementLabelParser _parser = parser;
     private readonly ILogger<LlmService> _logger = logger;
@@ -29,12 +28,24 @@ public class LlmService(
             return result;
         }
 
-        if (string.IsNullOrWhiteSpace(_options.ApiKey) || string.IsNullOrWhiteSpace(_options.BaseUrl))
+        // Resolved here so the controller stays a caller of one method, and so the
+        // check happens before the page is fetched: a supplement with no usable
+        // connection should not cost a network round trip to the manufacturer.
+        var connection = await _connections.GetActiveAsync();
+        if (connection is null || string.IsNullOrWhiteSpace(connection.Model))
         {
-            _logger.LogWarning("LLM API key or base URL not configured, skipping LLM enrichment for {SupplementName}", supplement.Name);
-            result.ExtractionError = "LLM API key not configured";
+            _logger.LogWarning(
+                "No active service connection with a model chosen, skipping LLM enrichment for {SupplementName}",
+                supplement.Name);
+            result.ExtractionError = LlmRequestSettings.ModelRequired;
             return result;
         }
+
+        var settings = new LlmRequestSettings(
+            connection.Model,
+            connection.Variant,
+            connection.MaxTokens,
+            connection.Temperature);
 
         try
         {
@@ -53,7 +64,8 @@ public class LlmService(
                 return result;
             }
 
-            var parsed = await _parser.ExtractNutrientsAsync(supplement.Name, supplement.Brand, cleanedHtml);
+            var parsed = await _parser.ExtractNutrientsAsync(
+                supplement.Name, supplement.Brand, cleanedHtml, connection, settings);
             result.Nutrients = parsed.Nutrients;
             result.ExtractionError = parsed.ExtractionError;
             result.SwapSuggestion = parsed.SwapSuggestion;

@@ -1,49 +1,23 @@
+using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using VitaTrack.Core;
 using VitaTrack.Core.Features.LlmEnrichment;
+using VitaTrack.Core.Features.ServiceConnections;
 using VitaTrack.Core.Features.Supplements;
-using VitaTrack.Core.Features.Nutrients;
+using VitaTrack.Tests.TestDoubles;
 
 namespace VitaTrack.Tests;
 
+/// <summary>
+/// Blend-shaped JSON through the parser: nested children, a child missing its dosage,
+/// and the prompt that asks for them. Which connection and settings reach the client
+/// is <see cref="SupplementLabelParserConnectionTests"/>' subject.
+/// </summary>
 [TestClass]
 public class BlendEnrichmentTests
 {
-    private static IOptions<VitaTrackOptions> CreateOptions()
-    {
-        return Options.Create(new VitaTrackOptions
-        {
-            BaseUrl = "https://dummy.example.com/v1",
-            ApiKey = "test-real-api-key",
-            Model = "test-model",
-            MaxTokens = 16384,
-            Temperature = 0.1
-        });
-    }
-
-    private static LlmService CreateServiceWithMockLlm(LlmCompletion completion)
-    {
-        var llmClientMock = new Mock<ILlmClient>();
-        llmClientMock
-            .Setup(c => c.PostChatAsync(It.IsAny<string>(), It.IsAny<string>()))
-            .ReturnsAsync(completion);
-        var parser = new SupplementLabelParser(llmClientMock.Object, NullLogger<SupplementLabelParser>.Instance);
-        var scraperMock = new Mock<IHtmlScraperService>();
-        scraperMock
-            .Setup(s => s.FetchCleanHtmlAsync(It.IsAny<string>()))
-            .ReturnsAsync("<html><body>label</body></html>");
-        var options = CreateOptions();
-        return new LlmService(options, scraperMock.Object, parser, NullLogger<LlmService>.Instance);
-    }
-
-    [TestMethod]
-    public async Task ExtractNutrientsAsync_ParsesNestedBlendChildren()
-    {
-        var blendJson = @"{
+    private const string BlendJson = @"{
             ""nutrients"": [
                 {
                     ""genericName"": ""Proprietary Herbal Blend"",
@@ -60,13 +34,26 @@ public class BlendEnrichmentTests
             ""swapSuggestion"": null
         }";
 
-        var llmClientMock = new Mock<ILlmClient>();
-        llmClientMock
-            .Setup(c => c.PostChatAsync(It.IsAny<string>(), It.IsAny<string>()))
-            .ReturnsAsync(new LlmCompletion(blendJson, null));
-        var parser = new SupplementLabelParser(llmClientMock.Object, NullLogger<SupplementLabelParser>.Instance);
+    private static Mock<ILlmClient> LlmReturning(string content)
+    {
+        var llmClient = new Mock<ILlmClient>();
+        llmClient.Setup(c => c.PostChatAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<ServiceConnection>(), It.IsAny<LlmRequestSettings>()))
+            .ReturnsAsync(new LlmCompletion(content, null));
+        return llmClient;
+    }
 
-        var result = await parser.ExtractNutrientsAsync("Calm Blend", "Brand", "<html></html>");
+    private static SupplementLabelParser Parser(ILlmClient llmClient) =>
+        new(llmClient, new RecordingLogger<SupplementLabelParser>());
+
+    private static Task<LlmResult> ParseAsync(ILlmClient llmClient) =>
+        Parser(llmClient).ExtractNutrientsAsync(
+            "Calm Blend", "Brand", "<html></html>", LlmTestData.Connection(), LlmTestData.Settings());
+
+    [TestMethod]
+    public async Task ExtractNutrientsAsync_ParsesNestedBlendChildren()
+    {
+        var result = await ParseAsync(LlmReturning(BlendJson).Object);
 
         Assert.IsNull(result.ExtractionError);
         Assert.AreEqual(1, result.Nutrients.Count);
@@ -84,7 +71,7 @@ public class BlendEnrichmentTests
     [TestMethod]
     public async Task ExtractNutrientsAsync_ChildWithoutDosageKey_DoesNotThrow()
     {
-        var blendJson = @"{
+        var json = @"{
             ""nutrients"": [
                 {
                     ""genericName"": ""Proprietary Herbal Blend"",
@@ -99,13 +86,7 @@ public class BlendEnrichmentTests
             ""swapSuggestion"": null
         }";
 
-        var llmClientMock = new Mock<ILlmClient>();
-        llmClientMock
-            .Setup(c => c.PostChatAsync(It.IsAny<string>(), It.IsAny<string>()))
-            .ReturnsAsync(new LlmCompletion(blendJson, null));
-        var parser = new SupplementLabelParser(llmClientMock.Object, NullLogger<SupplementLabelParser>.Instance);
-
-        var result = await parser.ExtractNutrientsAsync("Calm Blend", "Brand", "<html></html>");
+        var result = await ParseAsync(LlmReturning(json).Object);
 
         Assert.IsNull(result.ExtractionError);
         Assert.AreEqual(1, result.Nutrients.Count);
@@ -121,24 +102,24 @@ public class BlendEnrichmentTests
     public async Task ExtractNutrientsAsync_PromptContainsBlendInstructions()
     {
         string? capturedPrompt = null;
-        var llmClientMock = new Mock<ILlmClient>();
-        llmClientMock
-            .Setup(c => c.PostChatAsync(It.IsAny<string>(), It.IsAny<string>()))
-            .Callback<string, string>((_, userPrompt) => capturedPrompt = userPrompt)
+        var llmClient = new Mock<ILlmClient>();
+        llmClient.Setup(c => c.PostChatAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<ServiceConnection>(), It.IsAny<LlmRequestSettings>()))
+            .Callback<string, string, ServiceConnection, LlmRequestSettings>(
+                (_, userPrompt, _, _) => capturedPrompt = userPrompt)
             .ReturnsAsync(new LlmCompletion("{\"nutrients\":[],\"swapSuggestion\":null}", null));
-        var parser = new SupplementLabelParser(llmClientMock.Object, NullLogger<SupplementLabelParser>.Instance);
 
-        await parser.ExtractNutrientsAsync("X", "Y", "<html></html>");
+        await ParseAsync(llmClient.Object);
 
         Assert.IsNotNull(capturedPrompt);
-        Assert.IsTrue(capturedPrompt.Contains("blend"), "extraction prompt should mention blends");
+        Assert.IsTrue(capturedPrompt!.Contains("blend"), "extraction prompt should mention blends");
         Assert.IsTrue(capturedPrompt.Contains("children"), "schema should include a children array");
     }
 
     [TestMethod]
     public async Task EnrichSupplementAsync_NutritionJsonIncludesBlendChildren()
     {
-        var blendJson = @"{
+        var json = @"{
             ""nutrients"": [
                 {
                     ""genericName"": ""Proprietary Herbal Blend"",
@@ -155,22 +136,36 @@ public class BlendEnrichmentTests
             ""swapSuggestion"": null
         }";
 
-        var service = CreateServiceWithMockLlm(new LlmCompletion(blendJson, null));
+        var scraper = new Mock<IHtmlScraperService>();
+        scraper.Setup(s => s.FetchCleanHtmlAsync(It.IsAny<string>()))
+            .ReturnsAsync("<html><body>label</body></html>");
 
-        var supplement = new Supplement
+        var service = new LlmService(
+            ConnectionsReturning(LlmTestData.Connection()).Object,
+            scraper.Object,
+            Parser(LlmReturning(json).Object),
+            new RecordingLogger<LlmService>());
+
+        var result = await service.EnrichSupplementAsync(new Supplement
         {
             Name = "Calm Blend",
             Brand = "Brand",
             DailyDose = "1 capsule",
             ManufacturerUrl = "https://example.com/product"
-        };
-
-        var result = await service.EnrichSupplementAsync(supplement);
+        });
 
         Assert.IsNull(result.ExtractionError);
         Assert.IsNotNull(result.NutritionJson);
         Assert.IsTrue(result.NutritionJson.Contains("Proprietary Herbal Blend"), "blend total should be present");
         Assert.IsTrue(result.NutritionJson.Contains("Proprietary Herbal Blend > Ashwagandha"), "child should be flattened with blend prefix");
         Assert.IsTrue(result.NutritionJson.Contains("Proprietary Herbal Blend > Rhodiola"), "child with empty dosage should still be flattened");
+    }
+
+    private static Mock<IServiceConnectionRepository> ConnectionsReturning(ServiceConnection? connection)
+    {
+        var connections = new Mock<IServiceConnectionRepository>();
+        connections.Setup(c => c.GetActiveAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(connection);
+        return connections;
     }
 }

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using VitaTrack.Core.Features.Nutrients;
+using VitaTrack.Core.Features.ServiceConnections;
 
 namespace VitaTrack.Core.Features.LlmEnrichment;
 
@@ -13,13 +14,18 @@ public class SupplementLabelParser(
     private readonly ILlmClient _llmClient = llmClient;
     private readonly ILogger<SupplementLabelParser> _logger = logger;
 
-    public async Task<LlmResult> ExtractNutrientsAsync(string supplementName, string brand, string cleanedHtml)
+    public async Task<LlmResult> ExtractNutrientsAsync(
+        string supplementName,
+        string brand,
+        string cleanedHtml,
+        ServiceConnection connection,
+        LlmRequestSettings settings)
     {
         try
         {
             var userPrompt = BuildUserPrompt(supplementName, brand, cleanedHtml);
 
-            var completion = await _llmClient.PostChatAsync(SystemPrompt, userPrompt);
+            var completion = await _llmClient.PostChatAsync(SystemPrompt, userPrompt, connection, settings);
             if (completion.Error != null || completion.Content == null)
             {
                 return new LlmResult { ExtractionError = completion.Error ?? "Empty response from LLM" };

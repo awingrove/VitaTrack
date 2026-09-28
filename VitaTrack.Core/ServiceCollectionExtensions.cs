@@ -58,6 +58,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ImportSupplementsHandler>();
         services.AddScoped<SaveConnectionHandler>();
 
+        // One session id per process, and it is the registry's: the completion client
+        // and the catalog probe must send the same value for the header to correlate
+        // them. Registered rather than reached for statically so the client is
+        // handed it, which is also what makes "is it the registry's?" testable.
+        services.AddSingleton<LlmSessionId>();
+
         services.AddScoped<ISupplementNutrientService, SupplementNutrientService>();
         services.AddScoped<IReportingService, ReportingService>();
         services.AddScoped<IHtmlScraperService, HtmlScraperService>();

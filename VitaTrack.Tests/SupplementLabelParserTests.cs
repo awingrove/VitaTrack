@@ -1,7 +1,9 @@
-using Microsoft.Extensions.Logging.Abstractions;
+using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using VitaTrack.Core.Features.LlmEnrichment;
+using VitaTrack.Core.Features.ServiceConnections;
+using VitaTrack.Tests.TestDoubles;
 
 namespace VitaTrack.Tests;
 
@@ -17,10 +19,19 @@ public class SupplementLabelParserTests
     private static SupplementLabelParser CreateParser(string? content, string? error = null)
     {
         var llmClient = new Mock<ILlmClient>();
-        llmClient.Setup(c => c.PostChatAsync(It.IsAny<string>(), It.IsAny<string>()))
+        llmClient.Setup(c => c.PostChatAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<ServiceConnection>(), It.IsAny<LlmRequestSettings>()))
             .ReturnsAsync(new LlmCompletion(content, error));
-        return new SupplementLabelParser(llmClient.Object, NullLogger<SupplementLabelParser>.Instance);
+        return new SupplementLabelParser(llmClient.Object, new RecordingLogger<SupplementLabelParser>());
     }
+
+    /// <summary>The connection and settings are not this class's subject — they are
+    /// supplied here so each test reads as one line about JSON, and
+    /// <see cref="SupplementLabelParserConnectionTests"/> covers what the parser does
+    /// with the pair.</summary>
+    private static Task<LlmResult> ParseAsync(SupplementLabelParser parser, string name, string brand) =>
+        parser.ExtractNutrientsAsync(
+            name, brand, "<html>label</html>", LlmTestData.Connection(), LlmTestData.Settings());
 
     private static void AssertSingleNutrientParsed(LlmResult result)
     {
@@ -37,7 +48,7 @@ public class SupplementLabelParserTests
     {
         var parser = CreateParser(NutrientJson);
 
-        var result = await parser.ExtractNutrientsAsync("Vitamin C", "NatureWise", "<html>label</html>");
+        var result = await ParseAsync(parser, "Vitamin C", "NatureWise");
 
         AssertSingleNutrientParsed(result);
         Assert.AreEqual("mg", result.Nutrients[0].Unit);
@@ -49,7 +60,7 @@ public class SupplementLabelParserTests
     {
         var parser = CreateParser(JsonFenced);
 
-        var result = await parser.ExtractNutrientsAsync("Vitamin C", "NatureWise", "<html>label</html>");
+        var result = await ParseAsync(parser, "Vitamin C", "NatureWise");
 
         AssertSingleNutrientParsed(result);
     }
@@ -59,7 +70,7 @@ public class SupplementLabelParserTests
     {
         var parser = CreateParser(BareFenced);
 
-        var result = await parser.ExtractNutrientsAsync("Vitamin C", "NatureWise", "<html>label</html>");
+        var result = await ParseAsync(parser, "Vitamin C", "NatureWise");
 
         AssertSingleNutrientParsed(result);
     }
@@ -69,7 +80,7 @@ public class SupplementLabelParserTests
     {
         var parser = CreateParser("unused", "rate limit exceeded");
 
-        var result = await parser.ExtractNutrientsAsync("Zinc", "NOW", "<html>label</html>");
+        var result = await ParseAsync(parser, "Zinc", "NOW");
 
         Assert.AreEqual("rate limit exceeded", result.ExtractionError);
         Assert.AreEqual(0, result.Nutrients.Count);
@@ -81,7 +92,7 @@ public class SupplementLabelParserTests
     {
         var parser = CreateParser(null);
 
-        var result = await parser.ExtractNutrientsAsync("Zinc", "NOW", "<html>label</html>");
+        var result = await ParseAsync(parser, "Zinc", "NOW");
 
         Assert.AreEqual("Empty response from LLM", result.ExtractionError);
         Assert.AreEqual(0, result.Nutrients.Count);
@@ -92,7 +103,7 @@ public class SupplementLabelParserTests
     {
         var parser = CreateParser("this is not json {{{");
 
-        var result = await parser.ExtractNutrientsAsync("Zinc", "NOW", "<html>label</html>");
+        var result = await ParseAsync(parser, "Zinc", "NOW");
 
         Assert.AreEqual("An error occurred while extracting nutrients from the page.", result.ExtractionError);
         Assert.AreEqual(0, result.Nutrients.Count);
@@ -104,7 +115,7 @@ public class SupplementLabelParserTests
     {
         var parser = CreateParser("""{"swapSuggestion":"no nutrients listed"}""");
 
-        var result = await parser.ExtractNutrientsAsync("Zinc", "NOW", "<html>label</html>");
+        var result = await ParseAsync(parser, "Zinc", "NOW");
 
         Assert.IsNull(result.ExtractionError);
         Assert.AreEqual(0, result.Nutrients.Count);
@@ -121,7 +132,7 @@ public class SupplementLabelParserTests
             ]}]}
             """);
 
-        var result = await parser.ExtractNutrientsAsync("Adaptogen Blend", "Gaia", "<html>label</html>");
+        var result = await ParseAsync(parser, "Adaptogen Blend", "Gaia");
 
         Assert.IsNull(result.ExtractionError);
         var children = result.Nutrients.Single().Children;

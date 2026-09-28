@@ -382,11 +382,13 @@ activities:
         name: Error handling
         entry_point: n/a (error-path behavior, not navigable)
         stories:
-          - title: Gracefully handle missing API key
+          - title: Gracefully handle no saved connection or no model chosen
             status: done
             priority: low
             tests:
-              - unit: LlmServiceTests.EnrichSupplementAsync_ReturnsEmpty_WhenApiKeyMissing
+              - unit: LlmServiceConnectionTests.EnrichSupplementAsync_WithNoConnection_PointsAtSettings_AndReachesNothing
+              - unit: LlmServiceConnectionTests.EnrichSupplementAsync_WithNoModelChosen_PointsAtSettings_AndReachesNothing
+              - unit: LlmClientRequestTests.PostChatAsync_WithNullModel_ReturnsErrorPointingAtSettings
           - title: Gracefully handle fetch failure
             status: done
             priority: low

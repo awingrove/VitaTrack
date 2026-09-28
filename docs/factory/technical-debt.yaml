@@ -700,9 +700,9 @@ defects:
       broken twice. The line predated the service-connection slice; what the slice changed
       was the *credential's* home, from a config value to a key the user pasted into a
       form, which is what makes an echoing provider body a routine event rather than a
-      remote one. Fixed in the `46bcf02` fix round: the body is no longer an argument and
-      is no longer read at all on the non-2xx path, and the catch path logs
-      `ex.GetType().Name` with no exception attached.
+      remote one. Fixed in the fix round the injection stage names: the body is no longer
+      an argument and is no longer read at all on the non-2xx path, and the catch path
+      logs `ex.GetType().Name` with no exception attached.
     injection_stage: >-
       (found Sep 2026 in review of commit `46bcf02`; the code itself was pre-existing.)
       Two conflicting instructions in one brief — step 1's "keep existing error behavior"

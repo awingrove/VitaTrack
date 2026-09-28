@@ -74,12 +74,25 @@ public class SaveConnectionHandlerTests : SqliteTestBase
     [TestMethod]
     public async Task HandleAsync_Reconnect_StampsTheNewRowInsteadOfCloningTheOldStamps()
     {
-        var first = await _handler.HandleAsync(Request("https://api.example.com", "sk-first"));
-        var firstRow = AssertRowSaved(await _repository.GetAllAsync(), first);
+        // The row being replaced is seeded with a stamp years in the past rather than
+        // written by a first connect. Two `UtcNow` reads microseconds apart would leave
+        // the comparison to clock resolution — fine on this box, a coin flip on a clock
+        // with millisecond granularity — while a clone is the failure this has to catch.
+        var seeded = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        await _repository.SaveAsync(new ServiceConnection
+        {
+            Service = SaveConnectionHandler.ServiceName,
+            BaseUrl = "https://api.example.com",
+            ApiKey = "sk-first",
+            CreatedAt = seeded,
+            UpdatedAt = seeded,
+            IsActive = true
+        });
+        var firstRow = (await _repository.GetAllAsync()).Single(c => c.ApiKey == "sk-first");
 
-        var second = await _handler.HandleAsync(Request("https://api.example.com", "sk-second"));
+        var result = await _handler.HandleAsync(Request("https://api.example.com", "sk-second"));
         var rows = await _repository.GetAllAsync();
-        var secondRow = AssertRowSaved(rows, second);
+        var secondRow = AssertRowSaved(rows, result);
 
         // `with` copies every property, so without an explicit reset the appended row
         // carried the row it replaces' stamps and the repository stored them verbatim.

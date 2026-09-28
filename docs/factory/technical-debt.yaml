@@ -51,12 +51,17 @@ open:
       `ORDER BY UpdatedAt DESC, Id DESC` fell back to its id tiebreak. The call site is
       fixed and a test now pins it, but the shape itself is still open.
     interest: >-
-      a comment at a call site asserting the stamps stay default is not evidence — the
-      tracer's said exactly that and was wrong. Meanwhile
-      `ServiceConnectionRepositoryTests.SaveAsync_StampsCreatedAtAndUpdatedAt` keeps
-      passing, because it drives the repository directly: the default-supply path is
-      unreachable from the app the moment one caller clones a persisted record, so the
-      repository's own stamping test is green and nothing exercises it. TD-019's class,
+      the shape is defeatable in one token, `with`, and nothing at a call site makes
+      that visible: a comment asserting the stamps stay default is not evidence, because
+      the tracer's said exactly that and was wrong. The app *is* on the default-supply
+      path today — the handler leaves both stamps `default` so `SaveAsync` supplies
+      `now` — and `SaveConnectionHandlerTests.HandleAsync_Reconnect_StampsTheNewRowInsteadOfCloningTheOldStamps`
+      fails the moment a clone reappears. The risk is prospective, not a gap that is
+      open now: the next call site that clones a persisted record makes the path
+      unreachable again, and nothing short of that test failing tells anyone.
+      `ServiceConnectionRepositoryTests.SaveAsync_StampsCreatedAtAndUpdatedAt` cannot
+      catch it, because it drives the repository directly and so would stay green on a
+      repository whose default-supply branch the app no longer reached. TD-019's class,
       one layer up.
     paydown: >-
       either construct the replacement record field by field at every call site that must

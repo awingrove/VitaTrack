@@ -17,9 +17,15 @@ public class ConnectServiceRequest
 
     public const string ApiKeyRequired = "API key is required.";
 
+    // The display name is the label the form renders and the wording every other
+    // message on the screen uses. Left to the property name, asp-for would label the
+    // fields "BaseUrl" and "ApiKey" while the saved-state table and the errors say
+    // "Base URL" and "API key".
+    [Display(Name = "Base URL")]
     [Required(ErrorMessage = BaseUrlRequired)]
     public string BaseUrl { get; set; } = string.Empty;
 
+    [Display(Name = "API key")]
     [Required(ErrorMessage = ApiKeyRequired)]
     public string ApiKey { get; set; } = string.Empty;
 

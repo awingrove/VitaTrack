@@ -17,6 +17,12 @@
 # read dependencies (e.g. display joins) must be declared too — adding one is a
 # visible manifest diff for design review. Writes must stay on the own table
 # via the owning slice's repository (AGENTS.md FK section).
+#
+# `models` holds the slice's files under `VitaTrack.Web/Models` — the bind
+# models and view models that carry a slice's data into its views. They are
+# per-slice (one `SavedConnection` projection is not another slice's business),
+# so they are claimed rather than allowlisted. Every slice declares the key,
+# `[]` included: a key that is absent was never reviewed.
 
 slices:
   - id: MF
@@ -33,6 +39,7 @@ slices:
       - VitaTrack.Core/Features/Family/EditFamilyMemberRequest.cs
     views:
       - VitaTrack.Web/Views/Family/**
+    models: []
     js: []
     unit_tests:
       - VitaTrack.Tests/FamilyRepositoryTests.cs
@@ -60,6 +67,7 @@ slices:
       - VitaTrack.Core/Features/Dosing/AmendDoseHandler.cs
     views:
       - VitaTrack.Web/Views/PrescribedDose/**
+    models: []
     js:
       - VitaTrack.Web/wwwroot/js/multiplier-stepper.js
       - VitaTrack.Web/wwwroot/js/prescribed-dose-serving.js
@@ -97,6 +105,12 @@ slices:
       - VitaTrack.Core/Features/Supplements/ImportSupplementsHandler.cs
     views:
       - VitaTrack.Web/Views/Supplement/**
+    models:
+      - VitaTrack.Web/Models/CreateSupplementRequest.cs
+      - VitaTrack.Web/Models/EditSupplementRequest.cs
+      - VitaTrack.Web/Models/ConfirmSupplementRequest.cs
+      - VitaTrack.Web/Models/ReplaceNutrientsRequest.cs
+      - VitaTrack.Web/Models/SupplementEditorViewModel.cs
     js:
       - VitaTrack.Web/wwwroot/js/create.js
       - VitaTrack.Web/wwwroot/js/edit.js
@@ -131,6 +145,7 @@ slices:
       - VitaTrack.Core/Features/Nutrients/ReplaceNutrientsResult.cs
     views:
       - VitaTrack.Web/Views/SupplementNutrient/**
+    models: []
     js:
       - VitaTrack.Web/wwwroot/js/nutrient-editor.js
       - VitaTrack.Web/wwwroot/js/nutrient-form.js
@@ -172,6 +187,7 @@ slices:
       - VitaTrack.Core/Features/Reporting/NutrientAggregationVisitor.cs
     views:
       - VitaTrack.Web/Views/Reporting/**
+    models: []
     js:
       - VitaTrack.Web/wwwroot/js/report-toggle.js
     unit_tests:
@@ -198,6 +214,7 @@ slices:
       - VitaTrack.Core/Features/LlmEnrichment/UrlSafetyValidator.cs
       - VitaTrack.Core/Features/LlmEnrichment/LlmResult.cs
     views: []
+    models: []
     js: []
     unit_tests:
       - VitaTrack.Tests/LlmServiceTests.cs
@@ -218,6 +235,7 @@ slices:
     core: []
     views:
       - VitaTrack.Web/Views/Home/**
+    models: []
     js: []
     unit_tests: []
     e2e_specs:
@@ -239,11 +257,15 @@ slices:
       - VitaTrack.Core/Features/ServiceConnections/SaveConnectionHandler.cs
     views:
       - VitaTrack.Web/Views/ServiceConnection/**
+    models:
+      - VitaTrack.Web/Models/SavedConnection.cs
+      - VitaTrack.Web/Models/ServiceConnectionViewModel.cs
     js: []
     unit_tests:
       - VitaTrack.Tests/Features/ServiceConnections/ServiceConnectionRepositoryTests.cs
       - VitaTrack.Tests/Features/ServiceConnections/SaveConnectionHandlerTests.cs
       - VitaTrack.Tests/ServiceConnectionControllerTests.cs
+      - VitaTrack.Tests/ServiceConnectionFormTests.cs
     e2e_specs:
       - e2e-tests/playwright/tests/service-connection.spec.js
 

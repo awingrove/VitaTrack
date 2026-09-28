@@ -12,16 +12,17 @@ public class SaveConnectionHandler(IServiceConnectionRepository connections)
     /// that chooses among its entries replace this literal.</summary>
     public const string ServiceName = "opencode";
 
-    /// <summary>SaveAsync's "no row was written" answer. Ids come from an AUTOINCREMENT
-    /// column, so 0 is never a real id and must not be read as a successful save.</summary>
-    private const int NoRowWritten = 0;
-
     private const string SaveFailed = "The connection could not be saved. Please try again.";
 
     private readonly IServiceConnectionRepository _connections = connections;
 
     public async Task<SaveConnectionResult> HandleAsync(ConnectServiceRequest request, CancellationToken ct = default)
     {
+        // Not reachable from today's POST: MVC's [Required] fires first on a blank or
+        // whitespace-only field, so ModelState is invalid before this runs. It is
+        // depth, not decoration — the handler is a public seam, and the HTMX partial
+        // and any future seed or import path call it without a ModelState of their
+        // own. Deleting these two checks would let a keyless connection be written.
         if (string.IsNullOrWhiteSpace(request.BaseUrl))
             return SaveConnectionResult.Failed(ConnectServiceRequest.BaseUrlRequired);
         if (string.IsNullOrWhiteSpace(request.ApiKey))
@@ -29,8 +30,9 @@ public class SaveConnectionHandler(IServiceConnectionRepository connections)
 
         // Each save is a new row: the repository demotes the previous one in the same
         // transaction, so the connection in use is always the one just saved. Starting
-        // from the row being replaced carries every field the form does not expose
-        // forward instead of resetting it — Id is dropped, because this is an insert.
+        // from the row being replaced carries forward what the form does not expose —
+        // Variant, MaxTokens and Temperature — instead of resetting it, and every
+        // other property is assigned below so nothing else sneaks through the clone.
         var replaced = await _connections.GetActiveAsync(ct);
         var connection = (replaced ?? new ServiceConnection()) with
         {
@@ -42,13 +44,18 @@ public class SaveConnectionHandler(IServiceConnectionRepository connections)
             // Unverified and never-verified, so the pair can never disagree.
             Verification = ServiceConnection.Unverified,
             VerifiedAt = null,
-            IsActive = true
-            // CreatedAt/UpdatedAt stay default: the repository owns both stamps, so the
-            // handler never has to know what "now" is.
+            IsActive = true,
+            // Cleared on both paths, not inherited. A `with` copies every property, so
+            // leaving these out would clone the replaced row's stamps — and SaveAsync
+            // only supplies now when they are default, so a stale pair would be stored
+            // verbatim. Reset explicitly: every new row is stamped when it is written,
+            // and GetAllAsync's recency order has something to order on.
+            CreatedAt = default,
+            UpdatedAt = default
         };
 
         var id = await _connections.SaveAsync(connection, ct);
-        return id == NoRowWritten
+        return id == IServiceConnectionRepository.NoRowWritten
             ? SaveConnectionResult.Failed(SaveFailed)
             : new SaveConnectionResult(id, null);
     }

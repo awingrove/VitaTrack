@@ -16,17 +16,17 @@ namespace VitaTrack.Tests;
 [TestClass]
 public class ServiceConnectionControllerTests
 {
-    private Mock<IServiceConnectionRepository> _connections = null!;
-    private ServiceConnectionController _controller = null!;
+    private readonly Mock<IServiceConnectionRepository> _connections = new();
+    private readonly ServiceConnectionController _controller;
 
-    [TestInitialize]
-    public void Setup()
+    public ServiceConnectionControllerTests()
     {
-        _connections = new Mock<IServiceConnectionRepository>();
         // The handler under test is the real one: the controller's contract is that it
         // defers to the handler, so stubbing the handler would stub away that contract.
-        _controller = new ServiceConnectionController(_connections.Object, new SaveConnectionHandler(_connections.Object));
-        _controller.ControllerContext = new ControllerContext { HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext() };
+        _controller = new ServiceConnectionController(_connections.Object, new SaveConnectionHandler(_connections.Object))
+        {
+            ControllerContext = new ControllerContext { HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext() }
+        };
     }
 
     [TestMethod]
@@ -52,8 +52,10 @@ public class ServiceConnectionControllerTests
 
         var model = AssertViewModel(result);
         Assert.IsNotNull(model.Saved);
+        Assert.AreEqual(SaveConnectionHandler.ServiceName, model.Saved.Service, "the saved service reaches the view");
         Assert.AreEqual("https://api.example.com", model.Saved.BaseUrl);
         Assert.AreEqual("gpt-4o-mini", model.Saved.Model);
+        Assert.AreEqual(ServiceConnection.Unverified, model.Saved.Verification, "the saved verification state reaches the view");
         Assert.AreEqual("••••1234", model.Saved.MaskedApiKey, "only the last four characters reach the view");
         Assert.IsFalse(
             JsonContains(model, "sk-secret-abcd1234"),
@@ -70,7 +72,7 @@ public class ServiceConnectionControllerTests
 
         Assert.AreEqual("https://api.example.com", model.Form.BaseUrl, "a reconnect should not retype the URL");
         Assert.AreEqual("gpt-4o-mini", model.Form.Model, "a reconnect should not retype the model");
-        Assert.AreEqual(string.Empty, model.Form.ApiKey, "the key is a password field: it is re-entered, never prefilled");
+        Assert.AreEqual(string.Empty, model.Form.ApiKey, "the key is re-entered on every save: the form model never carries it");
     }
 
     [TestMethod]
@@ -107,14 +109,27 @@ public class ServiceConnectionControllerTests
     }
 
     [TestMethod]
-    public async Task Connect_InvalidRequest_ReturnsTheFormWithErrors()
+    public async Task Connect_InvalidModelState_ReturnsTheFormWithErrors()
     {
-        var result = await _controller.Connect(new ConnectServiceRequest { BaseUrl = "   ", ApiKey = "" });
+        // The error is seeded, not produced by a blank field: a hand-built request
+        // carries a valid ModelState, and a blank field is caught by the handler's own
+        // rejection instead — the branch under test would never run. So the field
+        // values are ones the handler would happily write, and nothing but this guard
+        // stands between the POST and a save.
+        _controller.ModelState.AddModelError(nameof(ConnectServiceRequest.BaseUrl), ConnectServiceRequest.BaseUrlRequired);
+        _connections.Setup(c => c.GetActiveAsync(It.IsAny<CancellationToken>())).ReturnsAsync((ServiceConnection?)null);
+
+        var result = await _controller.Connect(new ConnectServiceRequest
+        {
+            BaseUrl = "https://api.example.com",
+            ApiKey = "sk-secret"
+        });
 
         var view = result as ViewResult;
-        Assert.IsNotNull(view, "a rejected connect comes back to the form, it does not redirect");
+        Assert.IsNotNull(view, "an invalid ModelState comes back to the form, it does not redirect");
         Assert.AreEqual("Index", view.ViewName);
         Assert.IsNotNull(AssertViewModel(view).Form);
+        Assert.IsTrue(view.ViewData.ModelState.ErrorCount > 0, "the errors that rejected the POST come back with the form");
         _connections.Verify(c => c.SaveAsync(It.IsAny<ServiceConnection>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -136,17 +151,21 @@ public class ServiceConnectionControllerTests
         var model = AssertViewModel(result);
         Assert.AreEqual("https://typed.example.com", model.Form.BaseUrl);
         Assert.AreEqual("typed-model", model.Form.Model);
-        Assert.AreEqual("  ", model.Form.ApiKey);
+        Assert.AreEqual(string.Empty, model.Form.ApiKey,
+            "the typed key does not come back in the form model, whatever the control type renders");
         _connections.Verify(c => c.SaveAsync(It.IsAny<ServiceConnection>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [TestMethod]
     public async Task Connect_WhenTheHandlerRejects_ShowsTheErrorAndDoesNotRedirect()
     {
+        // A hand-built request carries a valid ModelState, so this reaches the handler's
+        // own blank-key rejection — the path MVC's [Required] normally takes first.
         var result = await _controller.Connect(new ConnectServiceRequest { BaseUrl = "https://api.example.com", ApiKey = "  " });
 
         var view = result as ViewResult;
         Assert.IsNotNull(view, "a rejected connect comes back to the form with the handler's error");
+        Assert.AreEqual(string.Empty, AssertViewModel(view).Form.ApiKey, "even on this path the key is not carried");
         _connections.Verify(c => c.SaveAsync(It.IsAny<ServiceConnection>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -154,8 +173,9 @@ public class ServiceConnectionControllerTests
     public async Task Connect_WhenNoRowIsWritten_ShowsTheErrorInsteadOfClaimingSuccess()
     {
         _connections.Setup(c => c.GetActiveAsync(It.IsAny<CancellationToken>())).ReturnsAsync((ServiceConnection?)null);
-        // SaveAsync's "no row was written" answer must not be read as a saved connection.
-        _connections.Setup(c => c.SaveAsync(It.IsAny<ServiceConnection>(), It.IsAny<CancellationToken>())).ReturnsAsync(0);
+        // The repository's "no row was written" answer must not be read as a saved connection.
+        _connections.Setup(c => c.SaveAsync(It.IsAny<ServiceConnection>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(IServiceConnectionRepository.NoRowWritten);
 
         var result = await _controller.Connect(new ConnectServiceRequest
         {

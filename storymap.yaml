@@ -487,8 +487,24 @@ activities:
             priority: high
             tests:
               - unit: SaveConnectionHandlerTests.HandleAsync_RejectsBlankBaseUrlOrKey
-              - unit: ServiceConnectionControllerTests.Connect_InvalidRequest_ReturnsTheFormWithErrors
+              - unit: ServiceConnectionControllerTests.Connect_InvalidModelState_ReturnsTheFormWithErrors
               - unit: ServiceConnectionControllerTests.Connect_Rejected_RedisplaysWhatWasTypedOverTheSavedValues
               - unit: ServiceConnectionControllerTests.Connect_WhenTheHandlerRejects_ShowsTheErrorAndDoesNotRedirect
               - unit: ServiceConnectionControllerTests.Connect_WhenNoRowIsWritten_ShowsTheErrorInsteadOfClaimingSuccess
               - e2e: service-connection::should reject a save with a blank URL and keep the connection unchanged
+          - title: Name the two required fields the way the rest of the screen reads them
+            status: done
+            priority: low
+            tests:
+              - unit: ServiceConnectionFormTests.ConnectForm_LabelsSayBaseUrlAndApiKeyLikeTheRestOfTheScreen
+              - unit: ServiceConnectionFormTests.ConnectForm_EachErrorMessageStartsWithItsOwnLabel
+          - title: Reconnect by saving again, keeping the previous connection on record
+            status: done
+            priority: high
+            tests:
+              - unit: SaveConnectionHandlerTests.HandleAsync_SecondConnect_DeactivatesThePrevious
+          - title: Date each saved connection when it is written, not when the one it replaces was
+            status: done
+            priority: medium
+            tests:
+              - unit: SaveConnectionHandlerTests.HandleAsync_Reconnect_StampsTheNewRowInsteadOfCloningTheOldStamps

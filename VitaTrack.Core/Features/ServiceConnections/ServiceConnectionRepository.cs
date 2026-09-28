@@ -15,10 +15,6 @@ namespace VitaTrack.Core.Features.ServiceConnections;
 /// </summary>
 public class ServiceConnectionRepository(IDbConnection db) : IServiceConnectionRepository
 {
-    /// <summary>SaveAsync's "no row was written" answer. Ids come from an
-    /// AUTOINCREMENT column, so 0 is never a real id.</summary>
-    private const int UnknownRow = 0;
-
     /// <summary>Round-trip ("o") ISO-8601, written and read back unchanged.</summary>
     private const string RoundTripFormat = "o";
 
@@ -73,10 +69,10 @@ ORDER BY UpdatedAt DESC, Id DESC;";
         try
         {
             var id = await write(transaction);
-            if (id == UnknownRow)
+            if (id == IServiceConnectionRepository.NoRowWritten)
             {
                 transaction.Rollback();
-                return UnknownRow;
+                return IServiceConnectionRepository.NoRowWritten;
             }
 
             transaction.Commit();
@@ -127,7 +123,7 @@ WHERE Id = @Id;
 SELECT changes();";
         var parameters = SaveParameters(connection, createdAt: null, updatedAt: DateTimeOffset.UtcNow);
         var updatedRows = await _db.ExecuteScalarAsync<int>(new CommandDefinition(sql, parameters, transaction, cancellationToken: ct));
-        return updatedRows == 0 ? UnknownRow : connection.Id;
+        return updatedRows == 0 ? IServiceConnectionRepository.NoRowWritten : connection.Id;
     }
 
     private static CommandDefinition WithCancellation(string sql, CancellationToken ct) => new(sql, cancellationToken: ct);

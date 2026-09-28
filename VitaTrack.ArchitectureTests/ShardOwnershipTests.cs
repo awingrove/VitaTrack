@@ -22,8 +22,17 @@ public class ShardOwnershipTests
     };
 
     /// <summary>
+    /// The artifact kinds a slice may claim, in the order they appear in shards.yaml.
+    /// A key missing from a slice is a red build: `models` was added when
+    /// <c>VitaTrack.Web/Models</c> was added to <see cref="ScanFeatureFiles"/>, and a
+    /// bind model with no owner is exactly the orphan the ownership check exists for.
+    /// </summary>
+    private static readonly string[] ArtifactKinds =
+        ["controller", "core", "views", "models", "js", "unit_tests", "e2e_specs"];
+
+    /// <summary>
     /// Floor on the total number of files the manifest's slices resolve to
-    /// (<c>controller</c> + <c>core</c> + <c>views</c> + <c>js</c> +
+    /// (<c>controller</c> + <c>core</c> + <c>views</c> + <c>models</c> + <c>js</c> +
     /// <c>unit_tests</c> + <c>e2e_specs</c>); the allowlist is cross-cutting,
     /// not a slice claim, and is not counted. Today that total is 145, so
     /// 130 = 145 - 15 permits exactly the 15 paths the two smallest slices
@@ -139,7 +148,7 @@ public class ShardOwnershipTests
 
             var claims = new List<string>();
             var declaredPatterns = 0;
-            foreach (var key in new[] { "controller", "core", "views", "js", "unit_tests", "e2e_specs" })
+            foreach (var key in ArtifactKinds)
             {
                 // Key presence, not list count, separates "declared as empty" from
                 // "not declared": a slice with no JS says `js: []`; a slice that
@@ -219,6 +228,10 @@ public class ShardOwnershipTests
             Path.Combine(repoRoot, "VitaTrack.Web", "Controllers"),
             Path.Combine(repoRoot, "VitaTrack.Core"),
             Path.Combine(repoRoot, "VitaTrack.Web", "Views"),
+            // Bind and view models. Scanned because a slice's models are as much its
+            // code as its repository: the first slice to put a file here (SC's
+            // SavedConnection projection) was invisible to this check until now.
+            Path.Combine(repoRoot, "VitaTrack.Web", "Models"),
             Path.Combine(repoRoot, "VitaTrack.Web", "wwwroot", "js"),
             Path.Combine(repoRoot, "VitaTrack.Tests"),
             Path.Combine(repoRoot, "e2e-tests", "playwright", "tests"),

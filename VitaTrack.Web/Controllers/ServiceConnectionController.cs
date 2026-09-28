@@ -48,8 +48,8 @@ public class ServiceConnectionController(
     /// <summary>Reads the live connection, projects it for display, and prefills the
     /// form from it — so neither the first visit nor a reconnect makes the user
     /// retype what is already saved. What the form carries wins, so a rejected submit
-    /// redisplays exactly what was typed. The API key is deliberately excluded: it is
-    /// a password input, and the user re-enters it on every save.</summary>
+    /// redisplays exactly what was typed. The API key is never carried across, on any
+    /// path.</summary>
     private async Task<ServiceConnectionViewModel> BuildViewModelAsync(ConnectServiceRequest form)
     {
         var active = await _connections.GetActiveAsync();
@@ -63,7 +63,13 @@ public class ServiceConnectionController(
             Form: new ConnectServiceRequest
             {
                 BaseUrl = string.IsNullOrWhiteSpace(form.BaseUrl) ? active?.BaseUrl ?? string.Empty : form.BaseUrl,
-                ApiKey = form.ApiKey,
+                // Never the typed value, on any path. The only thing that keeps the raw
+                // key out of the redisplayed HTML is that InputTagHelper drops `value`
+                // for type="password" — an accident of the control type, not a rule of
+                // this code. Any non-password control (the show/hide toggle Task 5
+                // adds is exactly that) would render it. Delete this comment before
+                // ever putting the key back here.
+                ApiKey = string.Empty,
                 Model = string.IsNullOrWhiteSpace(form.Model) ? active?.Model : form.Model
             });
     }

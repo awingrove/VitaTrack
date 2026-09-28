@@ -2,10 +2,10 @@
 
 ## Responsibilities
 - Persist data using **Dapper** over SQLite.
-- Define repository interfaces (`IFamilyRepository`, `ISupplementRepository`, `ISupplementNutrientRepository`, `IPrescribedDoseRepository`).
+- Define repository interfaces (`IFamilyRepository`, `ISupplementRepository`, `ISupplementNutrientRepository`, `IPrescribedDoseRepository`, `IServiceConnectionRepository`).
 - Implement repositories with async CRUD methods.
 - Provide access to external services (LLM) via `ILlmService`.
-- Contain models used across layers; every slice owns its models under `Features/<Slice>/` (`Supplement`, `FamilyMember`, `SupplementNutrient`, `PrescribedDose`, `LlmResult`, report records). `VitaTrack.Core/Models` and the flat `VitaTrack.Core/Services` namespace are retired — neither exists.
+- Contain models used across layers; every slice owns its models under `Features/<Slice>/` (`Supplement`, `FamilyMember`, `SupplementNutrient`, `PrescribedDose`, `ServiceConnection`, `LlmResult`, report records). `VitaTrack.Core/Models` and the flat `VitaTrack.Core/Services` namespace are retired — neither exists.
 - Shared value objects live in `VitaTrack.Core/Primitives/` (`Dosage`, `Unit`, `Money`, and the Dosing objects). All dosage parsing and unit recognition lives there; see the root `AGENTS.md` dosage rules.
 - No direct HTTP or UI concerns; keep pure C#.
 
@@ -17,7 +17,7 @@
 - All I/O methods are `async` and return `Task<T>` or `Task<IReadOnlyList<T>>`.
 - Use `await _db.QueryAsync<T>(sql)` for reads.
 - Use `await _db.ExecuteAsync(sql, param)` for writes.
-- For inserts returning identity, execute `INSERT` then `SELECT last_insert_rowid()` as two separate calls (SQLite limitation).
+- For inserts returning identity, put the `INSERT` and a trailing `SELECT last_insert_rowid();` on the same batch and read it with `ExecuteScalarAsync` — `ExecuteAsync` returns a row count, not the identity. `ServiceConnectionRepository.InsertAsync` is the exemplar, and it puts the deactivation on that same batch so both land in one transaction.
 
 ## Foreign Key Delete Order
 SQLite enforces foreign keys. When implementing `DeleteAsync` for a parent table, **always delete child rows first**. The current dependency chain is:
@@ -51,7 +51,7 @@ When adding new tables (or FK-like columns, via `CREATE TABLE` or `ALTER TABLE` 
 
 ## Transaction Handling
 - A single-statement repository method runs on the injected `IDbConnection` and lets Dapper open/close it. The connection is scoped from Web.
-- A method that must write more than one row as a unit opens the connection itself, begins an `IDbTransaction`, commits on success and rolls back on failure or when the batch reports no row written. `ServiceConnectionRepository.SaveAsync` is the exemplar: the deactivation of the previously active row and the new row land together, so a failed save cannot leave the user with no active connection.
+- A method that must write more than one row as a unit opens the connection itself, begins an `IDbTransaction`, commits on success and rolls back on failure or when the batch reports no row written, and closes the connection again in `finally` **if this method was the one that opened it** — record that in a `wasClosed` local before opening, or the method will close a connection its owner (Web) still expects to be open. `ServiceConnectionRepository.SaveAsync` is the exemplar: the deactivation of the previously active row and the new row land together, so a failed save cannot leave the user with no active connection.
 
 ## Dependencies
 - Packages: `Dapper`, `Microsoft.Data.Sqlite`, `Microsoft.Extensions.Configuration.Abstractions`, `Microsoft.Extensions.Http`.

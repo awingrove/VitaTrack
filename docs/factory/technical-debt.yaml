@@ -36,6 +36,35 @@
 # defect whose systemic_gap carries no such clause has no `closed_in` (DL-004).
 
 open:
+  - id: TD-021
+    title: >-
+      The repository's "default stamps mean now" contract is defeatable by a `with` clone, and nothing binds a call site to it
+    where: >-
+      `VitaTrack.Core/Features/ServiceConnections/ServiceConnectionRepository.cs:101-103`,
+      `VitaTrack.Core/Features/ServiceConnections/SaveConnectionHandler.cs:36-55`
+    what: >-
+      `SaveAsync` supplies `CreatedAt`/`UpdatedAt` from its own clock read **only** when
+      the caller leaves them `default`. That contract is invisible at the call site and
+      silently defeated by `var next = row with { ... }`, which copies every property. The
+      tracer's handler did exactly that: a reconnect wrote a row carrying its
+      predecessor's `CreatedAt` and `UpdatedAt`, and `GetAllAsync`'s
+      `ORDER BY UpdatedAt DESC, Id DESC` fell back to its id tiebreak. The call site is
+      fixed and a test now pins it, but the shape itself is still open.
+    interest: >-
+      a comment at a call site asserting the stamps stay default is not evidence — the
+      tracer's said exactly that and was wrong. Meanwhile
+      `ServiceConnectionRepositoryTests.SaveAsync_StampsCreatedAtAndUpdatedAt` keeps
+      passing, because it drives the repository directly: the default-supply path is
+      unreachable from the app the moment one caller clones a persisted record, so the
+      repository's own stamping test is green and nothing exercises it. TD-019's class,
+      one layer up.
+    paydown: >-
+      either construct the replacement record field by field at every call site that must
+      not inherit stamps, or drop the caller-supplies-stamps branch from the repository so
+      the only possible stamps are the repository's own. The first is local and cheap;
+      the second changes a documented contract and needs the repository tests re-read
+      before it lands.
+
   - id: TD-017
     title: >-
       `Supplements.DailyDose` accepts free text no dosage vocabulary can express

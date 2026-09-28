@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -30,14 +31,12 @@ public class SaveConnectionHandlerTests : SqliteTestBase
     {
         var result = await _handler.HandleAsync(Request("https://api.example.com", "sk-secret"));
 
-        Assert.IsTrue(result.Succeeded, result.Error);
-        Assert.IsNotNull(result.Id);
-        var saved = AssertRowsContains(await _repository.GetAllAsync(), result.Id!.Value);
+        var saved = AssertRowSaved(await _repository.GetAllAsync(), result);
         Assert.AreEqual(SaveConnectionHandler.ServiceName, saved.Service);
         Assert.AreEqual("https://api.example.com", saved.BaseUrl);
         Assert.AreEqual("sk-secret", saved.ApiKey);
         Assert.IsTrue(saved.IsActive, "the connection just saved is the active one");
-        Assert.AreEqual(saved.Id, (await _repository.GetActiveAsync())!.Id); // null warning is wrong: the row just saved is active
+        await AssertActiveIs(saved.Id);
     }
 
     [TestMethod]
@@ -64,10 +63,31 @@ public class SaveConnectionHandlerTests : SqliteTestBase
         // through the handler — the invariant holds, whatever does the demoting.
         Assert.AreNotEqual(first.Id, second.Id, "a second connect writes its own row, keeping the previous one on record");
         var rows = await _repository.GetAllAsync();
+        var firstRow = AssertRowSaved(rows, first);
+        var secondRow = AssertRowSaved(rows, second);
         // Asserted per row: GetActiveAsync's LIMIT 1 would pass either way.
-        Assert.IsFalse(AssertRowsContains(rows, first.Id!.Value).IsActive, "the previous connection is demoted");
-        Assert.IsTrue(AssertRowsContains(rows, second.Id!.Value).IsActive);
-        Assert.AreEqual(second.Id, (await _repository.GetActiveAsync())!.Id); // null warning is wrong: the row just saved is active
+        Assert.IsFalse(firstRow.IsActive, "the previous connection is demoted");
+        Assert.IsTrue(secondRow.IsActive);
+        await AssertActiveIs(secondRow.Id);
+    }
+
+    [TestMethod]
+    public async Task HandleAsync_Reconnect_StampsTheNewRowInsteadOfCloningTheOldStamps()
+    {
+        var first = await _handler.HandleAsync(Request("https://api.example.com", "sk-first"));
+        var firstRow = AssertRowSaved(await _repository.GetAllAsync(), first);
+
+        var second = await _handler.HandleAsync(Request("https://api.example.com", "sk-second"));
+        var rows = await _repository.GetAllAsync();
+        var secondRow = AssertRowSaved(rows, second);
+
+        // `with` copies every property, so without an explicit reset the appended row
+        // carried the row it replaces' stamps and the repository stored them verbatim.
+        Assert.IsTrue(secondRow.CreatedAt > firstRow.CreatedAt,
+            "a new connection must not inherit the creation time of the row it replaces");
+        Assert.IsTrue(secondRow.UpdatedAt > firstRow.UpdatedAt,
+            "an unchanged UpdatedAt leaves GetAllAsync's recency order with only its id tiebreak");
+        Assert.AreEqual(secondRow.Id, rows[0].Id, "the newest row leads the recency order");
     }
 
     [TestMethod]
@@ -82,7 +102,7 @@ public class SaveConnectionHandlerTests : SqliteTestBase
         Assert.AreNotEqual(first.Id, reconnect.Id);
         var rows = await _repository.GetAllAsync();
         Assert.AreEqual(2, rows.Count);
-        var saved = AssertRowsContains(rows, reconnect.Id!.Value);
+        var saved = AssertRowSaved(rows, reconnect);
         Assert.AreEqual("gpt-4o-mini", saved.Model, "a blank model field keeps the model already in use");
         Assert.AreEqual("sk-rotated", saved.ApiKey, "the key the form did supply is still written");
     }
@@ -94,7 +114,7 @@ public class SaveConnectionHandlerTests : SqliteTestBase
 
         var reconnect = await _handler.HandleAsync(Request("https://api.example.com", "sk-rotated", model: "gpt-4o"));
 
-        var saved = AssertRowsContains(await _repository.GetAllAsync(), reconnect.Id!.Value);
+        var saved = AssertRowSaved(await _repository.GetAllAsync(), reconnect);
         Assert.AreEqual("gpt-4o", saved.Model, "an explicitly supplied model wins over the carried-forward one");
     }
 
@@ -103,7 +123,7 @@ public class SaveConnectionHandlerTests : SqliteTestBase
     {
         var result = await _handler.HandleAsync(Request("https://api.example.com", "sk-secret"));
 
-        var saved = AssertRowsContains(await _repository.GetAllAsync(), result.Id!.Value);
+        var saved = AssertRowSaved(await _repository.GetAllAsync(), result);
         Assert.IsNull(saved.Model, "a blank model field on a first connect stores no model, not an empty string");
     }
 
@@ -113,7 +133,7 @@ public class SaveConnectionHandlerTests : SqliteTestBase
         var result = await _handler.HandleAsync(
             Request("  https://api.example.com  ", "  sk-secret  ", model: "  gpt-4o-mini  "));
 
-        var saved = AssertRowsContains(await _repository.GetAllAsync(), result.Id!.Value);
+        var saved = AssertRowSaved(await _repository.GetAllAsync(), result);
         Assert.AreEqual("gpt-4o-mini", saved.Model);
         Assert.AreEqual("https://api.example.com", saved.BaseUrl);
         Assert.AreEqual("sk-secret", saved.ApiKey);
@@ -136,7 +156,7 @@ public class SaveConnectionHandlerTests : SqliteTestBase
 
         var result = await _handler.HandleAsync(Request("https://api.example.com", "sk-secret"));
 
-        var saved = AssertRowsContains(await _repository.GetAllAsync(), result.Id!.Value);
+        var saved = AssertRowSaved(await _repository.GetAllAsync(), result);
         Assert.AreEqual(ServiceConnection.Unverified, saved.Verification);
         Assert.IsNull(saved.VerifiedAt, "nothing verified this connection, so it has no verification time");
     }
@@ -144,14 +164,14 @@ public class SaveConnectionHandlerTests : SqliteTestBase
     [TestMethod]
     public async Task HandleAsync_WhenNoRowIsWritten_ReportsFailureInsteadOfSuccess()
     {
-        // 0 is the repository's "no row was written" answer — a stale id, rolled back
-        // so the live connection survives. A real repository cannot be made to answer
-        // that from the handler's own inputs, so the repository is stubbed.
+        // The repository's "no row was written" answer — a stale id, rolled back so the
+        // live connection survives. A real repository cannot be made to answer that from
+        // the handler's own inputs, so the repository is stubbed.
         var repository = new Mock<IServiceConnectionRepository>();
         repository.Setup(r => r.GetActiveAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ServiceConnection { Id = 987_654, Service = SaveConnectionHandler.ServiceName });
         repository.Setup(r => r.SaveAsync(It.IsAny<ServiceConnection>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(0);
+            .ReturnsAsync(IServiceConnectionRepository.NoRowWritten);
         var handler = new SaveConnectionHandler(repository.Object);
 
         var result = await handler.HandleAsync(Request("https://api.example.com", "sk-secret"));
@@ -164,10 +184,21 @@ public class SaveConnectionHandlerTests : SqliteTestBase
     private static ConnectServiceRequest Request(string baseUrl, string apiKey, string? model = null) =>
         new() { BaseUrl = baseUrl, ApiKey = apiKey, Model = model };
 
-    private static ServiceConnection AssertRowsContains(IReadOnlyList<ServiceConnection> rows, int id)
+    /// <summary>The row the result names. Success and the id are unwrapped here once,
+    /// so no call site needs the null-forgiving operator, and a save that reported no
+    /// row fails with the handler's own message instead of an unresolvable lookup.</summary>
+    private static ServiceConnection AssertRowSaved(IReadOnlyList<ServiceConnection> rows, SaveConnectionResult result)
     {
-        var row = rows.SingleOrDefault(c => c.Id == id);
-        Assert.IsNotNull(row, $"row {id} must exist");
-        return row!; // null warning is wrong: asserted not null on the line above
+        Assert.IsTrue(result.Succeeded, result.Error);
+        Assert.IsNotNull(result.Id, "a successful save reports the id it wrote");
+        var matches = rows.Where(c => c.Id == result.Id).ToList();
+        Assert.AreEqual(1, matches.Count, $"row {result.Id} must exist exactly once");
+        return matches[0];
+    }
+
+    private async Task AssertActiveIs(int expectedId)
+    {
+        var active = await _repository.GetActiveAsync();
+        Assert.AreEqual(expectedId, active?.Id, "the connection just saved is the active one");
     }
 }

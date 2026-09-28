@@ -15,12 +15,13 @@ namespace VitaTrack.Core.Features.LlmEnrichment;
 /// to the connection being called rather than to whichever connection used the
 /// client last.
 /// <para>
-/// The named client is registered with no configure delegate, so there is no
-/// configuration-derived <c>BaseAddress</c> and no default <c>Authorization</c> left
-/// on it to lose to. That is a stronger statement than the code needs to make:
-/// <c>LlmClientRequestTests</c> still hands the client a deliberately stale address
-/// and authorization and shows both losing, so the per-request wins hold even against
-/// a client configured by someone else.
+/// The named client is registered with a delegate that sets the timeout and nothing
+/// else — no host, no key, no configuration read — so there is no
+/// configuration-derived <c>BaseAddress</c> and no default <c>Authorization</c> for a
+/// per-request value to lose to. That is the registration's business, not this
+/// class's: <c>LlmClientRequestTests</c> hands the client a deliberately stale
+/// address and authorization and shows both losing, so the per-request values win
+/// even against a client configured by someone else.
 /// </para>
 /// </summary>
 /// <inheritdoc cref="ILlmClient"/>

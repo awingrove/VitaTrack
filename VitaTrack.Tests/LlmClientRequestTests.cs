@@ -77,12 +77,14 @@ public class LlmClientRequestTests
 
     /// <summary>The credential belongs to the connection, and travels with the request
     /// rather than sitting on the client. The client here arrives already carrying an
-    /// authorization as a <c>DefaultRequestHeader</c>, which is the state the real
-    /// <c>"llm"</c> named client was in while it still had a configure delegate, and the
-    /// state any other caller of that name could put it in. .NET copies a pooled default
-    /// onto a request only for headers the request does not already carry, so the
-    /// per-request value is what arrives and the stale one never does: one value, and it
-    /// is the connection's.</summary>
+    /// authorization as a <c>DefaultRequestHeader</c>: the state the real <c>"llm"</c>
+    /// named client was in while it still had a configuration-derived delegate, and
+    /// deliberately not its state now — nothing registers that default any more, so
+    /// this is a hostile input rather than a description of the pool. What is being
+    /// shown is that the per-request value wins regardless. .NET copies a pooled
+    /// default onto a request only for headers the request does not already carry, so
+    /// the per-request value is what arrives and the stale one never does: one value,
+    /// and it is the connection's.</summary>
     [TestMethod]
     public async Task PostChatAsync_SendsBearerAuthorizationHeader_PerRequest()
     {

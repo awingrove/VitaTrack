@@ -146,18 +146,27 @@ public class ServiceCollectionExtensionsTests
             "the session id is the registry's, not a second one minted beside it");
     }
 
-    /// <summary>The named client is registered with no configure delegate, so the pooled
-    /// client carries neither a destination nor a credential. Both are per request
-    /// values that belong to the connection being called
-    /// (<see cref="LlmClientRequestTests"/>), and a default left here would be a
+    /// <summary>The named client's pooled instance carries neither a destination nor a
+    /// credential. Both are per-request values that belong to the connection being
+    /// called (<see cref="LlmClientRequestTests"/>), and a default left here would be a
     /// second, silent source of both: a stale <c>BaseAddress</c> would resolve a
     /// relative URI against whatever connection used the pool last, and a default
     /// <c>Authorization</c> is copied onto any request that does not carry its own —
     /// so the credential one caller saved would ride along on another's call.
     /// <para>
-    /// Resolving <c>IHttpClientFactory</c> and asking for this name is also what pins
-    /// that the registration itself still exists; drop it and this throws rather than
-    /// quietly returning an unconfigured client.
+    /// These three assertions pin two <em>values</em>, not the absence of a configure
+    /// delegate: one that set a <c>User-Agent</c> or a retry policy would pass all three.
+    /// </para>
+    /// <para>
+    /// What they do not pin is the registration itself, and nothing here can.
+    /// <c>IHttpClientFactory.CreateClient</c> on an unknown name returns a fresh,
+    /// unconfigured client and does not throw, so deleting the
+    /// <c>AddHttpClient("llm", …)</c> line leaves this test green. The one assertion that
+    /// does catch that is <see cref="AddCore_LlmClient_HasTheAppOwnedTimeout"/>, because
+    /// an unregistered name comes back with the framework's default wait — which is the
+    /// whole of the difference, not a symptom of a larger one: the handler cache is
+    /// keyed by name whether or not the name was ever registered, so losing the
+    /// registration costs that timeout and nothing else, silently rather than loudly.
     /// </para></summary>
     [TestMethod]
     public void AddCore_LlmClient_CarriesNoBaseAddressAndNoAuthorization()
@@ -176,6 +185,33 @@ public class ServiceCollectionExtensionsTests
             client.DefaultRequestHeaders.Contains("Authorization"),
             "Checked by name as well as by parsed value: a header .NET did not parse into Authorization "
             + "would still be copied onto the request.");
+    }
+
+    /// <summary>The named client's wait is the app's rather than the framework's.
+    /// <c>HttpClient.Timeout</c> defaults to 100 seconds, an unregistered name comes
+    /// back with exactly that default, and nothing else in the suite would notice the
+    /// registration going — so this is the assertion standing in for it.
+    /// <para>
+    /// Asserted against the constant so the pin and the source cannot drift apart, and
+    /// against the literal so that moving the constant is something argued for here
+    /// rather than something inherited silently.
+    /// </para></summary>
+    [TestMethod]
+    public void AddCore_LlmClient_HasTheAppOwnedTimeout()
+    {
+        using var provider = BuildProvider(MemoryDataSource);
+        var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("llm");
+
+        Assert.AreEqual(
+            120,
+            ServiceCollectionExtensions.LlmTimeoutSeconds,
+            "A non-streaming completion carrying up to 16k tokens has to finish inside the wait, and the "
+            + "enrichment e2e spec budgets 180s for the same call. Move this deliberately, not by accident.");
+        Assert.AreEqual(
+            TimeSpan.FromSeconds(ServiceCollectionExtensions.LlmTimeoutSeconds),
+            client.Timeout,
+            "The 'llm' client must carry the app-owned timeout rather than HttpClient's 100s default, which "
+            + "is also what an unregistered name would silently get.");
     }
 
     [TestMethod]

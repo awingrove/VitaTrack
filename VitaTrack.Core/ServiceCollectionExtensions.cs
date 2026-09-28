@@ -16,6 +16,15 @@ namespace VitaTrack.Core;
 
 public static class ServiceCollectionExtensions
 {
+    /// <summary>How long the named LLM client waits for one completion.</summary>
+    /// <remarks>App-owned rather than inherited, so it cannot drift with a .NET upgrade:
+    /// <see cref="HttpClient.Timeout"/> defaults to 100 seconds, a completion here is
+    /// non-streaming — <c>LlmClient.BuildBody</c> sends no <c>stream</c> key, so the whole
+    /// reply must arrive before the wait ends — and it can carry 16k tokens
+    /// (<see cref="ServiceConnection.MaxTokens"/>). The e2e enrichment spec budgets 180
+    /// seconds for the same call.</remarks>
+    public const int LlmTimeoutSeconds = 120;
+
     public static IServiceCollection AddCore(this IServiceCollection services, IConfiguration configuration)
     {
         var connStr = configuration.GetConnectionString("Default");
@@ -85,7 +94,14 @@ public static class ServiceCollectionExtensions
         // connection being called rather than to whichever connection used the pooled
         // client last. LlmClientRequestTests hands the client a deliberately stale
         // address and authorization and shows both losing.
-        services.AddHttpClient("llm");
+        // The only thing this delegate sets is the timeout, and it is ours rather than
+        // the framework default — see LlmTimeoutSeconds for why 100 seconds is not
+        // enough. A delegate here is not configuration coming back: it binds no service
+        // provider, reads no options, and names neither a host nor a key.
+        services.AddHttpClient("llm", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(LlmTimeoutSeconds);
+        });
 
         services.AddHttpClient("scraper", client =>
         {

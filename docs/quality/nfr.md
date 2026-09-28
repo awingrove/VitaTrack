@@ -20,16 +20,21 @@ named explicitly so they are not silently assumed.
   assumption ever changes, encrypting this column is an ADR, not a patch. `appsettings.Test.json`
   holds only a connection string (no secrets).
 - **SQL:** parameterised Dapper only; no string-concatenated SQL (injection surface).
-- **SSRF — a deliberate gap, not an oversight.** `UrlSafetyValidator` (which blocks
-  loopback, link-local, and RFC1918 targets) is applied to the *manufacturer* URL the
-  scraper fetches, and is **deliberately not** applied to the LLM base URL the user
-  types into Settings. Reasons: the target is the user's own machine, entered by that
-  same user, for their own enrichment calls; the common deployment is a provider or a
-  local gateway on `localhost`, which the validator would reject by default; and the
-  app is single-user and local (ADR-0001), so there is no lower-trust party choosing the
-  URL. Do not "fix" this by adding the validator to `ServiceCatalogClient` or
-  `LlmClient` — a local OpenAI-compatible server is a supported configuration. If the app
-  ever gains auth or a multi-tenant deployment, this decision is an ADR.
+- **SSRF — a deliberate gap, not an oversight.** `UrlSafetyValidator`
+  (`VitaTrack.Core/Features/LlmEnrichment/UrlSafetyValidator.cs:7-35`) rejects anything
+  that is not **HTTPS** (`:12-14`) and any host that resolves to a loopback,
+  link-local, site-local, multicast, or RFC1918 address. It is applied to the
+  *manufacturer* URL the scraper fetches, and is **deliberately not** applied to
+  the LLM base URL the user types into Settings. Reasons: the target is the user's
+  own machine, entered by that same user, for their own enrichment calls; the
+  common deployment is a provider or a local gateway on `localhost`, which the
+  validator rejects twice over — a plain `http://` fails the scheme rule before the
+  address is ever resolved, and `127.0.0.1` would fail the loopback rule — and
+  local Ollama/LM Studio are supported configurations; and the app is single-user
+  and local (ADR-0001), so there is no lower-trust party choosing the URL. Do not
+  "fix" this by adding the validator to `ServiceCatalogClient` or `LlmClient` — a
+  local OpenAI-compatible server is a supported configuration. If the app ever
+  gains auth or a multi-tenant deployment, this decision is an ADR.
 
 ## Performance
 

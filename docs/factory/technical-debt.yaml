@@ -185,10 +185,12 @@ open:
       explaining what that word means — "your service has not answered the model-list test
       with this key; enrichment can still work" — lives in the `title` attribute. A `title`
       is hover-only: it is not reliably announced, and it is unreachable by keyboard and by
-      touch. On the Settings page the same fact is also stated in visible words
-      (`_Unverified.cshtml`), so a user there is told twice; on the enrichment pages —
-      the whole reason the badge exists — the badge is the *only* statement, and a
-      screen-reader user there gets the bare word.
+      touch. The Settings page does not rescue this, which an earlier version of this entry
+      claimed it did: `_Unverified.cshtml` states the same fact in visible words, but it
+      renders only on the response that answers a probe which did not verify, and a plain
+      page load carries neither a probe nor a note. So the badge is the *only* statement
+      there too, and on the enrichment pages — the whole reason the badge exists — it is
+      still the only statement, and a screen-reader user gets the bare word.
     interest: >-
       low for a sighted keyboard user, who can hover; it bites exactly the users the
       enrichment-flow badge was added to protect — someone about to spend a request on a
@@ -196,17 +198,19 @@ open:
       error. Nothing holds the current shape either way, so a future edit could equally
       drop the sentence or move it further out of reach.
     paydown: >-
-      Task 7 owns the `DESIGN.md` amendment for the badge; decide there between visible
-      text (a sentence under the pill, which is a design change and belongs in that
-      amendment) and an announced accessible name (an `aria-label` carrying the same
-      sentence, invisible, with `title` kept for hover). Whichever is chosen, add the
-      e2e assertion with it — the current spec checks the word, so a regression that
-      dropped the explanation entirely would still pass.
+      An owner has to decide between visible text (a sentence under the pill, which is a
+      design change and belongs in a `DESIGN.md` amendment) and an announced accessible name
+      (an `aria-label` carrying the same sentence, invisible, with `title` kept for hover).
+      Whichever is chosen, add the e2e assertion with it — the current spec checks the word,
+      so a regression that dropped the explanation entirely would still pass. The Settings
+      page is not a second copy of the decision and must not be counted as one: the note it
+      renders is per-response and the badge is the durable half, so fixing the badge on the
+      enrichment pages leaves the Settings page unchanged on purpose.
 
   - id: TD-023
     title: >-
-      `DESIGN.md:224-227` requires a spinner in the submit button; the rapid-click guard
-      implements the disable half only
+      `DESIGN.md:241-244` requires a spinner in the submit button; no form in the
+      app implements it, and the rapid-click guard does the disable half only
     where: >-
       `VitaTrack.Web/wwwroot/js/service-connection.js`,
       `DESIGN.md`
@@ -218,21 +222,34 @@ open:
       `htmx:beforeRequest` and re-enabled on `htmx:afterRequest`, and both are now pinned
       (`should disable the submit button while the connect is in flight` and
       `should re-enable the submit button when the response is not swapped in`). It adds no
-      spinner, and no spec asserts one. The contract therefore describes a behaviour this
-      slice does not implement, and Task 7's amendment has to settle which of the two the
-      project actually wants before the sentence can be called true.
+      spinner, and no spec asserts one. The second half is not merely missing on the Settings
+      page — it has never been implemented anywhere. The three pre-existing
+      `spinner-border` sites (`Views/Supplement/Create.cshtml`,
+      `Views/Supplement/Edit.cshtml`, `Views/Supplement/_ImportModal.cshtml`) are
+      region-level `text-center` divs outside the button, so the sentence is
+      unimplemented app-wide and its "never a full-screen overlay" clause is a
+      description of nothing that exists. That is why the sentence is still here rather than
+      deleted to match the code: the sentence is the project's only statement of what a
+      progress affordance should be, and removing it to make a guard pass would discard a
+      decision nobody made.
     interest: >-
       the gap is a missing affordance, not a wrong one — a disabled button does say the
-      request is in flight. It matters because the contract is normative: as written it
-      tells the next agent to add a spinner to a form that already disables, and leaves
-      open whether a greyed button *plus* a spinner is the project's intent or two answers
-      to one question.
+      request is in flight. It matters because the contract is normative and has never
+      matched any implementation: as written it tells the next agent to add a spinner to
+      forms that already disable, and leaves open whether a greyed button *plus* a spinner
+      is the project's intent or two answers to one question. The cost of leaving it
+      unsettled is that the contract cannot be cited as true by anything.
     paydown: >-
-      Task 7's `DESIGN.md` amendment: either add the spinner in
-      `service-connection.js` (insert the Bootstrap markup alongside the disable, and pin it
-      in the e2e spec), or amend the sentence to say the disabled button is the whole
-      affordance. The two are not equivalent — one is a progress indicator, the other is a
-      duplicate-submit guard — and the contract currently reads as if it wanted both.
+      A decision between the two branches, taken by whoever picks this up rather than by a
+      task that has already shipped: either implement the in-button spinner in
+      `service-connection.js` (insert the Bootstrap markup alongside the disable) and pin it
+      in the e2e spec in the same change, or amend the sentence to name the region-level
+      indicator the app actually uses, in which case the three existing views become the
+      reference implementation and the "injected into the button" clause goes. The two are
+      not equivalent — one is a progress indicator, the other is a duplicate-submit guard —
+      and the contract currently reads as if it wanted both. Whichever branch is taken, an
+      assertion has to come with it: no spec asserts a spinner today, so a change in either
+      direction would pass the suite unremarked.
 
   - id: TD-016
     title: >-

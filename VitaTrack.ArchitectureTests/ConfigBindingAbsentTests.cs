@@ -15,8 +15,9 @@ namespace VitaTrack.ArchitectureTests;
 /// than an inheritance. <c>docs/plans/</c> and <c>docs/superpowers/</c> are dated
 /// records of the decision itself and quote the old name on purpose — 37 of the 41
 /// hits a repo-root scan reports live there. The root <c>AGENTS.md</c> is the
-/// exclusion that is temporary: it still names <c>IOptions&lt;VitaTrackOptions&gt;</c>
-/// at line 57 and <c>VitaTrack__ApiKey</c> at line 93, so naming the repo root in
+/// exclusion that is temporary: it names <c>VitaTrackOptions</c> at line 58 and
+/// <c>VitaTrack__ApiKey</c> at line 98 — both prose saying the binding is gone, and
+/// both spellings a reintroducer would type — so naming the repo root in
 /// <see cref="ScanRoots"/> today would make this guard red over a documentation fix
 /// another task owns. The root's other files — <c>README.md</c>, <c>run.sh</c> —
 /// carry no token and would pass, and the last two hits are lines 7 and 141 of the
@@ -100,7 +101,7 @@ public class ConfigBindingAbsentTests
 
     /// <summary>
     /// Floor on the number of files the scan reads, so an over-broad exclusion cannot
-    /// turn this into a rule that passes by seeing nothing. 211 files are scanned
+    /// turn this into a rule that passes by seeing nothing. 210 files are scanned
     /// today, so 150 permits ordinary churn; below that, the scan is broken rather
     /// than the repository shrinking, and this says so.
     /// </summary>

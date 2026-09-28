@@ -229,6 +229,15 @@ Cards, modals, and inputs keep their default component radii.
 destinations, because a connection is app-wide state rather than anything owned
 by one supplement — reaching it from a supplement row would say otherwise.
 
+**Three intents share a class value with an entity intent, and the region picks
+the row.** `btn btn-success` is "create entity" *and* "save a setting";
+`btn btn-sm btn-primary` is "edit entity" *and* "save a subordinate choice";
+`btn btn-sm btn-danger` is "delete" *and* "disconnect a service". A Settings
+button is never a supplement, family member or nutrient, so on that page the
+setting rows apply and the entity rows do not. The class is the same either way
+— Bootstrap 5.3 defaults only, and no second class was invented to tell them
+apart.
+
 HTMX forms must disable their submit button while a request is in flight and
 re-enable on response (external JS only). Show progress with
 `spinner-border spinner-border-sm` injected into the button, never a
@@ -270,11 +279,14 @@ No icon fonts, no custom CSS.
 
 The Settings page (`ServiceConnectionController.Index`, nav item **Settings**) owns
 the AI service connection. Its dynamic region is one element — `#connection-state`
-in `Views/ServiceConnection/_ConnectionState.cshtml` — that both POSTs swap with
-`hx-swap="outerHTML"`. The id lives in the partial, not in `Index.cshtml`, because
+in `Views/ServiceConnection/_ConnectionState.cshtml` — that the `Connect` and
+`SelectModel` POSTs swap with `hx-swap="outerHTML"` (`Delete` is the controller's
+third POST and swaps nothing: it is a full-page form that redirects, so a reload
+cannot resubmit it). The id lives in the partial, not in `Index.cshtml`, because
 an outerHTML swap replaces the target element: a wrapper the page owned would be
 gone after the first swap and the second would have no target. Every outcome of
-either POST (saved, rejected, unverified) must be visible inside that region.
+either swapping POST (saved, rejected, unverified) must be visible inside that
+region.
 
 Three states, one component. `ConnectionBadgeViewComponent` +
 `_ConnectionBadge.cshtml` is the single renderer, so the Settings page and the
@@ -286,15 +298,23 @@ enrichment pages cannot disagree about what the state looks like:
 | Connected, verified | `verified` | `badge rounded-pill bg-success` | The last `GET {BaseUrl}/v1/models` answered with this key. |
 | Connected, unverified | `unverified` | `badge rounded-pill bg-warning text-dark` | A failed probe still leaves a usable connection — the endpoint may simply not offer a model list. Never red: nothing is broken. |
 
-Both badges carry a `title` explaining the state in words, and are hover-only —
-no icon, no colour beyond the token pair. An unverified connection renders
-`_Unverified.cshtml` above the picker, not instead of it.
+Both badges are always visible — the pill is the state, not a hover reveal — and
+each carries a `title` whose explanation is hover-only: no icon, no colour beyond
+the token pair. `_Unverified.cshtml` is **not** that explanation. It renders above
+the picker on the one response that answers a probe which did not verify, and on
+no other: a plain page load must not spend a network round trip, so it carries no
+catalog and no note, and repeating a warning about a probe the user never asked
+for would be noise. The badge is the lasting truth; the note says why the field
+underneath it is free text right now.
 
 ### Model and reasoning-effort choice
 
-The model field is a **dropdown when the last probe listed models and free text
-when it did not** — one signal (`Models.Count`) decides which, so the two branches
-cannot disagree about when a picker is offered. Reasoning effort is always a
+The model field is a **dropdown when the probe this response answers listed
+models, and free text when it did not** — one signal (`Models.Count`) decides
+which, so the two branches cannot disagree about when a picker is offered.
+"Models" is deliberately *not* a stored fact: a reload does not re-probe, so the
+same saved connection renders free text after a load and a dropdown right after
+the connect that discovered its models. Reasoning effort is always a
 `form-select` of the registry's fixed six values, with help text saying not every
 service uses one.
 

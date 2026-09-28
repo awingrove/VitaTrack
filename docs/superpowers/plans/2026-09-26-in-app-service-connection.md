@@ -642,11 +642,11 @@ git commit -m "refactor: delete VitaTrackOptions — the database is the only so
 
 - [x] **Step 1: Finalize `shards.yaml`**
 
-Every declared path must resolve — `ShardOwnershipTests` errors on a glob matching nothing and on any unclaimed `VitaTrack.Core` file. Claim the `SC` core files, views, unit tests, and the `service-connection.spec.js` e2e spec (which Task 7 creates, so this step comes after Task 7's file exists, or the entry is added in Task 7's commit).
+Every declared path must resolve — `ShardOwnershipTests` errors on a glob matching nothing and on any unclaimed `VitaTrack.Core` file. Claim the `SC` core files, views, unit tests, and the `service-connection.spec.js` e2e spec. **Task 2 created that spec, not this task** — the tracer shipped it — so the entry claims an existing file; Task 8 extends the same spec rather than adding a second one.
 
 - [x] **Step 2: Add the `storymap.yaml` activity**
 
-Activity "Configure AI service" with tasks for connect, choose model, and disconnect. Each task needs a unique `id` prefixed `SC-`, a real `entry_point` (**Settings nav item**, not a deep URL), and `tests:` refs. `StoryMapConsistencyTests` resolves every `unit:` and `e2e:` ref against real test source and **fails if any e2e spec is unreferenced** — so the Task 7 spec must appear here.
+Activity "Configure AI service" with tasks for connect, choose model, and disconnect. Each task needs a unique `id` prefixed `SC-`, a real `entry_point` (**Settings nav item**, not a deep URL), and `tests:` refs. `StoryMapConsistencyTests` resolves every `unit:` and `e2e:` ref against real test source and **fails if any e2e spec is unreferenced** — so the spec Task 2 created must appear here.
 
 - [x] **Step 3: Rewrite the `AGENTS.md` LLM Integration bullet**
 

@@ -271,6 +271,7 @@ slices:
       - VitaTrack.Tests/Features/ServiceConnections/SaveConnectionHandlerTests.cs
       - VitaTrack.Tests/Features/ServiceConnections/ServiceDescriptorRegistryTests.cs
       - VitaTrack.Tests/Features/ServiceConnections/ServiceCatalogClientTests.cs
+      - VitaTrack.Tests/Features/ServiceConnections/ServiceCatalogClientFailureTests.cs
       - VitaTrack.Tests/ServiceConnectionControllerTests.cs
       - VitaTrack.Tests/ServiceConnectionFormTests.cs
     e2e_specs:
@@ -290,6 +291,7 @@ allowlist:
   - VitaTrack.Web/wwwroot/js/delete-confirm.js
   - VitaTrack.Web/wwwroot/js/delete-selected.js
   - VitaTrack.Tests/SqliteTestBase.cs
+  - VitaTrack.Tests/TestDoubles/**
   - VitaTrack.Tests/ServiceCollectionExtensionsTests.cs
   - VitaTrack.Tests/DbInitTests.cs
   - VitaTrack.Tests/Primitives/**

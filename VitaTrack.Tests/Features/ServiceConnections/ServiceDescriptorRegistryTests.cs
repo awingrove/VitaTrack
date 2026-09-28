@@ -59,6 +59,31 @@ public class ServiceDescriptorRegistryTests
     }
 
     [TestMethod]
+    public void Find_IgnoresCase_BecauseTheIdComesFromAFormAndATextColumn()
+    {
+        // The documented behaviour, held: the id arrives typed by a user and read back
+        // from a text column, so "OpenCode" has to resolve. A case-sensitive lookup
+        // would report an unverified connection for a row the app itself wrote.
+        Assert.IsNotNull(ServiceDescriptorRegistry.Find("OPENCODE"),
+            "a service id is not case-sensitive: the same service, typed differently");
+        Assert.AreSame(ServiceDescriptorRegistry.All[0], ServiceDescriptorRegistry.Find("OpEnCoDe"),
+            "a differently-cased id resolves to the shipped record, not a copy of it");
+    }
+
+    /// <summary>The registry is the authority for what a valid service id is, and the
+    /// save handler is what writes that column. A literal in the handler that the
+    /// registry does not know would write a row no probe could ever verify, so the two
+    /// are held together by this test rather than by a comment.</summary>
+    [TestMethod]
+    public void TheServiceIdTheSaveHandlerWrites_ResolvesToAShippedDescriptor()
+    {
+        var written = SaveConnectionHandler.ServiceName;
+
+        Assert.IsNotNull(ServiceDescriptorRegistry.Find(written),
+            $"the save handler writes '{written}' into the Service column, and a row the registry does not know can never be verified");
+    }
+
+    [TestMethod]
     public void OpenCodeDescriptor_HeaderFactory_IncludesXOpencodeSession()
     {
         var descriptor = ServiceDescriptorRegistry.Find("opencode");

@@ -8,9 +8,10 @@ namespace VitaTrack.Core.Features.ServiceConnections;
 /// </summary>
 public class SaveConnectionHandler(IServiceConnectionRepository connections)
 {
-    /// <summary>The one service that ships. The service registry and the selector
-    /// that chooses among its entries replace this literal.</summary>
-    public const string ServiceName = "opencode";
+    /// <summary>The one service that ships. A reference to the registry's id rather
+    /// than a literal of its own, so the two names cannot drift; the selector that
+    /// chooses among several services replaces this line entirely.</summary>
+    public const string ServiceName = ServiceDescriptorRegistry.OpenCodeServiceId;
 
     private const string SaveFailed = "The connection could not be saved. Please try again.";
 

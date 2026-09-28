@@ -125,7 +125,10 @@ public static class ServiceDescriptorRegistry
     public static IReadOnlyList<ServiceDescriptor> All { get; }
     public static IReadOnlyList<string> Variants { get; }  // none, low, medium, high, xhigh, max
     public static ServiceDescriptor? Find(string serviceId);
-    public static IHttpClientFactory HttpClientFactory { get; set; } // session-id injection seam
+    // The `IHttpClientFactory HttpClientFactory { get; set; }` seam this block used to
+    // declare was deleted in Task 3's fix round: it had no reader in any task, and both
+    // consumers take the factory by constructor injection instead.
+    public static string SessionId { get; }  // the per-process session id; one home for it
 }
 
 // Features/ServiceConnections/ServiceCatalogClient.cs
@@ -370,7 +373,7 @@ Expected: FAIL — types do not exist.
 
 - [ ] **Step 4: Implement `ServiceDescriptor`, `ServiceDescriptorRegistry`, `ModelCatalog`**
 
-The registry's static list contains the single `opencode` descriptor. `HeaderFactory` returns `{ "x-opencode-session": <singleton id> }`; the singleton is injected via the `HttpClientFactory` seam declared in the Interfaces block (set it in `ServiceCollectionExtensions` in Task 5) so this task stays unit-testable. `Variants` is the six-value list, `IReadOnlyList<string>`.
+The registry's static list contains the single `opencode` descriptor. `HeaderFactory` returns `{ "x-opencode-session": <singleton id> }`; the value is `ServiceDescriptorRegistry.SessionId`, a per-process `Guid` the registry owns — Task 4's `LlmSessionId` singleton must be a DI wrapper over it, not a second id. `Variants` is the six-value list, `IReadOnlyList<string>`.
 
 - [ ] **Step 5: Implement `IServiceCatalogClient` / `ServiceCatalogClient`**
 
@@ -479,7 +482,7 @@ git commit -m "refactor: LLM seam takes the connection per call; drop the config
 - Modify: `VitaTrack.Web/Controllers/ServiceConnectionController.cs` (add the two HTMX POST targets)
 - Create: `VitaTrack.Web/Views/ServiceConnection/_ModelPicker.cshtml`
 - Modify: `VitaTrack.Web/Views/ServiceConnection/{Index,_ConnectForm}.cshtml` (add the model/variant controls and the unverified branch)
-- Modify: `VitaTrack.Core/ServiceCollectionExtensions.cs` (register the new services + set the `HttpClientFactory` seam)
+- Modify: `VitaTrack.Core/ServiceCollectionExtensions.cs` (register the new services)
 - Modify: `shards.yaml` (claim the new files)
 - Test: `VitaTrack.Tests/Features/ServiceConnections/SaveConnectionHandlerTests.cs` (extend — `ProbeAsync_*` cases and `HandleAsync_RejectsUnknownServiceId`)
 - Test: `VitaTrack.Tests/ServiceConnectionControllerTests.cs` (extend — the two HTMX targets, the unverified branch, `SelectModel`, `Delete`)
@@ -527,7 +530,7 @@ Thin controller: bind the DTO, call the handler, return a view or partial. Two H
 
 - [ ] **Step 7: Register the services in `ServiceCollectionExtensions`**
 
-`AddScoped` for `IServiceCatalogClient`; `AddSingleton` for `LlmSessionId`; set `ServiceDescriptorRegistry.HttpClientFactory` in `AddCore`. The repository and `SaveConnectionHandler` were registered by the tracer (Task 2) — extend, do not duplicate. **Do not add a configure delegate to the `"llm"` client** — that is Task 6's deletion, and this task only adds the new registrations.
+`AddScoped` for `IServiceCatalogClient` (`AddHttpClient<IServiceCatalogClient, ServiceCatalogClient>()` — it takes `IHttpClientFactory` and `ILogger<ServiceCatalogClient>` by constructor, so DI supplies both); `AddSingleton` for `LlmSessionId`, which must wrap `ServiceDescriptorRegistry.SessionId` rather than mint a second id. The registry has no `HttpClientFactory` seam to set: it was declared in the Interfaces block above and deleted in Task 3's fix round as unread. The repository and `SaveConnectionHandler` were registered by the tracer (Task 2) — extend, do not duplicate. **Do not add a configure delegate to the `"llm"` client** — that is Task 6's deletion, and this task only adds the new registrations.
 
 - [ ] **Step 8: Run the full gate**
 

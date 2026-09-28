@@ -1,12 +1,12 @@
-using Microsoft.Extensions.Http;
-
 namespace VitaTrack.Core.Features.ServiceConnections;
 
 /// <summary>
 /// The shipped services, the values a connection's <c>Variant</c> may take, and the
 /// lookup that turns a stored service id back into a descriptor. This is the single
-/// authority for what a valid service id is: the save handler and the form's selector
-/// both read it rather than carrying their own list.
+/// authority for what a valid service id is: <c>SaveConnectionHandler.ServiceName</c>
+/// is a const reference to <see cref="OpenCodeServiceId"/> rather than a literal of its
+/// own, and the connect form renders that const, so no second place carries the id.
+/// A selector over <see cref="All"/> replaces that when a second service ships.
 /// </summary>
 public static class ServiceDescriptorRegistry
 {
@@ -21,14 +21,6 @@ public static class ServiceDescriptorRegistry
     /// <summary>Identifies the app to the service. Not service-specific, so it is not
     /// the descriptor's business — it is set on the request instead.</summary>
     public const string UserAgent = "VitaTrack/1.0 (+https://github.com/awingrove/VitaTrack)";
-
-    /// <summary>The composition root's seam into this static registry, assigned in
-    /// <c>AddCore</c> so the app's <see cref="IHttpClientFactory"/> is reachable from
-    /// code that is not injected. Null until it is assigned: nothing in the registry
-    /// reads it, and the registry's own values are what the composition root needs to
-    /// configure the services around it, so an unconfigured default would only be a
-    /// second thing to keep honest.</summary>
-    public static IHttpClientFactory? HttpClientFactory { get; set; }
 
     /// <summary>The session id for this process: every request the app makes in a run
     /// carries it, and a restart begins a new one. Public because the singleton the

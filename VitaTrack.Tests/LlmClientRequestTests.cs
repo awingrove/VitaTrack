@@ -49,11 +49,15 @@ public class LlmClientRequestTests
             "a trailing slash on the saved base URL must not change where the completion goes");
     }
 
-    /// <summary>Review Focus #1, second half. A named <c>HttpClient</c> is pooled and
-    /// the configure delegate still gives it a <c>BaseAddress</c> from configuration, so
-    /// a relative URL would resolve against whatever that client happens to carry. The
-    /// address handed to the client here is deliberately a *different* host: with the
-    /// relative-URI mutation applied the recorded URI comes out as
+    /// <summary>Review Focus #1, second half. A named <c>HttpClient</c> is pooled, so a
+    /// client can carry a <c>BaseAddress</c> from a previous caller's connection and a
+    /// relative URL would resolve against whatever that client happens to carry. The
+    /// real <c>"llm"</c> client is registered with no configure delegate and so carries
+    /// none, which is why this test supplies a hostile one itself: the invariant it
+    /// pins is that the request URI is built from the connection and does not depend on
+    /// the client's state at all, and that has to hold against a client someone else
+    /// configured. The address handed to the client here is deliberately a *different*
+    /// host: with the relative-URI mutation applied the recorded URI comes out as
     /// <c>https://stale.example/v1/chat/completions</c> — this host, not the
     /// connection's.</summary>
     [TestMethod]
@@ -72,12 +76,13 @@ public class LlmClientRequestTests
     }
 
     /// <summary>The credential belongs to the connection, and travels with the request
-    /// rather than sitting on the client. The client here arrives already carrying a
-    /// config-derived authorization as a <c>DefaultRequestHeader</c>, which is exactly
-    /// the state the real <c>"llm"</c> named client is in until its configure delegate is
-    /// deleted. .NET copies a pooled default onto a request only for headers the request
-    /// does not already carry, so the per-request value is what arrives and the stale one
-    /// never does: one value, and it is the connection's.</summary>
+    /// rather than sitting on the client. The client here arrives already carrying an
+    /// authorization as a <c>DefaultRequestHeader</c>, which is the state the real
+    /// <c>"llm"</c> named client was in while it still had a configure delegate, and the
+    /// state any other caller of that name could put it in. .NET copies a pooled default
+    /// onto a request only for headers the request does not already carry, so the
+    /// per-request value is what arrives and the stale one never does: one value, and it
+    /// is the connection's.</summary>
     [TestMethod]
     public async Task PostChatAsync_SendsBearerAuthorizationHeader_PerRequest()
     {

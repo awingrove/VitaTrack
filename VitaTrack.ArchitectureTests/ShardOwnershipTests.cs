@@ -32,20 +32,20 @@ public class ShardOwnershipTests
 
     /// <summary>
     /// Floor on the total number of files the manifest's slices resolve to
-    /// (<c>controller</c> + <c>core</c> + <c>views</c> + <c>models</c> + <c>js</c> +
-    /// <c>unit_tests</c> + <c>e2e_specs</c>); the allowlist is cross-cutting,
-    /// not a slice claim, and is not counted. Today that total is 145, so
-    /// 130 = 145 - 15 permits exactly the 15 paths the two smallest slices
-    /// claim (SHELL 5, MF 11) to disappear before the floor speaks. That is the
-    /// deliberate trade: emptying any of the other five slices' claim lists
-    /// takes the total under the floor and fails here even when the files went
-    /// with them, because a deleted file orphans nothing and the ownership
-    /// check cannot see it. The floor is the only net for a slice whose lists
-    /// were emptied outright — <c>[]</c> is a legal declaration, so the loud
-    /// loaders stay quiet about it. Ratchet the floor up as the total grows;
-    /// lower it only in the change that legitimately removes claimed files.
+    /// (<c>controller</c> + <c>core</c> + <c>views</c> + <c>models</c> +
+    /// <c>view_components</c> + <c>js</c> + <c>unit_tests</c> + <c>e2e_specs</c>);
+    /// the allowlist is cross-cutting, not a slice claim, and is not counted. Today
+    /// that total is 199, so 183 = 199 - 16 permits exactly the 16 paths the two
+    /// smallest slices claim (SHELL 5, MF 11) to disappear before the floor speaks.
+    /// That is the deliberate trade: emptying any of the other six slices' claim
+    /// lists takes the total under the floor and fails here even when the files went
+    /// with them, because a deleted file orphans nothing and the ownership check
+    /// cannot see it. The floor is the only net for a slice whose lists were emptied
+    /// outright — <c>[]</c> is a legal declaration, so the loud loaders stay quiet
+    /// about it. Ratchet the floor up as the total grows; lower it only in the
+    /// change that legitimately removes claimed files.
     /// </summary>
-    private const int ClaimedArtifactFloor = 130;
+    private const int ClaimedArtifactFloor = 183;
 
     [TestMethod]
     public void Shards_AreConsistent_AndNoFeatureFileIsOrphaned()

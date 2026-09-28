@@ -85,8 +85,11 @@ public class RetiredNamespaceTests
 
     /// <summary>
     /// Floor on the number of files the scan reads, so an over-broad exclusion
-    /// cannot turn this into a rule that passes by seeing nothing. 230 files are
-    /// scanned today, so 200 permits 30 files of churn; below that, the scan is
+    /// cannot turn this into a rule that passes by seeing nothing. 288 files are
+    /// scanned today — 286 tracked, the two-file delta being gitignored local files
+    /// (`package-lock.json`, `appsettings.Production.json`), so the count moves with
+    /// untracked local files exactly as `ConfigBindingAbsentTests` records for its own
+    /// floor. 200 therefore permits 88 files of churn; below that, the scan is
     /// broken rather than the repository shrinking, and this says so.
     /// </summary>
     private const int MinScannedFiles = 200;

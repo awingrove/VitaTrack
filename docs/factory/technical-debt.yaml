@@ -41,7 +41,7 @@ open:
       The repository's "default stamps mean now" contract is defeatable by a `with` clone, and nothing binds a call site to it
     where: >-
       `VitaTrack.Core/Features/ServiceConnections/ServiceConnectionRepository.cs:101-103`,
-      `VitaTrack.Core/Features/ServiceConnections/SaveConnectionHandler.cs:36-55`
+      `VitaTrack.Core/Features/ServiceConnections/SaveConnectionHandler.cs:36-65`
     what: >-
       `SaveAsync` supplies `CreatedAt`/`UpdatedAt` from its own clock read **only** when
       the caller leaves them `default`. That contract is invisible at the call site and
@@ -342,8 +342,15 @@ open:
       reads `https://host/v1` — gets `https://host/v1/v1/models`, a 404, and a connection
       saved as `unverified`. The completion then posts to `/v1/v1/chat/completions` and
       404s as well, so enrichment writes no nutrient rows at all. The app now *reports*
-      the state truthfully: the unverified note and the badge `title` each name all three
-      causes the app genuinely cannot tell apart, and the e2e pins both strings. It does
+      the state truthfully: the unverified note and the badge `title` each name three of
+      the causes the app cannot tell apart, and the e2e pins both strings. "Three of",
+      not "all three": the note names an endpoint with no model list, a base URL the
+      service does not serve, and a rejected key, but a refused connection, a timeout and
+      a 2xx whose body is not a readable catalog all reach the same state as well
+      (`ServiceCatalogClient` answers `ModelCatalog.Unverified` for a non-2xx, for an
+      empty or wholly unusable catalog, and from its catch-all), so the honest count is
+      **at least** three and the e2e's own cases (a) no model list served, (b) a base URL
+      the service does not serve and (c) a refused connection are three of them. It does
       not prevent the case, and whether it should is open. Two branches: never rewrite a
       typed URL and say so in the form's help, or strip a trailing `/v1` before appending.
     interest: >-
@@ -444,7 +451,7 @@ open:
 
   - id: TD-026
     title: >-
-      The 740-line `service-connection.spec.js` has no size guardrail, because
+      The 755-line `service-connection.spec.js` has no size guardrail, because
       `FileSizeTests` enumerates `*.cs` only
     where: >-
       `VitaTrack.ArchitectureTests/FileSizeTests.cs:76-89` (`EnumerateCsFiles`),
@@ -453,7 +460,7 @@ open:
       both rules in `FileSizeTests` walk `Directory.EnumerateFiles(root, "*.cs", ...)`,
       so the 300-line split trigger in the root `AGENTS.md` reaches no JavaScript at all
       and the e2e suite has no size rule of any kind. This spec is the file most likely
-      to grow without anyone noticing, for three reasons that compound: it is 740 lines,
+      to grow without anyone noticing, for three reasons that compound: it is 755 lines,
       it is `describe.serial` on a single shared database row, and its section markers
       keep it legible well past the point where a reviewer would think to look.
     interest: >-

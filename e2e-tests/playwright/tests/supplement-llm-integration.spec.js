@@ -57,14 +57,15 @@ const skipWithoutProvider =
  * file went red for a developer who simply had the variable exported.
  *
  * The reason below names all THREE causes, because the badge alone distinguishes none of
- * them and the third is the one the environment is most likely to hand you. An unverified
- * badge says the probe did not confirm; it does not say why, and the page's own note cannot
- * be trusted to say either — it tells the user the connection is "saved and usable either
- * way", which is false for a base URL that already carried its own /v1, because the
- * completion would post to a doubled path and 404 too. So a skip naming only the key and
- * the model list would send the next person to re-paste a credential that was never the
- * problem. Cause (2) is also deliberately generous, and it was priced: a valid key against
- * a provider with no model list at all lands there too.
+ * them and the page's own note — which now names all three too — cannot say which one
+ * happened: it describes the state, not this connection. That is the gap the reason
+ * covers, and the case worth checking first is the base URL, because the app appends its
+ * own v1/models, so a base that already carried a version segment asks for
+ * /v1/v1/models, comes back 404, and leaves unverified a connection that would otherwise
+ * have enriched fine. So a skip naming only the key and the model list would send the next
+ * person to re-paste a credential that was never the problem. Cause (2) is also
+ * deliberately generous, and it was priced: a valid key against a provider with no model
+ * list at all lands there too.
  */
 async function connectRealProvider(page) {
   await page.goto('/ServiceConnection/Index');

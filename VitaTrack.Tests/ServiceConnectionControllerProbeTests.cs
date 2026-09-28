@@ -91,7 +91,7 @@ public class ServiceConnectionControllerProbeTests
         Assert.AreEqual(0, model.ModelPicker.Models.Count,
             "no catalog was listed, so the model field is free text rather than an empty dropdown");
         Assert.IsNotNull(model.ProbeNote,
-            "the unverified branch is what tells the user a 404 is not a bad key; without the note the free-text field is unexplained");
+            "the note names the causes the badge cannot tell apart, which is what makes the free-text field explainable; without it the field is unexplained");
         Assert.AreEqual(2, _harness.Rows.Count, "a failed probe still leaves the connection saved");
     }
 

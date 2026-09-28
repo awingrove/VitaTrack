@@ -548,18 +548,33 @@ test.describe.serial('Service Connection', () => {
     await expect(page.getByText(service.baseUrl, { exact: true })).toBeVisible();
     // The picker came from a probe that listed nothing, so the model is free text — and
     // the note that explains it is the other half of this state. Its wording is pinned
-    // because it was wrong once: it said the connection is "saved and usable either way",
+    // because it was wrong twice: it said the connection is "saved and usable either way",
     // and for a base URL that already carried a version segment the completion posts to
-    // /v1/v1/chat/completions, 404s, and no nutrient row is written. The two clauses below
-    // are the causes that wording denied, so reverting it turns this red. The badge's own
-    // `title` is pinned on the enrichment page in the test above, which is the one place
-    // it is the *only* statement there is.
+    // /v1/v1/chat/completions, 404s, and no nutrient row is written. The replacement then
+    // over-corrected to "enrichment will fail on any of the three", which is false for the
+    // first of them — see the negative assertion below. The badge's own `title` is pinned
+    // on the enrichment page in the test above, which is the one place it is the *only*
+    // statement there is.
     // Scoped to the swap target rather than the page: the note is a child of
     // #connection-state and nothing else on this page is a warning (the form's validation
     // summary is .alert-danger), so this resolves to exactly the partial under test.
     const unverifiedNote = page.locator('#connection-state .alert-warning');
+    // The two causes the old wording denied, so reverting to it turns this red...
     await expect(unverifiedNote).toContainText('a base URL your service does not serve');
     await expect(unverifiedNote).toContainText('a key it rejected');
+    // ...and the clause that is the point of naming them. Without it the note would name
+    // three causes and promise nothing, which is not the same sentence: what is true of
+    // all three is that they cannot be told apart from here, and that is what makes the
+    // note diagnostic rather than a reassurance.
+    await expect(unverifiedNote).toContainText('look exactly the same from here');
+    // And the note must say nothing at all about enrichment, in EITHER direction — the
+    // false claim was false in both. "Enrichment will fail" is wrong for the first cause,
+    // and the stub in this test is the counterexample: llm-stub.js:76 serves
+    // /v1/chat/completions unconditionally, so this very case (a) is a live working
+    // connection carrying the note. "Enrichment can still work" is wrong for a base URL
+    // that already carried a version segment. So the pinned property is the absence of the
+    // claim, not one particular wording of it.
+    await expect(unverifiedNote).not.toContainText(/enrich/i);
     // Free text, not an empty dropdown — the state a verified badge above an empty
     // picker would contradict. tagName is the discriminator that survives either one.
     await expect(page.locator('#picker-model')).toHaveJSProperty('tagName', 'INPUT');

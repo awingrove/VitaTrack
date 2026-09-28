@@ -34,11 +34,15 @@ elif [[ -z "${LLM_API_KEY:-}" || -z "${LLM_BASE_URL:-}" || -z "${LLM_MODEL:-}" ]
         # here — a path is not a version segment, so "https://gateway.example/openai"
         # resolves the same way the bare root does and a version segment does not.
         #
-        # `read -rp` in all three prompts, and the flag is load-bearing twice over: `-r`
-        # keeps a backslash in the value literal, and `-p` is what *prints* the prompt.
+        # `read -r` in all three prompts and `read -rsp` for the key: the two flags are
+        # in all three, the literal string `read -rp` in two. Only `-p` is load-bearing.
         # Without it the argument after `-r` is read as a variable name, and "> " is not
         # a valid identifier, so read fails and `set -e` aborts the script before npx.
-        # That is not a cosmetic bug: this is the only place the base-URL rule is taught.
+        # `-r` is defensive, not load-bearing: it keeps a backslash in the value literal,
+        # and a backslash in an API key or a model name is not a realistic input, so
+        # dropping it would change nothing observable. It is there so the next person who
+        # adds a prompt does not have to rediscover the question. That is not a cosmetic
+        # bug: this is the only place the base-URL rule is taught.
         echo "Provider base URL, gateway root with no /v1 on the end (e.g. https://gateway.example):"
         read -rp "> " LLM_BASE_URL
     fi

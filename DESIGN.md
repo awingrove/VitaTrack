@@ -296,7 +296,7 @@ enrichment pages cannot disagree about what the state looks like:
 |---|---|---|---|
 | No connection | *nothing rendered* | — | Enrichment refuses in words and names Settings; a badge would be decoration with no state to describe. |
 | Connected, verified | `verified` | `badge rounded-pill bg-success` | The last `GET {BaseUrl}/v1/models` answered with this key. |
-| Connected, unverified | `unverified` | `badge rounded-pill bg-warning text-dark` | A failed probe still leaves a usable connection — the endpoint may simply not offer a model list. Never red: nothing is broken. |
+| Connected, unverified | `unverified` | `badge rounded-pill bg-warning text-dark` | A failed probe still saves the connection. Three causes produce this state — no model list, a base URL the service does not serve, a rejected key — and the app cannot tell them apart, so neither this badge nor `_Unverified.cshtml` may promise anything about whether enrichment works: one of the three is a connection that enriches fine. Never red: unconfirmed is not broken, and the connection was saved. |
 
 Both badges are always visible — the pill is the state, not a hover reveal — and
 each carries a `title` whose explanation is hover-only: no icon, no colour beyond

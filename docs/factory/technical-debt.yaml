@@ -282,6 +282,28 @@ open:
       (4) replay the DL-003 scenario as an acceptance test — agent creds must be
       *rejected* at approve/merge, not merely deferred by convention.
 
+  - id: TD-024
+    title: >-
+      `ServiceConnections` is deliberately unseeded, and nothing in code marks it
+    where: >-
+      `VitaTrack.Core/Data/DbInit.cs`, `AGENTS.md`
+    what: >-
+      Every other table `DbInit.EnsureCreated` creates carries a seed. This one does
+      not, because seeding a credential is wrong: a seed row would put an API key in
+      a source file that is committed to git. The AGENTS.md seeding rule has exactly
+      one documented exception and it is here.
+    interest: >-
+      A future agent reading "seed data for new entity types" and finding no seed
+      block for `ServiceConnections` cannot distinguish a deliberate exception from
+      an oversight, and "fixing" it puts an API key in a source file that is
+      committed to git. The cost is real per change, not one-off: the missing seed
+      also means the app has no connection on a fresh database, so any test that
+      assumes one is exercising a path a new user never takes.
+    paydown: >-
+      None needed. The exception is recorded in AGENTS.md and here; the compensating
+      coverage is the e2e spec, which creates its connection through the UI rather
+      than reading a seed row.
+
 closed:
   - id: TD-012
     title: >-

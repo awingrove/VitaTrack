@@ -220,6 +220,14 @@ Cards, modals, and inputs keep their default component radii.
 | Secondary dialog opener (Import CSV) | `btn btn-outline-primary` |
 | Bulk destructive | `btn btn-danger` |
 | Cancel / dismiss | `btn btn-outline-secondary` |
+| Save/confirm a setting that persists (Settings page) | `btn btn-success` |
+| Save a subordinate choice (model, reasoning effort) | `btn btn-sm btn-primary` |
+| Disconnect a service | `btn btn-sm btn-danger`, in its own POST form with `data-confirm-message` |
+
+**Settings is a nav destination, not a sub-page of a supplement.** `Settings`
+(`ServiceConnectionController`) sits in the navbar beside the other top-level
+destinations, because a connection is app-wide state rather than anything owned
+by one supplement — reaching it from a supplement row would say otherwise.
 
 HTMX forms must disable their submit button while a request is in flight and
 re-enable on response (external JS only). Show progress with
@@ -257,6 +265,49 @@ No icon fonts, no custom CSS.
 - Server-side validation is authoritative; `required` attributes are managed
   by external JS where conditional.
 - Anti-forgery token in every POST form.
+
+### Connection state
+
+The Settings page (`ServiceConnectionController.Index`, nav item **Settings**) owns
+the AI service connection. Its dynamic region is one element — `#connection-state`
+in `Views/ServiceConnection/_ConnectionState.cshtml` — that both POSTs swap with
+`hx-swap="outerHTML"`. The id lives in the partial, not in `Index.cshtml`, because
+an outerHTML swap replaces the target element: a wrapper the page owned would be
+gone after the first swap and the second would have no target. Every outcome of
+either POST (saved, rejected, unverified) must be visible inside that region.
+
+Three states, one component. `ConnectionBadgeViewComponent` +
+`_ConnectionBadge.cshtml` is the single renderer, so the Settings page and the
+enrichment pages cannot disagree about what the state looks like:
+
+| State | Badge | Class | Notes |
+|---|---|---|---|
+| No connection | *nothing rendered* | — | Enrichment refuses in words and names Settings; a badge would be decoration with no state to describe. |
+| Connected, verified | `verified` | `badge rounded-pill bg-success` | The last `GET {BaseUrl}/v1/models` answered with this key. |
+| Connected, unverified | `unverified` | `badge rounded-pill bg-warning text-dark` | A failed probe still leaves a usable connection — the endpoint may simply not offer a model list. Never red: nothing is broken. |
+
+Both badges carry a `title` explaining the state in words, and are hover-only —
+no icon, no colour beyond the token pair. An unverified connection renders
+`_Unverified.cshtml` above the picker, not instead of it.
+
+### Model and reasoning-effort choice
+
+The model field is a **dropdown when the last probe listed models and free text
+when it did not** — one signal (`Models.Count`) decides which, so the two branches
+cannot disagree about when a picker is offered. Reasoning effort is always a
+`form-select` of the registry's fixed six values, with help text saying not every
+service uses one.
+
+Both forms carry `asp-action`/`asp-controller`/`method` *as well as* `hx-post`.
+htmx is the enhancement, not the mechanism: a form carrying only `hx-post`
+degrades to a GET of the current URL, which discards the user's choice with no
+error at all. With the tag helpers, a browser without htmx posts for real and the
+controller redirects to a page that says what happened.
+
+Ids on these forms are prefixed (`picker-model`, `picker-variant`) while the
+`name` attributes are not. The connect form's own model field is `asp-for="Model"`,
+which renders `id="Model"` — and two elements sharing one id break the
+`<label for>` association for both.
 
 ### Feedback
 

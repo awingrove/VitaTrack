@@ -640,27 +640,27 @@ git commit -m "refactor: delete VitaTrackOptions — the database is the only so
 > known project root are stripped of any `:\d+` line suffix and must resolve. Every path named in the
 > `where` below exists at the time this task runs — verify, do not recall (DL-002 defect b).
 
-- [ ] **Step 1: Finalize `shards.yaml`**
+- [x] **Step 1: Finalize `shards.yaml`**
 
 Every declared path must resolve — `ShardOwnershipTests` errors on a glob matching nothing and on any unclaimed `VitaTrack.Core` file. Claim the `SC` core files, views, unit tests, and the `service-connection.spec.js` e2e spec (which Task 7 creates, so this step comes after Task 7's file exists, or the entry is added in Task 7's commit).
 
-- [ ] **Step 2: Add the `storymap.yaml` activity**
+- [x] **Step 2: Add the `storymap.yaml` activity**
 
 Activity "Configure AI service" with tasks for connect, choose model, and disconnect. Each task needs a unique `id` prefixed `SC-`, a real `entry_point` (**Settings nav item**, not a deep URL), and `tests:` refs. `StoryMapConsistencyTests` resolves every `unit:` and `e2e:` ref against real test source and **fails if any e2e spec is unreferenced** — so the Task 7 spec must appear here.
 
-- [ ] **Step 3: Rewrite the `AGENTS.md` LLM Integration bullet**
+- [x] **Step 3: Rewrite the `AGENTS.md` LLM Integration bullet**
 
 Replace the `VitaTrack:BaseUrl` / `VitaTrack:ApiKey` / `IOptions<VitaTrackOptions>` text with the new model: settings live in the `ServiceConnections` table, services are `ServiceDescriptor` records in `ServiceDescriptorRegistry`, the variant vocabulary is the six values, and the probe is `GET {BaseUrl}/v1/models` with a failed probe leaving the connection `unverified`. Add the AGENTS.md seed-data exception for this table.
 
-- [ ] **Step 4: Update `docs/quality/nfr.md`**
+- [x] **Step 4: Update `docs/quality/nfr.md`**
 
 Rewrite the secrets bullet — the key is a plaintext `TEXT` column, masked to the last four characters in the UI, never logged, and never in rendered markup, with `*.db` gitignored. Add the SSRF decision: `UrlSafetyValidator` is **deliberately not** applied to the LLM base URL, with the reason, so a future reader does not "fix" it.
 
-- [ ] **Step 5: Amend `DESIGN.md`**
+- [x] **Step 5: Amend `DESIGN.md`**
 
 Add: the three-state connection indicator (disconnected / connected-verified / connected-unverified), the dependent model→variant dropdown, the Settings page as a nav destination, and the button intent classes used in Task 4.
 
-- [ ] **Step 6: Record the no-seed exception in the register (id assigned at write time)**
+- [x] **Step 6: Record the no-seed exception in the register (id assigned at write time)**
 
 Append to the `open` collection in `docs/factory/technical-debt.yaml`. Content, as prose — this is
 deliberately not a decision-log line, because the interest is a real per-change cost:
@@ -679,7 +679,7 @@ deliberately not a decision-log line, because the interest is a real per-change 
 Then regenerate the dashboard in Step 7 — the register is one of its three sources, and CI gates freshness
 (`ci.yml`, commit `2d786ea`), so a register edit without a regeneration is a red build.
 
-- [ ] **Step 7: Run the gates and commit**
+- [x] **Step 7: Run the gates and commit**
 
 ```bash
 dotnet test VitaTrack.sln -c Release

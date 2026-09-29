@@ -2,7 +2,6 @@ using System.Data;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using VitaTrack.Core.Data;
 using VitaTrack.Core.Features.Dosing;
 using VitaTrack.Core.Features.Family;
@@ -10,12 +9,22 @@ using VitaTrack.Core.Features.LlmEnrichment;
 
 using VitaTrack.Core.Features.Nutrients;
 using VitaTrack.Core.Features.Reporting;
+using VitaTrack.Core.Features.ServiceConnections;
 using VitaTrack.Core.Features.Supplements;
 
 namespace VitaTrack.Core;
 
 public static class ServiceCollectionExtensions
 {
+    /// <summary>How long the named LLM client waits for one completion.</summary>
+    /// <remarks>App-owned rather than inherited, so it cannot drift with a .NET upgrade:
+    /// <see cref="HttpClient.Timeout"/> defaults to 100 seconds, a completion here is
+    /// non-streaming — <c>LlmClient.BuildBody</c> sends no <c>stream</c> key, so the whole
+    /// reply must arrive before the wait ends — and it can carry 16k tokens
+    /// (<see cref="ServiceConnection.MaxTokens"/>). The e2e enrichment spec budgets 180
+    /// seconds for the same call.</remarks>
+    public const int LlmTimeoutSeconds = 120;
+
     public static IServiceCollection AddCore(this IServiceCollection services, IConfiguration configuration)
     {
         var connStr = configuration.GetConnectionString("Default");
@@ -51,9 +60,27 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISupplementRepository, SupplementRepository>();
         services.AddScoped<ISupplementNutrientRepository, SupplementNutrientRepository>();
         services.AddScoped<IPrescribedDoseRepository, PrescribedDoseRepository>();
+        services.AddScoped<IServiceConnectionRepository, ServiceConnectionRepository>();
         services.AddScoped<PrescribeDoseHandler>();
         services.AddScoped<AmendDoseHandler>();
         services.AddScoped<ImportSupplementsHandler>();
+        services.AddScoped<SaveConnectionHandler>();
+        services.AddScoped<ProbeConnectionHandler>();
+
+        // AddScoped, deliberately, not AddHttpClient<IServiceCatalogClient,
+        // ServiceCatalogClient>(). The typed-client factory builds the implementation
+        // through DefaultTypedHttpClientFactory<T>, which requires a constructor taking
+        // an HttpClient; this one takes an IHttpClientFactory and a logger. The wrong
+        // registration compiles and then throws at resolution — the settings page, not
+        // the build — so AddCore_RegistersAllRepositoriesAndServices resolves this one
+        // for real rather than reading the descriptor.
+        services.AddScoped<IServiceCatalogClient, ServiceCatalogClient>();
+
+        // One session id per process, and it is the registry's: the completion client
+        // and the catalog probe must send the same value for the header to correlate
+        // them. Registered rather than reached for statically so the client is
+        // handed it, which is also what makes "is it the registry's?" testable.
+        services.AddSingleton<LlmSessionId>();
 
         services.AddScoped<ISupplementNutrientService, SupplementNutrientService>();
         services.AddScoped<IReportingService, ReportingService>();
@@ -62,18 +89,18 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISupplementLabelParser, SupplementLabelParser>();
         services.AddScoped<ICsvImportService, CsvImportService>();
 
-        services.AddHttpClient("llm", (sp, client) =>
+        // The named client carries no destination and no credential: the absolute URI
+        // and the authorization header travel per request, because they belong to the
+        // connection being called rather than to whichever connection used the pooled
+        // client last. LlmClientRequestTests hands the client a deliberately stale
+        // address and authorization and shows both losing.
+        // The only thing this delegate sets is the timeout, and it is ours rather than
+        // the framework default — see LlmTimeoutSeconds for why 100 seconds is not
+        // enough. A delegate here is not configuration coming back: it binds no service
+        // provider, reads no options, and names neither a host nor a key.
+        services.AddHttpClient("llm", client =>
         {
-            var options = sp.GetRequiredService<IOptions<VitaTrackOptions>>().Value;
-            var baseUrl = options.BaseUrl;
-            if (!string.IsNullOrWhiteSpace(baseUrl))
-            {
-                if (!baseUrl.EndsWith('/'))
-                    baseUrl += '/';
-                client.BaseAddress = new Uri(baseUrl);
-            }
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {options.ApiKey}");
-            client.Timeout = TimeSpan.FromSeconds(120);
+            client.Timeout = TimeSpan.FromSeconds(LlmTimeoutSeconds);
         });
 
         services.AddHttpClient("scraper", client =>

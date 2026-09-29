@@ -1,118 +1,50 @@
+using System;
 using System.Net;
-using System.Net.Http;
-using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
-using Moq.Protected;
-using VitaTrack.Core;
 using VitaTrack.Core.Features.LlmEnrichment;
+using VitaTrack.Core.Features.ServiceConnections;
+using VitaTrack.Tests.TestDoubles;
 
 namespace VitaTrack.Tests;
 
+/// <summary>
+/// The two headers the app has always put on every call, kept as their own class:
+/// the user agent that identifies VitaTrack to the service, and the session header
+/// that correlates its traffic. Which values they carry, and the one-home guarantee
+/// behind the session header, are <see cref="LlmClientRequestTests"/>' subject, as are
+/// the four error paths this class used to repeat in a weaker form.
+/// </summary>
 [TestClass]
 public class LlmClientHeaderTests
 {
-    private static Mock<HttpMessageHandler> CreateHandlerMock(HttpStatusCode status, string content)
-    {
-        var mock = new Mock<HttpMessageHandler>();
-        mock.Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.IsAny<HttpRequestMessage>(),
-                ItExpr.IsAny<CancellationToken>())
-            .ReturnsAsync(new HttpResponseMessage
-            {
-                StatusCode = status,
-                Content = new StringContent(content)
-            });
-        return mock;
-    }
+    private const string ReplyBody = @"{ ""choices"": [{ ""message"": { ""content"": ""hello"" } }] }";
 
-    private static IHttpClientFactory CreateHttpClientFactory(HttpMessageHandler llmHandler)
-    {
-        var factoryMock = new Mock<IHttpClientFactory>();
-        var client = new HttpClient(llmHandler)
-        {
-            BaseAddress = new System.Uri("https://dummy.example.com/v1")
-        };
-        factoryMock.Setup(f => f.CreateClient("llm")).Returns(client);
-        return factoryMock.Object;
-    }
-
-    private static IOptions<VitaTrackOptions> CreateOptions() =>
-        Options.Create(new VitaTrackOptions
-        {
-            BaseUrl = "https://dummy.example.com/v1",
-            ApiKey = "test-real-api-key",
-            Model = "test-model",
-            MaxTokens = 16384,
-            Temperature = 0.1
-        });
+    private static Task<LlmCompletion> PostAsync(HttpMessageHandler handler) =>
+        new LlmClient(new SequencedHttpClientFactory(handler), new LlmSessionId(), new RecordingLogger<LlmClient>())
+            .PostChatAsync("system", "user", LlmTestData.Connection(), LlmTestData.Settings());
 
     [TestMethod]
-    public async Task PostChatAsync_SendsOpenCodeSessionAndUserAgentHeaders()
+    public async Task PostChatAsync_SendsTheApplicationUserAgent()
     {
-        HttpRequestMessage? capturedRequest = null;
-        var apiMock = new Mock<HttpMessageHandler>();
-        apiMock.Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.IsAny<HttpRequestMessage>(),
-                ItExpr.IsAny<CancellationToken>())
-            .Callback<HttpRequestMessage, CancellationToken>((req, _) => capturedRequest = req)
-            .ReturnsAsync(new HttpResponseMessage
-            {
-                StatusCode = HttpStatusCode.OK,
-                Content = new StringContent(@"{ ""choices"": [{ ""message"": { ""content"": ""hello"" } }] }")
-            });
+        var handler = new RecordingHandler(HttpStatusCode.OK, ReplyBody);
 
-        var factory = CreateHttpClientFactory(apiMock.Object);
-        var client = new LlmClient(factory, CreateOptions(), NullLogger<LlmClient>.Instance);
+        await PostAsync(handler);
 
-        await client.PostChatAsync("system", "user");
-
-        Assert.IsNotNull(capturedRequest);
-        Assert.IsTrue(capturedRequest!.Headers.Contains("x-opencode-session"), "Missing x-opencode-session header");
-        Assert.IsFalse(string.IsNullOrWhiteSpace(capturedRequest.Headers.GetValues("x-opencode-session").First()));
-        Assert.IsTrue(capturedRequest.Headers.UserAgent.ToString().Contains("VitaTrack"), "Missing User-Agent header");
+        Assert.IsTrue(
+            handler.SentRequest().Headers.UserAgent.ToString().Contains("VitaTrack", StringComparison.Ordinal),
+            "every request the app makes identifies the app, the completion included");
     }
 
     [TestMethod]
-    public async Task PostChatAsync_ReturnsError_WhenApiReturnsNonSuccess()
+    public async Task PostChatAsync_SendsTheSessionHeader()
     {
-        var apiMock = CreateHandlerMock(HttpStatusCode.InternalServerError, "boom");
-        var client = new LlmClient(CreateHttpClientFactory(apiMock.Object), CreateOptions(), NullLogger<LlmClient>.Instance);
+        var handler = new RecordingHandler(HttpStatusCode.OK, ReplyBody);
 
-        var result = await client.PostChatAsync("system", "user");
+        await PostAsync(handler);
 
-        Assert.IsNull(result.Content);
-        Assert.IsFalse(string.IsNullOrWhiteSpace(result.Error));
-    }
-
-    [TestMethod]
-    public async Task PostChatAsync_ReturnsError_WhenChoicesEmpty()
-    {
-        var apiMock = CreateHandlerMock(HttpStatusCode.OK, @"{ ""choices"": [] }");
-        var client = new LlmClient(CreateHttpClientFactory(apiMock.Object), CreateOptions(), NullLogger<LlmClient>.Instance);
-
-        var result = await client.PostChatAsync("system", "user");
-
-        Assert.IsNull(result.Content);
-        Assert.IsTrue(result.Error!.Contains("No response"));
-    }
-
-    [TestMethod]
-    public async Task PostChatAsync_ReturnsError_WhenContentEmpty()
-    {
-        var apiMock = CreateHandlerMock(HttpStatusCode.OK, @"{ ""choices"": [{ ""message"": { ""content"": ""   "" } }] }");
-        var client = new LlmClient(CreateHttpClientFactory(apiMock.Object), CreateOptions(), NullLogger<LlmClient>.Instance);
-
-        var result = await client.PostChatAsync("system", "user");
-
-        Assert.IsNull(result.Content);
-        Assert.IsTrue(result.Error!.Contains("Empty response"));
+        Assert.IsTrue(
+            handler.SentRequest().Headers.Contains(ServiceDescriptorRegistry.SessionHeaderName),
+            "the completion carries the same session header the catalog probe does");
     }
 }

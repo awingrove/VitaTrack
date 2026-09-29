@@ -1,0 +1,18 @@
+@{
+    ViewData["Title"] = "Settings";
+    Layout = "_Layout";
+}
+@using VitaTrack.Web.Models
+@model ServiceConnectionViewModel
+
+<h2>@ViewData["Title"]</h2>
+
+@* The whole dynamic region, wrapper and all: it carries its own id so that an htmx
+   swap re-establishes it, and it is rendered whether or not anything is saved — an empty
+   target for a first connect to land in is the alternative, and it does not exist. *@
+<partial name="_ConnectionState" model="Model" />
+
+@section Scripts {
+    <script src="~/js/service-connection.js" asp-append-version="true"></script>
+    <script src="~/js/delete-confirm.js" asp-append-version="true"></script>
+}

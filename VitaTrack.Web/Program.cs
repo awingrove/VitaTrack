@@ -1,14 +1,18 @@
 using VitaTrack.Core;
+using VitaTrack.Web.ViewComponents;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.Configure<VitaTrackOptions>(
-    builder.Configuration.GetSection("VitaTrack"));
 builder.Services.AddControllersWithViews(options =>
 {
     options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
 });
 builder.Services.AddCore(builder.Configuration);
+
+// The connection badge, rendered on the Settings page and on the enrichment pages.
+// Discovery finds the type; the registration is what makes it resolvable, and without
+// it the pages that ask for it fail at render rather than at build.
+builder.Services.AddScoped<ConnectionBadgeViewComponent>();
 
 var app = builder.Build();
 

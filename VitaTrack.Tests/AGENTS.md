@@ -37,8 +37,8 @@ When a table has foreign key dependencies, you **must** test that deleting a par
 This is critical — missing cascade delete tests leads to foreign key constraint failures at runtime.
 
 ## Writing Service Tests (LLM)
-- Mock `HttpClient` using `Moq.Protected().Setup<...>("SendAsync", ...)`.
-- Provide `IOptions<VitaTrackOptions>` via `Options.Create(new VitaTrackOptions { ... })`.
+- **Never mock `HttpClient`** for the LLM seam — fake the transport with a stub `HttpMessageHandler` (`TestDoubles/RecordingHandler.cs`, `ThrowingHandler.cs`, and `SequencedHttpClientFactory` when the factory is what a test drives). There is nothing to configure on a client, because the base URL, key and model travel per request. Moq's `Protected()` is still the right tool on a bare `HttpMessageHandler` where a test only needs a status code (the `HtmlScraperService` tests do exactly that); it is the `HttpClient` that is retired.
+- Supply connection state as a `ServiceConnection` plus `LlmRequestSettings` via `LlmTestData` (`TestDoubles/LlmTestData.cs`); there is no configuration to bind.
 - Verify the service returns a `LlmResult` with expected fields.
 - Do **not** hit the real LLM API in unit tests.
 
@@ -66,8 +66,8 @@ When a running app behaves in a way the source says is impossible (e.g., validat
 ## Playwright E2E Tests
 - Tests live in `e2e-tests/playwright/tests/`.
 - Run via `npx playwright test` from `e2e-tests/playwright/`.
-- **Never mock HTTP** — E2E tests hit the real running application.
-- **DB Isolation:** `global-setup.js` deletes `VitaTrack.Test.db` before each run. The server loads `appsettings.Test.json` via `--environment Test`.
+- **Never mock the app's own HTTP** — E2E tests hit the real running application, and nothing stands in for an app endpoint's answer. A **real local server standing in for an external dependency the app calls** is not that: see the no-mock rule in the root `AGENTS.md`, and `e2e-tests/playwright/helpers/llm-stub.js` for the worked example.
+- **DB Isolation:** there is no test DB *file* to isolate — `appsettings.Test.json` points at a named shared **in-memory** SQLite database (`Data Source=VitaTrack.Test.Memory;Mode=Memory;Cache=Shared`) kept alive for the process by the keep-alive singleton in `ServiceCollectionExtensions.AddCore`. `global-setup.js` is a no-op that prints "In-memory SQLite — no file cleanup needed", not a deleter. The server loads `appsettings.Test.json` via `--environment Test`.
 - **Shared DB state:** Tests run in parallel (4 workers) against one server. When mutating data, use dynamic assertions (`.first()`, `.last()`, relative counts) instead of exact values.
 - **Seeding:** Report tests depend on `PrescribedDoses` seed data in `DbInit.EnsureCreated`. If adding a new report, seed the required data there.
 - **Adding a new test file:** Create `tests/<feature>.spec.js`. Follow existing patterns (e.g., `home.spec.js` for simple navigation, `prescribed-dose.spec.js` for CRUD with create-before-edit/delete).

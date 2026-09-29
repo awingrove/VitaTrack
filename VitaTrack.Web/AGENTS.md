@@ -15,6 +15,13 @@
 - Keep controllers thin: call repository or service, map result, return view.
 - No direct `IDbAccess` or service instantiation; rely on DI.
 
+## Bind and view models
+- **`VitaTrack.Web/Models/` is where they live**, and this contract did not name it until 2026-09-28 — nor `VitaTrack.Web/ViewComponents/`, which this branch created and which is named here for the same reason. (`Models/` itself predates this branch; the contract simply failed to name it, so a new slice is not the first to have used it.) There is no other place: a bind model or a view model defined in a controller, in `Views/`, or in `VitaTrack.Core/Models` (retired) is in the wrong place.
+- **Bind models** (`ConnectServiceRequest`, `EditSupplementRequest`, …) are plain POCOs with data annotations, and a controller action takes one directly. They are the MVC binding surface, so they carry the `[Required]`/`[Display]`/validation the form needs.
+- **View models** are `record`s the controller projects into. **The SC slice holds every one of its views to that** — no `@model` under `Views/ServiceConnection/` names a `VitaTrack.Core` entity, and that is what keeps the plaintext `ApiKey` structurally out of all of them. `ServiceConnectionViewModel` is the worked example: it holds the masked-key `SavedConnection` projection, so the `ServiceConnection` entity is never handed to a view at all. Projecting is what makes that structurally true rather than a matter of remembering. (The connect form does bind a typed `ApiKey` string, because that is the key the user is submitting; the controller returns it as `string.Empty` on every redisplay.) **That bar is per-slice, not repo-wide:** the older slices do hand a `VitaTrack.Core` type straight to a view, and the Views rule below says so — a new slice is expected to meet the SC bar, not to have the older views retrofitted.
+- **Sharding:** every file here is claimed by a slice under the `models:` key in `shards.yaml`, and `ShardOwnershipTests` scans this directory as an orphan root. A new model with no claim is a red build.
+- **No `HttpClient` or `IConfiguration`** in a bind model; connection state comes from `IServiceConnectionRepository`, and nothing binds `VitaTrack:*` any more.
+
 ## Validation
 - `Program.cs` sets `SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true`. With NRT enabled MVC would otherwise treat non-nullable string props as implicitly `[Required]`, rejecting empty form fields before `IValidatableObject.Validate` runs. Do not remove this; do not assume "no attribute = optional".
 - Conditional rules (e.g., dosage required for top-level nutrients but optional for blend children) live in the model's `IValidatableObject.Validate`, not in views/controllers.

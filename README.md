@@ -34,17 +34,15 @@ A family vitamin and supplement tracker. Track who takes what, how often, what i
 # → http://localhost:5000
 ```
 
-`run.sh` will prompt for LLM configuration on first run if not already set.
+`run.sh` starts the app. It prompts for nothing — see Configuration below.
 
 ## Configuration
 
-LLM enrichment is **optional** — the app works fully without it (you can always enter nutrients manually). To enable it, configure an OpenAI-compatible API endpoint:
-
-```bash
-export VitaTrack__BaseUrl="https://openrouter.ai/api/v1"
-export VitaTrack__ApiKey="sk-or-..."
-dotnet run --project VitaTrack.Web
-```
+There is no configuration file and no environment variable for the LLM. LLM enrichment is
+**optional** — the app works fully without it (you can always enter nutrients manually). To
+enable it, start the app, open **Settings** in the nav bar, and connect an OpenAI-compatible
+endpoint there: the base URL and API key you enter are stored in the app's own database, not in
+`appsettings.json` or the environment.
 
 Any provider with an OpenAI-compatible `/v1/chat/completions` endpoint works (OpenRouter, OpenAI, local servers, etc.).
 

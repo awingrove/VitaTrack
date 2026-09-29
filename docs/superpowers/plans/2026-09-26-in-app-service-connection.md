@@ -27,7 +27,7 @@ it, everything does.
 - **No `BaseAddress` on any `HttpClient`.** Every LLM request builds an absolute `Uri` from the connection's `BaseUrl`. The `AddHttpClient("llm", …)` configure delegate is deleted.
 - **`Authorization` and descriptor headers are set per request**, never on a cached handler.
 - **No foreign keys on `ServiceConnections`.** Deleting a connection must never touch a supplement.
-- **No seed row for `ServiceConnections`.** Seeding a credential is wrong. This is a recorded exception to the AGENTS.md seeding rule, written into the debt register in the same change (as `TD-021` — see Task 7).
+- **No seed row for `ServiceConnections`.** Seeding a credential is wrong. This is a recorded exception to the AGENTS.md seeding rule, written into the debt register in the same change (with **an id assigned at write time** — see Task 7. The id is deliberately not written down here: a reservation stated in a plan is outranked by the register's own "next free id" rule, which has now taken three of them.)
 - **The tracer comes second, not last.** `new-shard.md` step 3 requires a green vertical path before depth, and this plan originally ran three horizontal tasks first. Task 2 restores it: table → save-a-connection → *then* the probe, the seam, and the picker. **Task 2 must not change anything that works today** — `LlmClient` still reads configuration until Task 4, so the existing enrichment path is untouched while the tracer lands.
 - **`Service` is a descriptor id, not free text.** The user picks from the registry; the controller never accepts an arbitrary string.
 - **`IsActive` invariant: at most one row has `IsActive = 1`.** Enforced in the repository, not by convention.
@@ -125,7 +125,10 @@ public static class ServiceDescriptorRegistry
     public static IReadOnlyList<ServiceDescriptor> All { get; }
     public static IReadOnlyList<string> Variants { get; }  // none, low, medium, high, xhigh, max
     public static ServiceDescriptor? Find(string serviceId);
-    public static IHttpClientFactory HttpClientFactory { get; set; } // session-id injection seam
+    // The `IHttpClientFactory HttpClientFactory { get; set; }` seam this block used to
+    // declare was deleted in Task 3's fix round: it had no reader in any task, and both
+    // consumers take the factory by constructor injection instead.
+    public static string SessionId { get; }  // the per-process session id; one home for it
 }
 
 // Features/ServiceConnections/ServiceCatalogClient.cs
@@ -266,8 +269,9 @@ Expected: FAIL — types do not exist.
 - [ ] **Step 3: Implement `ConnectServiceRequest` and `SaveConnectionHandler`**
 
 `ConnectServiceRequest` carries `BaseUrl`, `ApiKey`, and an optional free-text `Model` — **no `Service` field
-yet**. The handler writes `Service = "opencode"` as a literal; Task 3 replaces that literal with a registry
-lookup and Task 5 adds the selector. It validates non-blank URL and key, trims the model, then saves — the
+yet**. The handler writes `Service = "opencode"` as a literal; **Task 5** replaces that literal with a registry
+lookup and adds the selector (its test list carries `HandleAsync_RejectsUnknownServiceId`). It validates
+non-blank URL and key, trims the model, then saves — the
 repository already deactivates the previous active row, so the handler does not duplicate that.
 
 **One design question, decided here to keep Task 5 small:** the tracer's controller uses a plain form POST and
@@ -369,7 +373,7 @@ Expected: FAIL — types do not exist.
 
 - [ ] **Step 4: Implement `ServiceDescriptor`, `ServiceDescriptorRegistry`, `ModelCatalog`**
 
-The registry's static list contains the single `opencode` descriptor. `HeaderFactory` returns `{ "x-opencode-session": <singleton id> }`; the singleton is injected via the `HttpClientFactory` seam declared in the Interfaces block (set it in `ServiceCollectionExtensions` in Task 5) so this task stays unit-testable. `Variants` is the six-value list, `IReadOnlyList<string>`.
+The registry's static list contains the single `opencode` descriptor. `HeaderFactory` returns `{ "x-opencode-session": <singleton id> }`; the value is `ServiceDescriptorRegistry.SessionId`, a per-process `Guid` the registry owns — Task 4's `LlmSessionId` singleton must be a DI wrapper over it, not a second id. `Variants` is the six-value list, `IReadOnlyList<string>`.
 
 - [ ] **Step 5: Implement `IServiceCatalogClient` / `ServiceCatalogClient`**
 
@@ -416,7 +420,7 @@ New `LlmClientRequestTests` against a stub handler. Assert:
 - `PostChatAsync_SendsModelFromSettings` — `settings.Model` appears as `model` in the body.
 - `PostChatAsync_SendsVariantAsReasoningEffort_AndOmitsWhenNull` — `Variant = "high"` → body has `reasoning_effort: "high"`; `Variant = null` → key absent.
 - `PostChatAsync_UsesMaxTokensAndTemperatureFromSettings` — a `settings` override changes both in the body, proving the values are no longer read from configuration.
-- `PostChatAsync_SendsXOpencodeSessionHeader_FromTheSessionSingleton` — the value is the `LlmSessionId` singleton's, stable across two calls.
+- `PostChatAsync_SendsXOpencodeSessionHeader_FromTheSessionSingleton` — the value is the `LlmSessionId` singleton's, stable across two calls **and** `AreEqual(ServiceDescriptorRegistry.SessionId, …)`. Stability alone does not catch a second `Guid`: a per-construction id satisfies it, so the identity assertion is what pins the one home.
 - `PostChatAsync_WithNullModel_ReturnsErrorPointingAtSettings` — no `gpt-4o-mini` fallback; the error text names Settings.
 - `PostChatAsync_KeepsExistingErrorAndEmptyResponseBehavior` — non-2xx, empty choices, and empty content still return their existing `LlmCompletion` errors.
 
@@ -427,7 +431,7 @@ Expected: FAIL — signatures do not match.
 
 - [ ] **Step 3: Add `LlmSessionId`**
 
-A registered singleton exposing one `Guid` generated at construction, exposed as a string. One id per process, stable across every request, fresh across restarts.
+`LlmSessionId` is a thin DI wrapper that **returns** `ServiceDescriptorRegistry.SessionId` — it does not own, generate, or store an id of its own. One id per process, stable across every request, fresh across restarts, and the same value the `HeaderFactory` at `ServiceDescriptorRegistry` already sends. Do not add a `Guid` field to it.
 
 - [ ] **Step 4: Rewrite `ILlmClient` / `LlmClient`**
 
@@ -473,14 +477,15 @@ git commit -m "refactor: LLM seam takes the connection per call; drop the config
 > column mean anything.
 
 **Files:**
-- Create: `.../ServiceConnections/{ConnectServiceRequest,SelectModelRequest,SaveConnectionHandler,ProbeConnectionHandler}.cs`
-- Create: `VitaTrack.Web/Controllers/ServiceConnectionController.cs`
-- Create: `VitaTrack.Web/Views/ServiceConnection/{Index,_ConnectForm,_ModelPicker}.cshtml`
-- Modify: `VitaTrack.Web/Views/Shared/_Layout.cshtml` (nav item — **required**, `UiReachabilityTests` fails an orphan page)
-- Modify: `VitaTrack.Core/ServiceCollectionExtensions.cs` (register the new services + set the `HttpClientFactory` seam)
-- Modify: `shards.yaml` (claim all new files)
-- Test: `VitaTrack.Tests/Features/ServiceConnections/SaveConnectionHandlerTests.cs`
-- Test: `VitaTrack.Tests/ServiceConnectionControllerTests.cs`
+- Create: `.../ServiceConnections/{SelectModelRequest,ProbeConnectionHandler}.cs`
+- Modify: `.../ServiceConnections/{ConnectServiceRequest,SaveConnectionHandler}.cs` (tracer files — swap the `Service` literal for a registry lookup, add registry validation)
+- Modify: `VitaTrack.Web/Controllers/ServiceConnectionController.cs` (add the two HTMX POST targets)
+- Create: `VitaTrack.Web/Views/ServiceConnection/_ModelPicker.cshtml`
+- Modify: `VitaTrack.Web/Views/ServiceConnection/{Index,_ConnectForm}.cshtml` (add the model/variant controls and the unverified branch)
+- Modify: `VitaTrack.Core/ServiceCollectionExtensions.cs` (register the new services)
+- Modify: `shards.yaml` (claim the new files)
+- Test: `VitaTrack.Tests/Features/ServiceConnections/SaveConnectionHandlerTests.cs` (extend — `ProbeAsync_*` cases and `HandleAsync_RejectsUnknownServiceId`)
+- Test: `VitaTrack.Tests/ServiceConnectionControllerTests.cs` (extend — the two HTMX targets, the unverified branch, `SelectModel`, `Delete`)
 
 **Interfaces:** consumes `ServiceConnection` (Task 1), the save path (Task 2), `ServiceDescriptorRegistry` and
 `IServiceCatalogClient` (Task 3). Produces no new public types.
@@ -525,7 +530,7 @@ Thin controller: bind the DTO, call the handler, return a view or partial. Two H
 
 - [ ] **Step 7: Register the services in `ServiceCollectionExtensions`**
 
-`AddScoped` for `IServiceCatalogClient`; `AddSingleton` for `LlmSessionId`; set `ServiceDescriptorRegistry.HttpClientFactory` in `AddCore`. The repository and `SaveConnectionHandler` were registered by the tracer (Task 2) — extend, do not duplicate. **Do not add a configure delegate to the `"llm"` client** — that is Task 6's deletion, and this task only adds the new registrations.
+`AddScoped<IServiceCatalogClient, ServiceCatalogClient>()` for the catalog client (it takes `IHttpClientFactory` and `ILogger<ServiceCatalogClient>` by constructor, so DI supplies both — **not** `AddHttpClient<TInterface, TImpl>()`: that overload builds the client through `DefaultTypedHttpClientFactory<T>`, which requires a constructor taking `HttpClient`, and it fails at resolution, not at compile time); `AddSingleton` for `LlmSessionId`, which must wrap `ServiceDescriptorRegistry.SessionId` rather than mint a second id. The registry has no `HttpClientFactory` seam to set: it was declared in the Interfaces block above and deleted in Task 3's fix round as unread. The repository and `SaveConnectionHandler` were registered by the tracer (Task 2) — extend, do not duplicate. **Do not add a configure delegate to the `"llm"` client** — that is Task 6's deletion, and this task only adds the new registrations.
 
 - [ ] **Step 8: Run the full gate**
 
@@ -616,43 +621,51 @@ git commit -m "refactor: delete VitaTrackOptions — the database is the only so
 > `closed` or `note`. **Every prose field is a folded `>-` scalar** — the text contains `": "` throughout,
 > which is a parse error in a plain scalar — with keys at four spaces and content at six.
 >
-> **The new id is `TD-021`.** Open entries are currently `TD-017`, `TD-019`, `TD-020`, `TD-018`, `TD-016`,
-> `TD-010`; closed are `TD-001`–`TD-015`. **`TD-020` is taken** — PR #26 split `TD-019` and the new half took
-> that number, so an earlier draft of this plan that named `TD-020` would have produced a duplicate-id build
-> failure. Ids are unique across the whole register: **never reuse one and never renumber an existing entry to
-> make room** (`AGENTS.md`, Post-Mortem Capture). Append `TD-021`, and re-read the open list before writing —
-> the next branch may claim it.
+> **Do not name the id. Assign it at write time, from the file, in the same commit.** Ids are unique across
+> the whole register: never reuse one and never renumber an existing entry to make room (`AGENTS.md`,
+> Post-Mortem Capture). So: open `docs/factory/technical-debt.yaml`, read the actual `open` list, take the
+> next free id, and write it. Do not trust this document, a brief, a findings file, or your own memory for
+> what is taken.
+>
+> **This is the plan's third id collision, and the fix is structural, not another renumber.** `TD-020` was
+> taken by PR #26 splitting `TD-019`; `TD-021` by Task 2's fix round, for the `with`-clone stamp contract
+> filed under directive 6; `TD-022` by Task 5's fix round, for the hover-only badge. Each time this
+> document reserved a literal id and a later commit took it, and each time the cause was the same: an
+> executing subagent is handed the register's own "take the next free id" rule, and that generic rule
+> outranks a reservation stated in a file it may not have read. **A reservation written days before the
+> write is not a lock; it is a guess.** Renumbering a fourth time would only move the collision to Task 8,
+> so the reservation is removed instead — which is why the id template below is a placeholder.
 >
 > **Rule 5 will check this entry's `where` on the same build.** Backtick-delimited spans starting with a
 > known project root are stripped of any `:\d+` line suffix and must resolve. Every path named in the
 > `where` below exists at the time this task runs — verify, do not recall (DL-002 defect b).
 
-- [ ] **Step 1: Finalize `shards.yaml`**
+- [x] **Step 1: Finalize `shards.yaml`**
 
-Every declared path must resolve — `ShardOwnershipTests` errors on a glob matching nothing and on any unclaimed `VitaTrack.Core` file. Claim the `SC` core files, views, unit tests, and the `service-connection.spec.js` e2e spec (which Task 7 creates, so this step comes after Task 7's file exists, or the entry is added in Task 7's commit).
+Every declared path must resolve — `ShardOwnershipTests` errors on a glob matching nothing and on any unclaimed `VitaTrack.Core` file. Claim the `SC` core files, views, unit tests, and the `service-connection.spec.js` e2e spec. **Task 2 created that spec, not this task** — the tracer shipped it — so the entry claims an existing file; Task 8 extends the same spec rather than adding a second one.
 
-- [ ] **Step 2: Add the `storymap.yaml` activity**
+- [x] **Step 2: Add the `storymap.yaml` activity**
 
-Activity "Configure AI service" with tasks for connect, choose model, and disconnect. Each task needs a unique `id` prefixed `SC-`, a real `entry_point` (**Settings nav item**, not a deep URL), and `tests:` refs. `StoryMapConsistencyTests` resolves every `unit:` and `e2e:` ref against real test source and **fails if any e2e spec is unreferenced** — so the Task 7 spec must appear here.
+Activity "Configure AI service" with tasks for connect, choose model, and disconnect. Each task needs a unique `id` prefixed `SC-`, a real `entry_point` (**Settings nav item**, not a deep URL), and `tests:` refs. `StoryMapConsistencyTests` resolves every `unit:` and `e2e:` ref against real test source and **fails if any e2e spec is unreferenced** — so the spec Task 2 created must appear here.
 
-- [ ] **Step 3: Rewrite the `AGENTS.md` LLM Integration bullet**
+- [x] **Step 3: Rewrite the `AGENTS.md` LLM Integration bullet**
 
 Replace the `VitaTrack:BaseUrl` / `VitaTrack:ApiKey` / `IOptions<VitaTrackOptions>` text with the new model: settings live in the `ServiceConnections` table, services are `ServiceDescriptor` records in `ServiceDescriptorRegistry`, the variant vocabulary is the six values, and the probe is `GET {BaseUrl}/v1/models` with a failed probe leaving the connection `unverified`. Add the AGENTS.md seed-data exception for this table.
 
-- [ ] **Step 4: Update `docs/quality/nfr.md`**
+- [x] **Step 4: Update `docs/quality/nfr.md`**
 
 Rewrite the secrets bullet — the key is a plaintext `TEXT` column, masked to the last four characters in the UI, never logged, and never in rendered markup, with `*.db` gitignored. Add the SSRF decision: `UrlSafetyValidator` is **deliberately not** applied to the LLM base URL, with the reason, so a future reader does not "fix" it.
 
-- [ ] **Step 5: Amend `DESIGN.md`**
+- [x] **Step 5: Amend `DESIGN.md`**
 
 Add: the three-state connection indicator (disconnected / connected-verified / connected-unverified), the dependent model→variant dropdown, the Settings page as a nav destination, and the button intent classes used in Task 4.
 
-- [ ] **Step 6: Record the no-seed exception as `TD-021` in the register**
+- [x] **Step 6: Record the no-seed exception in the register (id assigned at write time)**
 
 Append to the `open` collection in `docs/factory/technical-debt.yaml`. Content, as prose — this is
 deliberately not a decision-log line, because the interest is a real per-change cost:
 
-- `id: TD-021` · `title: >-` "`ServiceConnections` is deliberately unseeded, and nothing in code marks it"
+- `id: TD-0NN` · `title: >-`   # placeholder — resolve the real id from the file "`ServiceConnections` is deliberately unseeded, and nothing in code marks it"
 - `where: >-` `` `VitaTrack.Core/Data/DbInit.cs`, `AGENTS.md` `` — both resolve, so rule 5 stays green
 - `what: >-` Every other table `DbInit.EnsureCreated` creates carries a seed. This one does not, because
   seeding a credential is wrong. The AGENTS.md seeding rule has exactly one documented exception and it
@@ -666,7 +679,7 @@ deliberately not a decision-log line, because the interest is a real per-change 
 Then regenerate the dashboard in Step 7 — the register is one of its three sources, and CI gates freshness
 (`ci.yml`, commit `2d786ea`), so a register edit without a regeneration is a red build.
 
-- [ ] **Step 7: Run the gates and commit**
+- [x] **Step 7: Run the gates and commit**
 
 ```bash
 dotnet test VitaTrack.sln -c Release
@@ -677,7 +690,7 @@ git commit -m "docs: manifests, AGENTS, NFR, and DESIGN.md for the service-conne
 ```
 
 Expected: arch 27 / unit 234 plus whatever Tasks 1–5 added, 0 failed. **The register's rule 1 and rule 5
-run in that `dotnet test`** — if `TD-021`'s `where` names a path that does not resolve, the build is red
+run in that `dotnet test`** — if the entry's `where` names a path that does not resolve, the build is red
 and the message names the id.
 
 ---
@@ -686,14 +699,14 @@ and the message names the id.
 
 **Files:**
 - Create: `e2e-tests/playwright/helpers/llm-stub.js`
-- Create: `e2e-tests/playwright/tests/service-connection.spec.js`
+- Modify: `e2e-tests/playwright/tests/service-connection.spec.js` (the tracer's spec — add the probe and model-selection cases against the stub)
 - Modify: `e2e-tests/playwright/tests/supplement-llm-integration.spec.js`
-- Modify: `shards.yaml` (claim the new spec under `SC` `e2e_specs:`)
+- Modify: `shards.yaml` (claim the new helper and spec under `SC` `e2e_specs:`)
 - Modify: `AGENTS.md` (amend the no-mock rule — see Step 4)
 
 **Interfaces:** consumes the shipped feature. Produces no new types.
 
-- [ ] **Step 1: Write the stub server**
+- [x] **Step 1: Write the stub server**
 
 `helpers/llm-stub.js` exports a factory that starts a **real Node `http` server on an ephemeral port** (listen on port `0`, read the assigned port back) and resolves to `{ baseUrl, close, requests }`. It serves:
 
@@ -703,24 +716,24 @@ and the message names the id.
 
 Per-test and ephemeral — **not** a second `webServer` entry, because `fullyParallel: true` means a fixed port is shared by every worker and recorded state would leak across parallel tests.
 
-- [ ] **Step 2: Write the spec**
+- [x] **Step 2: Write the spec**
 
 Drive the real UI: Settings → fill base URL with the stub's `http://127.0.0.1:<port>` and a dummy key → Connect → assert the model picker lists `stub-model-a` / `stub-model-b` → select a model and a variant → Save → **assert on `stub.requests`** that an `Authorization` header and the chosen `reasoning_effort` reached the server. Then the unverified path: connect to a port with nothing listening → assert the warning renders, the connection is still saved, and Enrich refuses with a message naming Settings.
 
-- [ ] **Step 3: Re-point the existing real-provider spec**
+- [x] **Step 3: Re-point the existing real-provider spec**
 
 `supplement-llm-integration.spec.js` currently skips on `process.env.LLM_API_KEY || process.env.VitaTrack__ApiKey`. Change it to skip when there is no active connection in the app. It stays the one test that talks to a genuine provider.
 
-- [ ] **Step 4: Amend the no-mock rule in `AGENTS.md`**
+- [x] **Step 4: Amend the no-mock rule in `AGENTS.md`**
 
 The current rule — *"Do not mock HTTP responses for these E2E tests"* — is aimed at faking the app's own HTTP layer. Rewrite it to make the distinction explicit: **never intercept the app's own HTTP; a test-double server standing in for an external dependency is fine.** The stub is a real listening socket; the app is unmodified; status codes and JSON parsing are real.
 
-- [ ] **Step 5: Run the gate**
+- [x] **Step 5: Run the gate**
 
 Run: `./test-e2e.sh`
 Expected: PASS. A red e2e that contradicts this plan is a **finding to report**, not something to paper over by loosening an assertion.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add e2e-tests/ AGENTS.md shards.yaml
@@ -749,8 +762,13 @@ git commit -m "test: e2e coverage for the connect flow against a real stub endpo
   left for the implementer to resolve.
 - **(8) `TD-020` is taken.** The no-seed entry was numbered before PR #26 split `TD-019` and consumed that id.
   `TechnicalDebtRegisterTests` rule 1 would have failed the build at Task 7, after ~20 commits, on a doc edit.
-  Renumbered to `TD-021`, and the instruction to re-read the open list before writing added, because the next
-  branch may claim it too.
+  Renumbered to `TD-021`, then again to `TD-022`, each time because a later commit took the id —
+  `TD-020` by PR #26, `TD-021` by Task 2's fix round, `TD-022` by Task 5's. Every collision had the
+  same cause: a generic "take the next free id" instruction outranks a reservation stated
+  elsewhere, and a subagent reading only its brief cannot see the reservation. **The reservation
+  was then removed rather than renumbered a third time**, because a fourth would only move the
+  collision to Task 8. The rule now reads: read the file, take the next free id, write it, in the
+  same commit.
 - **(9) The freeze covers this branch and it passes.** `new-shard.md:115` freezes the next two branches: a
   branch whose non-product commits outnumber its product commits is not a product branch. This plan commits
   5 product (Tasks 1–5) against 2 non-product (Tasks 7–8), so it clears the trigger without an exception — and

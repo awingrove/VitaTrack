@@ -1,0 +1,47 @@
+@using VitaTrack.Core.Features.ServiceConnections
+@model ConnectServiceRequest
+
+@* The key is an operation-level failure, not a field error: the form is posted from
+   here, so a rejected save has no field of its own to hang on. *@
+<div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+@* hx-post on the form itself, so htmx serializes it — including the anti-forgery token
+   below — and the fragment comes back into #connection-state. asp-action is still there
+   and still correct: without htmx this is a plain form post and the controller redirects
+   to a page that says what happened. *@
+<form asp-action="Connect" asp-controller="ServiceConnection" method="post"
+      hx-post="@Url.Action("Connect", "ServiceConnection")"
+      hx-target="#connection-state" hx-swap="outerHTML"
+      id="connect-form">
+    @Html.AntiForgeryToken()
+    <div class="mb-3">
+        <label asp-for="Service" class="control-label"></label>
+        <select asp-for="Service" class="form-select">
+            @foreach (var service in ServiceDescriptorRegistry.All)
+            {
+                <option value="@service.ServiceId">@service.DisplayName</option>
+            }
+        </select>
+        <span asp-validation-for="Service" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="BaseUrl" class="control-label"></label>
+        <input asp-for="BaseUrl" class="form-control" />
+        <span asp-validation-for="BaseUrl" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="ApiKey" class="control-label"></label>
+        <input asp-for="ApiKey" class="form-control" type="password" autocomplete="off" />
+        <span asp-validation-for="ApiKey" class="text-danger"></span>
+        <div class="form-text text-muted">Re-entered on every save, and never shown back.</div>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Model" class="control-label"></label>
+        <input asp-for="Model" class="form-control" />
+        <div class="form-text text-muted">Leave blank to keep the model you already chose.</div>
+        <span asp-validation-for="Model" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <input type="submit" value="Save connection" class="btn btn-success" />
+    </div>
+</form>

@@ -1,19 +1,56 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Non-interactive when CI=true. If an API key is already in the env
-# (e.g. local shell with VitaTrack__ApiKey exported, or CI secret), use
-# it. Otherwise: prompt locally, or export empty in CI (the LLM
-# integration test self-skips on empty key).
-if [[ -z "${VitaTrack__ApiKey:-}" ]]; then
-    if [[ -n "${CI:-}" ]]; then
-        export VitaTrack__ApiKey=""
-    else
-        echo "LLM API key (leave blank to skip LLM integration test):"
+# Non-interactive when CI=true.
+#
+# The app takes its connection state from the database, not the environment, so these
+# three are not configuration the app reads. They are the *input* the real-provider spec
+# types into the Settings form, the same way a user would, and then it lets the app's own
+# probe decide whether the connection verifies. All three or none: an enrichment with no
+# model is refused by the app rather than guessed at, and a base URL has no default left
+# to fall back on.
+#
+# Use them if they are already exported (a local shell, or a CI secret), otherwise prompt
+# locally for whichever are missing, or export all three empty in CI — the spec self-skips
+# when any is missing, and every other spec in the suite is local and runs either way.
+if [[ -n "${CI:-}" ]]; then
+    export LLM_API_KEY="${LLM_API_KEY:-}"
+    export LLM_BASE_URL="${LLM_BASE_URL:-}"
+    export LLM_MODEL="${LLM_MODEL:-}"
+elif [[ -z "${LLM_API_KEY:-}" || -z "${LLM_BASE_URL:-}" || -z "${LLM_MODEL:-}" ]]; then
+    # One prompt per variable that is actually missing, not one prompt for the key that
+    # then asks for two things it cannot have. A developer with a key already exported
+    # and no base URL used to get no prompt at all, and a skip naming two things missing.
+    if [[ -z "${LLM_API_KEY:-}" ]]; then
+        echo "LLM API key (leave blank to skip the real-provider tests):"
         read -rsp "> " LLM_API_KEY
         echo
-        export VitaTrack__ApiKey="$LLM_API_KEY"
     fi
+    if [[ -z "${LLM_BASE_URL:-}" ]]; then
+        # The gateway root, WITHOUT a version segment. The app appends its own
+        # "v1/models" (ServiceEndpoint.Resolve), so a base that already ends in /v1
+        # asks for /v1/v1/models, comes back 404, and leaves the connection unverified
+        # with a note blaming an endpoint that never got the question. A path is fine
+        # here — a path is not a version segment, so "https://gateway.example/openai"
+        # resolves the same way the bare root does and a version segment does not.
+        #
+        # `read -r` in all three prompts and `read -rsp` for the key: the two flags are
+        # in all three, the literal string `read -rp` in two. Only `-p` is load-bearing.
+        # Without it the argument after `-r` is read as a variable name, and "> " is not
+        # a valid identifier, so read fails and `set -e` aborts the script before npx.
+        # `-r` is defensive, not load-bearing: it keeps a backslash in the value literal,
+        # and a backslash in an API key or a model name is not a realistic input, so
+        # dropping it would change nothing observable. It is there so the next person who
+        # adds a prompt does not have to rediscover the question. That is not a cosmetic
+        # bug: this is the only place the base-URL rule is taught.
+        echo "Provider base URL, gateway root with no /v1 on the end (e.g. https://gateway.example):"
+        read -rp "> " LLM_BASE_URL
+    fi
+    if [[ -z "${LLM_MODEL:-}" ]]; then
+        echo "Model that provider expects (e.g. kimi-k2.7-code):"
+        read -rp "> " LLM_MODEL
+    fi
+    export LLM_API_KEY LLM_BASE_URL LLM_MODEL
 fi
 
 cd e2e-tests/playwright

@@ -22,21 +22,30 @@ public class ShardOwnershipTests
     };
 
     /// <summary>
-    /// Floor on the total number of files the manifest's slices resolve to
-    /// (<c>controller</c> + <c>core</c> + <c>views</c> + <c>js</c> +
-    /// <c>unit_tests</c> + <c>e2e_specs</c>); the allowlist is cross-cutting,
-    /// not a slice claim, and is not counted. Today that total is 145, so
-    /// 130 = 145 - 15 permits exactly the 15 paths the two smallest slices
-    /// claim (SHELL 5, MF 11) to disappear before the floor speaks. That is the
-    /// deliberate trade: emptying any of the other five slices' claim lists
-    /// takes the total under the floor and fails here even when the files went
-    /// with them, because a deleted file orphans nothing and the ownership
-    /// check cannot see it. The floor is the only net for a slice whose lists
-    /// were emptied outright — <c>[]</c> is a legal declaration, so the loud
-    /// loaders stay quiet about it. Ratchet the floor up as the total grows;
-    /// lower it only in the change that legitimately removes claimed files.
+    /// The artifact kinds a slice may claim, in the order they appear in shards.yaml.
+    /// A key missing from a slice is a red build: `models` was added when
+    /// <c>VitaTrack.Web/Models</c> was added to <see cref="ScanFeatureFiles"/>, and a
+    /// bind model with no owner is exactly the orphan the ownership check exists for.
     /// </summary>
-    private const int ClaimedArtifactFloor = 130;
+    private static readonly string[] ArtifactKinds =
+        ["controller", "core", "views", "models", "view_components", "js", "unit_tests", "e2e_specs"];
+
+    /// <summary>
+    /// Floor on the total number of files the manifest's slices resolve to
+    /// (<c>controller</c> + <c>core</c> + <c>views</c> + <c>models</c> +
+    /// <c>view_components</c> + <c>js</c> + <c>unit_tests</c> + <c>e2e_specs</c>);
+    /// the allowlist is cross-cutting, not a slice claim, and is not counted. Today
+    /// that total is 199, so 183 = 199 - 16 permits exactly the 16 paths the two
+    /// smallest slices claim (SHELL 5, MF 11) to disappear before the floor speaks.
+    /// That is the deliberate trade: emptying any of the other six slices' claim
+    /// lists takes the total under the floor and fails here even when the files went
+    /// with them, because a deleted file orphans nothing and the ownership check
+    /// cannot see it. The floor is the only net for a slice whose lists were emptied
+    /// outright — <c>[]</c> is a legal declaration, so the loud loaders stay quiet
+    /// about it. Ratchet the floor up as the total grows; lower it only in the
+    /// change that legitimately removes claimed files.
+    /// </summary>
+    private const int ClaimedArtifactFloor = 183;
 
     [TestMethod]
     public void Shards_AreConsistent_AndNoFeatureFileIsOrphaned()
@@ -139,7 +148,7 @@ public class ShardOwnershipTests
 
             var claims = new List<string>();
             var declaredPatterns = 0;
-            foreach (var key in new[] { "controller", "core", "views", "js", "unit_tests", "e2e_specs" })
+            foreach (var key in ArtifactKinds)
             {
                 // Key presence, not list count, separates "declared as empty" from
                 // "not declared": a slice with no JS says `js: []`; a slice that
@@ -219,6 +228,14 @@ public class ShardOwnershipTests
             Path.Combine(repoRoot, "VitaTrack.Web", "Controllers"),
             Path.Combine(repoRoot, "VitaTrack.Core"),
             Path.Combine(repoRoot, "VitaTrack.Web", "Views"),
+            // Bind and view models. Scanned because a slice's models are as much its
+            // code as its repository: the first slice to put a file here (SC's
+            // SavedConnection projection) was invisible to this check until now.
+            Path.Combine(repoRoot, "VitaTrack.Web", "Models"),
+            // View components. Added for the same reason Models was: a type that lives
+            // outside every other scan root is invisible to the orphan check, and the
+            // honest answer to an invisible type is a claim, not an allowlist entry.
+            Path.Combine(repoRoot, "VitaTrack.Web", "ViewComponents"),
             Path.Combine(repoRoot, "VitaTrack.Web", "wwwroot", "js"),
             Path.Combine(repoRoot, "VitaTrack.Tests"),
             Path.Combine(repoRoot, "e2e-tests", "playwright", "tests"),

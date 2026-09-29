@@ -1,0 +1,32 @@
+@* Why the model field is free text. A per-response note, not a stored one: it describes
+   the probe this response is the answer to, and the saved state already carries the
+   lasting truth in its badge. A plain page load therefore shows the picker with no note
+   rather than repeating a warning about a probe the user never asked for.
+
+   The wording is load-bearing and it was wrong twice. It used to say the connection is
+   "saved and usable either way", which is false for a base URL that already carried a
+   version segment: the probe asks for {base}/v1/models, so a base ending in /v1 asks for
+   /v1/v1/models, comes back 404, and the completion would post to
+   /v1/v1/chat/completions and 404 too — the connection is saved, and enriching with it
+   fails. The replacement then over-corrected to "enrichment will fail on any of the
+   three", which is false for the FIRST of them: a service that does not serve a model
+   list still answers /v1/chat/completions, and that working case is the entire reason
+   this state exists (the e2e stub is one, live, in the test that pins this sentence).
+   So the three causes are named and the note stops there. What is true of all three is
+   that they are indistinguishable from here, so the note is a statement about
+   diagnosability and says nothing at all about what enrichment will do — in either
+   direction. Whether the app should normalise a typed /v1 instead is a design question
+   the register carries as an open entry, not something this copy decides.
+   It also must not claim the opposite ("it is not a sign of a bad key"), because a
+   rejected key produces this exact badge. The e2e pins the clauses that name the causes
+   the old wording denied and the clause that says they cannot be told apart, so the
+   revert is red, and it pins the absence of any enrichment claim, so a future edit that
+   puts one back in either direction is red too. *@
+@model string
+<div class="alert alert-warning" role="alert">
+    <strong>Could not confirm the connection.</strong>
+    Your service did not answer the model-list test, so the connection is saved but
+    unconfirmed. The usual reason is an endpoint that does not offer a model list — but a base
+    URL your service does not serve, and a key it rejected, look exactly the same from here,
+    so the app cannot tell you which of the three it was. Name the model yourself below.
+</div>

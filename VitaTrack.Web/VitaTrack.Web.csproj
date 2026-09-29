@@ -12,4 +12,12 @@
     <ProjectReference Include="..\VitaTrack.Core\VitaTrack.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The controller tests build requests that must carry the same wire values
+         production reads (ServiceConnectionController.HtmxHeader). A test-side copy of
+         a constant keeps passing when production's changes, which is a silent loss of
+         coverage; sharing the declaration is the fix. See AGENTS.md directive 6. -->
+    <InternalsVisibleTo Include="VitaTrack.Tests" />
+  </ItemGroup>
+
 </Project>

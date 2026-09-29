@@ -220,6 +220,23 @@ Cards, modals, and inputs keep their default component radii.
 | Secondary dialog opener (Import CSV) | `btn btn-outline-primary` |
 | Bulk destructive | `btn btn-danger` |
 | Cancel / dismiss | `btn btn-outline-secondary` |
+| Save/confirm a setting that persists (Settings page) | `btn btn-success` |
+| Save a subordinate choice (model, reasoning effort) | `btn btn-sm btn-primary` |
+| Disconnect a service | `btn btn-sm btn-danger`, in its own POST form with `data-confirm-message` |
+
+**Settings is a nav destination, not a sub-page of a supplement.** `Settings`
+(`ServiceConnectionController`) sits in the navbar beside the other top-level
+destinations, because a connection is app-wide state rather than anything owned
+by one supplement — reaching it from a supplement row would say otherwise.
+
+**Three intents share a class value with an entity intent, and the region picks
+the row.** `btn btn-success` is "create entity" *and* "save a setting";
+`btn btn-sm btn-primary` is "edit entity" *and* "save a subordinate choice";
+`btn btn-sm btn-danger` is "delete" *and* "disconnect a service". A Settings
+button is never a supplement, family member or nutrient, so on that page the
+setting rows apply and the entity rows do not. The class is the same either way
+— Bootstrap 5.3 defaults only, and no second class was invented to tell them
+apart.
 
 HTMX forms must disable their submit button while a request is in flight and
 re-enable on response (external JS only). Show progress with
@@ -257,6 +274,71 @@ No icon fonts, no custom CSS.
 - Server-side validation is authoritative; `required` attributes are managed
   by external JS where conditional.
 - Anti-forgery token in every POST form.
+
+### Connection state
+
+The Settings page (`ServiceConnectionController.Index`, nav item **Settings**) owns
+the AI service connection. Its dynamic region is one element — `#connection-state`
+in `Views/ServiceConnection/_ConnectionState.cshtml` — that the `Connect` and
+`SelectModel` POSTs swap with `hx-swap="outerHTML"` (`Delete` is the controller's
+third POST and swaps nothing: it is a full-page form that redirects, so a reload
+cannot resubmit it). The id lives in the partial, not in `Index.cshtml`, because
+an outerHTML swap replaces the target element: a wrapper the page owned would be
+gone after the first swap and the second would have no target. Every outcome of
+either swapping POST (saved, rejected, unverified) must be visible inside that
+region.
+
+Three states, one component. `ConnectionBadgeViewComponent` +
+`_ConnectionBadge.cshtml` is the single renderer, so the Settings page and the
+enrichment pages cannot disagree about what the state looks like:
+
+| State | Badge | Class | Notes |
+|---|---|---|---|
+| No connection | *nothing rendered* | — | Enrichment refuses in words and names Settings; a badge would be decoration with no state to describe. |
+| Connected, verified | `verified` | `badge rounded-pill bg-success` | The last `GET {BaseUrl}/v1/models` answered with this key. |
+| Connected, unverified | `unverified` | `badge rounded-pill bg-warning text-dark` | A failed probe still saves the connection. Three causes produce this state — no model list, a base URL the service does not serve, a rejected key — and the app cannot tell them apart, so neither this badge nor `_Unverified.cshtml` may promise anything about whether enrichment works: one of the three is a connection that enriches fine. Never red: unconfirmed is not broken, and the connection was saved. |
+
+Both badges are always visible — the pill is the state, not a hover reveal — and
+each carries a `title` whose explanation is hover-only: no icon, no colour beyond
+the token pair. `_Unverified.cshtml` is **not** that explanation. It renders above
+the picker on the one response that answers a probe which did not verify, and on
+no other: a plain page load must not spend a network round trip, so it carries no
+catalog and no note, and repeating a warning about a probe the user never asked
+for would be noise. The badge is the lasting truth; the note says why the field
+underneath it is free text right now.
+
+### Model and reasoning-effort choice
+
+The model field is a **dropdown when the probe this response answers listed
+models, and free text when it did not** — one signal (`Models.Count`) decides
+which, so the two branches cannot disagree about when a picker is offered.
+The signal is **per response, not per connection**: it describes the catalog
+this response is the answer to, and the picker's own save answers with no
+catalog, so clicking **Save model** turns a dropdown into a free-text input
+carrying the model just saved. That is three individually-correct decisions
+interacting (a save is not a probe; a reload does not re-probe; `Models` is not
+stored), and it is why the field can never be a dropdown the user is looking
+at twice. The value is stored, prefilled and used either way — the demotion is
+a rendering change, not a lost choice. Whether that is the right interaction is
+a design question, not a bug report; the sentence here records what the app
+does so the next reader is not surprised, and changing it would be a
+`DESIGN.md` amendment of this paragraph rather than a quiet fix.
+"Models" is deliberately *not* a stored fact: a reload does not re-probe, so the
+same saved connection renders free text after a load and a dropdown right after
+the connect that discovered its models. Reasoning effort is always a
+`form-select` of the registry's fixed six values, with help text saying not every
+service uses one.
+
+Both forms carry `asp-action`/`asp-controller`/`method` *as well as* `hx-post`.
+htmx is the enhancement, not the mechanism: a form carrying only `hx-post`
+degrades to a GET of the current URL, which discards the user's choice with no
+error at all. With the tag helpers, a browser without htmx posts for real and the
+controller redirects to a page that says what happened.
+
+Ids on these forms are prefixed (`picker-model`, `picker-variant`) while the
+`name` attributes are not. The connect form's own model field is `asp-for="Model"`,
+which renders `id="Model"` — and two elements sharing one id break the
+`<label for>` association for both.
 
 ### Feedback
 

@@ -2,93 +2,63 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using Moq.Protected;
-using VitaTrack.Core;
-using VitaTrack.Core.Features.Supplements;
 using VitaTrack.Core.Features.LlmEnrichment;
+using VitaTrack.Core.Features.ServiceConnections;
+using VitaTrack.Core.Features.Supplements;
+using VitaTrack.Tests.TestDoubles;
 
 namespace VitaTrack.Tests;
 
+/// <summary>
+/// Enrichment end to end over the real scraper, parser and client: a manufacturer
+/// page in, nutrients out. The connection a call runs against comes from
+/// <see cref="IServiceConnectionRepository"/>; which answers count as usable is
+/// <see cref="LlmServiceConnectionTests"/>' subject.
+/// </summary>
 [TestClass]
 public class LlmServiceTests
 {
-    private static Mock<HttpMessageHandler> CreateHandlerMock(HttpStatusCode status, string content)
+    private static Mock<IServiceConnectionRepository> ConnectionsWith(ServiceConnection? connection)
     {
-        var mock = new Mock<HttpMessageHandler>();
-        mock.Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.IsAny<HttpRequestMessage>(),
-                ItExpr.IsAny<CancellationToken>())
-            .ReturnsAsync(new HttpResponseMessage
-            {
-                StatusCode = status,
-                Content = new StringContent(content)
-            });
-        return mock;
+        var connections = new Mock<IServiceConnectionRepository>();
+        connections.Setup(c => c.GetActiveAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(connection);
+        return connections;
     }
 
-    private static IHttpClientFactory CreateHttpClientFactory(
-        HttpMessageHandler? scraperHandler = null,
-        HttpMessageHandler? llmHandler = null)
+    private static LlmService CreateService(IHttpClientFactory factory, ServiceConnection? connection = null)
     {
-        var factoryMock = new Mock<IHttpClientFactory>();
-        factoryMock.Setup(f => f.CreateClient("scraper")).Returns(new HttpClient(scraperHandler ?? new HttpClientHandler()));
-        var llmClient = new HttpClient(llmHandler ?? new HttpClientHandler())
-        {
-            BaseAddress = new System.Uri("https://dummy.example.com/v1")
-        };
-        factoryMock.Setup(f => f.CreateClient("llm")).Returns(llmClient);
-
-        return factoryMock.Object;
+        var scraper = new HtmlScraperService(factory, new RecordingLogger<HtmlScraperService>());
+        var llmClient = new LlmClient(factory, new LlmSessionId(), new RecordingLogger<LlmClient>());
+        var parser = new SupplementLabelParser(llmClient, new RecordingLogger<SupplementLabelParser>());
+        return new LlmService(
+            ConnectionsWith(connection ?? LlmTestData.Connection()).Object,
+            scraper,
+            parser,
+            new RecordingLogger<LlmService>());
     }
 
-    private static IOptions<VitaTrackOptions> CreateOptions(
-        string? apiKey = "test-real-api-key",
-        string? reasoningEffort = null,
-        double temperature = 0.1)
-    {
-        return Options.Create(new VitaTrackOptions
-        {
-            BaseUrl = "https://dummy.example.com/v1",
-            ApiKey = apiKey,
-            Model = "test-model",
-            MaxTokens = 16384,
-            ReasoningEffort = reasoningEffort,
-            Temperature = temperature
-        });
-    }
+    /// <summary>One factory serving both named clients, in the order the enrichment
+    /// path asks for them: the page first, the completion second.</summary>
+    private static IHttpClientFactory TwoWayFactory(HttpMessageHandler scraper, HttpMessageHandler completion) =>
+        new SequencedHttpClientFactory(scraper, completion);
 
-    private static LlmService CreateService(
-        IHttpClientFactory factory,
-        IOptions<VitaTrackOptions> options)
+    private static Supplement SupplementWithUrl(string? url = "https://8.8.8.8/product") => new()
     {
-        var scraper = new HtmlScraperService(factory, NullLogger<HtmlScraperService>.Instance);
-        var llmClient = new LlmClient(factory, options, NullLogger<LlmClient>.Instance);
-        var parser = new SupplementLabelParser(llmClient, NullLogger<SupplementLabelParser>.Instance);
-        return new LlmService(options, scraper, parser, NullLogger<LlmService>.Instance);
-    }
+        Name = "Test",
+        Brand = "Brand",
+        DailyDose = "1 tablet",
+        ManufacturerUrl = url
+    };
 
     [TestMethod]
     public async Task EnrichSupplementAsync_ReturnsEmpty_WhenNoUrl()
     {
-        var factory = CreateHttpClientFactory();
-        var options = CreateOptions();
-        var service = CreateService(factory, options);
+        var service = CreateService(new SequencedHttpClientFactory(new RecordingHandler(HttpStatusCode.OK, "")));
 
-        var supplement = new Supplement
-        {
-            Name = "Test",
-            Brand = "Brand",
-            DailyDose = "1 tablet",
-            ManufacturerUrl = null
-        };
-
-        var result = await service.EnrichSupplementAsync(supplement);
+        var result = await service.EnrichSupplementAsync(SupplementWithUrl(url: null));
 
         Assert.IsNotNull(result);
         Assert.AreEqual(0, result.Nutrients.Count);
@@ -96,45 +66,12 @@ public class LlmServiceTests
     }
 
     [TestMethod]
-    public async Task EnrichSupplementAsync_ReturnsEmpty_WhenApiKeyMissing()
-    {
-        var factory = CreateHttpClientFactory();
-        var options = CreateOptions(apiKey: null);
-        var service = CreateService(factory, options);
-
-        var supplement = new Supplement
-        {
-            Name = "Test",
-            Brand = "Brand",
-            DailyDose = "1 tablet",
-            ManufacturerUrl = "https://8.8.8.8/product"
-        };
-
-        var result = await service.EnrichSupplementAsync(supplement);
-
-        Assert.IsNotNull(result);
-        Assert.AreEqual(0, result.Nutrients.Count);
-        Assert.IsNotNull(result.ExtractionError);
-        Assert.IsTrue(result.ExtractionError.Contains("API key not configured"));
-    }
-
-    [TestMethod]
     public async Task EnrichSupplementAsync_ReturnsError_WhenUrlFetchFails()
     {
-        var scraperHandlerMock = CreateHandlerMock(HttpStatusCode.NotFound, "");
-        var factory = CreateHttpClientFactory(scraperHandlerMock.Object);
-        var options = CreateOptions();
-        var service = CreateService(factory, options);
+        var service = CreateService(
+            new SequencedHttpClientFactory(new RecordingHandler(HttpStatusCode.NotFound, "")));
 
-        var supplement = new Supplement
-        {
-            Name = "Test",
-            Brand = "Brand",
-            DailyDose = "1 tablet",
-            ManufacturerUrl = "https://8.8.8.8/notfound"
-        };
-
-        var result = await service.EnrichSupplementAsync(supplement);
+        var result = await service.EnrichSupplementAsync(SupplementWithUrl(url: "https://8.8.8.8/notfound"));
 
         Assert.IsNotNull(result);
         Assert.AreEqual(0, result.Nutrients.Count);
@@ -162,11 +99,9 @@ public class LlmServiceTests
                 }]
             }";
 
-        var scraperMock = CreateHandlerMock(HttpStatusCode.OK, htmlContent);
-        var apiMock = CreateHandlerMock(HttpStatusCode.OK, apiResponse);
-        var factory = CreateHttpClientFactory(scraperMock.Object, apiMock.Object);
-        var options = CreateOptions();
-        var service = CreateService(factory, options);
+        var service = CreateService(TwoWayFactory(
+            new RecordingHandler(HttpStatusCode.OK, htmlContent),
+            new RecordingHandler(HttpStatusCode.OK, apiResponse)));
 
         var supplement = new Supplement
         {
@@ -220,22 +155,12 @@ public class LlmServiceTests
                 }]
             }";
 
-        var scraperMock = CreateHandlerMock(HttpStatusCode.OK, htmlContent);
-        var apiMock = CreateHandlerMock(HttpStatusCode.OK, apiResponse);
-        var factory = CreateHttpClientFactory(scraperMock.Object, apiMock.Object);
-        var options = CreateOptions();
-        var service = CreateService(factory, options);
-
-        var supplement = new Supplement
-        {
-            Name = "Test",
-            Brand = "Brand",
-            DailyDose = "1 tablet",
-            ManufacturerUrl = "https://8.8.8.8/product"
-        };
+        var service = CreateService(TwoWayFactory(
+            new RecordingHandler(HttpStatusCode.OK, htmlContent),
+            new RecordingHandler(HttpStatusCode.OK, apiResponse)));
 
         // Act
-        var result = await service.EnrichSupplementAsync(supplement);
+        var result = await service.EnrichSupplementAsync(SupplementWithUrl());
 
         // Assert - should still have error from JSON parsing
         Assert.IsNotNull(result);
@@ -249,23 +174,12 @@ public class LlmServiceTests
         // Arrange: scraper returns HTML that gets cleaned to nothing
         var htmlContent = @"<html><head><title>Loading...</title></head><body><script>redirect();</script><style>.hidden{display:none}</style></body></html>";
 
-        var scraperMock = CreateHandlerMock(HttpStatusCode.OK, htmlContent);
-        var factory = CreateHttpClientFactory(scraperMock.Object);
-        var options = CreateOptions();
-        var service = CreateService(factory, options);
-
-        var supplement = new Supplement
-        {
-            Name = "Test",
-            Brand = "Brand",
-            DailyDose = "1 tablet",
-            ManufacturerUrl = "https://8.8.8.8/empty-page"
-        };
+        var service = CreateService(new SequencedHttpClientFactory(new RecordingHandler(HttpStatusCode.OK, htmlContent)));
 
         // Act
-        var result = await service.EnrichSupplementAsync(supplement);
+        var result = await service.EnrichSupplementAsync(SupplementWithUrl(url: "https://8.8.8.8/empty-page"));
 
-        // Assert - API key is valid, but no content on page
+        // Assert - the connection is usable, but there is no content on the page
         Assert.IsNotNull(result);
         Assert.AreEqual(0, result.Nutrients.Count);
         Assert.IsNotNull(result.ExtractionError);
@@ -279,7 +193,10 @@ public class LlmServiceTests
         scraper.Setup(s => s.FetchCleanHtmlAsync(It.IsAny<string>()))
             .ThrowsAsync(new HttpRequestException("network down"));
         var service = new LlmService(
-            CreateOptions(), scraper.Object, Mock.Of<ISupplementLabelParser>(), NullLogger<LlmService>.Instance);
+            ConnectionsWith(LlmTestData.Connection()).Object,
+            scraper.Object,
+            Mock.Of<ISupplementLabelParser>(),
+            new RecordingLogger<LlmService>());
 
         var result = await service.EnrichSupplementAsync(new Supplement
         {

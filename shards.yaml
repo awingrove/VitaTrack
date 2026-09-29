@@ -17,6 +17,14 @@
 # read dependencies (e.g. display joins) must be declared too — adding one is a
 # visible manifest diff for design review. Writes must stay on the own table
 # via the owning slice's repository (AGENTS.md FK section).
+#
+# `models` holds the slice's files under `VitaTrack.Web/Models` — the bind
+# models and view models that carry a slice's data into its views. They are
+# per-slice (one `SavedConnection` projection is not another slice's business),
+# so they are claimed rather than allowlisted. Every slice declares the key,
+# `[]` included: a key that is absent was never reviewed. `view_components` is
+# the same rule for `VitaTrack.Web/ViewComponents`, which is a scan root for the
+# same reason: a type the orphan check cannot see is not thereby cross-cutting.
 
 slices:
   - id: MF
@@ -33,6 +41,8 @@ slices:
       - VitaTrack.Core/Features/Family/EditFamilyMemberRequest.cs
     views:
       - VitaTrack.Web/Views/Family/**
+    models: []
+    view_components: []
     js: []
     unit_tests:
       - VitaTrack.Tests/FamilyRepositoryTests.cs
@@ -60,6 +70,8 @@ slices:
       - VitaTrack.Core/Features/Dosing/AmendDoseHandler.cs
     views:
       - VitaTrack.Web/Views/PrescribedDose/**
+    models: []
+    view_components: []
     js:
       - VitaTrack.Web/wwwroot/js/multiplier-stepper.js
       - VitaTrack.Web/wwwroot/js/prescribed-dose-serving.js
@@ -97,6 +109,13 @@ slices:
       - VitaTrack.Core/Features/Supplements/ImportSupplementsHandler.cs
     views:
       - VitaTrack.Web/Views/Supplement/**
+    models:
+      - VitaTrack.Web/Models/CreateSupplementRequest.cs
+      - VitaTrack.Web/Models/EditSupplementRequest.cs
+      - VitaTrack.Web/Models/ConfirmSupplementRequest.cs
+      - VitaTrack.Web/Models/ReplaceNutrientsRequest.cs
+      - VitaTrack.Web/Models/SupplementEditorViewModel.cs
+    view_components: []
     js:
       - VitaTrack.Web/wwwroot/js/create.js
       - VitaTrack.Web/wwwroot/js/edit.js
@@ -131,6 +150,8 @@ slices:
       - VitaTrack.Core/Features/Nutrients/ReplaceNutrientsResult.cs
     views:
       - VitaTrack.Web/Views/SupplementNutrient/**
+    models: []
+    view_components: []
     js:
       - VitaTrack.Web/wwwroot/js/nutrient-editor.js
       - VitaTrack.Web/wwwroot/js/nutrient-form.js
@@ -172,6 +193,8 @@ slices:
       - VitaTrack.Core/Features/Reporting/NutrientAggregationVisitor.cs
     views:
       - VitaTrack.Web/Views/Reporting/**
+    models: []
+    view_components: []
     js:
       - VitaTrack.Web/wwwroot/js/report-toggle.js
     unit_tests:
@@ -191,6 +214,8 @@ slices:
       - VitaTrack.Core/Features/LlmEnrichment/ILlmService.cs
       - VitaTrack.Core/Features/LlmEnrichment/LlmClient.cs
       - VitaTrack.Core/Features/LlmEnrichment/ILlmClient.cs
+      - VitaTrack.Core/Features/LlmEnrichment/LlmRequestSettings.cs
+      - VitaTrack.Core/Features/LlmEnrichment/LlmSessionId.cs
       - VitaTrack.Core/Features/LlmEnrichment/SupplementLabelParser.cs
       - VitaTrack.Core/Features/LlmEnrichment/ISupplementLabelParser.cs
       - VitaTrack.Core/Features/LlmEnrichment/HtmlScraperService.cs
@@ -198,14 +223,20 @@ slices:
       - VitaTrack.Core/Features/LlmEnrichment/UrlSafetyValidator.cs
       - VitaTrack.Core/Features/LlmEnrichment/LlmResult.cs
     views: []
+    models: []
+    view_components: []
     js: []
     unit_tests:
       - VitaTrack.Tests/LlmServiceTests.cs
+      - VitaTrack.Tests/LlmServiceConnectionTests.cs
       - VitaTrack.Tests/LlmClientTests.cs
+      - VitaTrack.Tests/LlmClientRequestTests.cs
+      - VitaTrack.Tests/LlmClientLoggingTests.cs
       - VitaTrack.Tests/LlmClientHeaderTests.cs
       - VitaTrack.Tests/UrlSafetyValidatorTests.cs
       - VitaTrack.Tests/HtmlScraperServiceTests.cs
       - VitaTrack.Tests/SupplementLabelParserTests.cs
+      - VitaTrack.Tests/SupplementLabelParserConnectionTests.cs
       - VitaTrack.Tests/BlendEnrichmentTests.cs
     e2e_specs:
       - e2e-tests/playwright/tests/supplement-llm-integration.spec.js
@@ -218,11 +249,71 @@ slices:
     core: []
     views:
       - VitaTrack.Web/Views/Home/**
+    models: []
+    view_components: []
     js: []
     unit_tests: []
     e2e_specs:
       - e2e-tests/playwright/tests/home.spec.js
       - e2e-tests/playwright/tests/htmx-load.spec.js
+
+  - id: SC
+    name: Service Connections
+    tables:
+      - ServiceConnections
+    controller:
+      - VitaTrack.Web/Controllers/ServiceConnectionController.cs
+      - VitaTrack.Web/Controllers/ServiceConnectionController.Probe.cs
+    core:
+      - VitaTrack.Core/Features/ServiceConnections/ServiceConnection.cs
+      - VitaTrack.Core/Features/ServiceConnections/IServiceConnectionRepository.cs
+      - VitaTrack.Core/Features/ServiceConnections/ServiceConnectionRepository.cs
+      - VitaTrack.Core/Features/ServiceConnections/ConnectServiceRequest.cs
+      - VitaTrack.Core/Features/ServiceConnections/SaveConnectionResult.cs
+      - VitaTrack.Core/Features/ServiceConnections/SaveConnectionHandler.cs
+      - VitaTrack.Core/Features/ServiceConnections/SelectModelRequest.cs
+      - VitaTrack.Core/Features/ServiceConnections/ProbeConnectionHandler.cs
+      - VitaTrack.Core/Features/ServiceConnections/ProbeConnectionResult.cs
+      - VitaTrack.Core/Features/ServiceConnections/ServiceDescriptor.cs
+      - VitaTrack.Core/Features/ServiceConnections/ServiceDescriptorRegistry.cs
+      - VitaTrack.Core/Features/ServiceConnections/ModelCatalog.cs
+      - VitaTrack.Core/Features/ServiceConnections/ServiceEndpoint.cs
+      - VitaTrack.Core/Features/ServiceConnections/ServiceCatalogClient.cs
+    views:
+      - VitaTrack.Web/Views/ServiceConnection/**
+    models:
+      - VitaTrack.Web/Models/SavedConnection.cs
+      - VitaTrack.Web/Models/ServiceConnectionViewModel.cs
+      - VitaTrack.Web/Models/ModelPickerViewModel.cs
+      - VitaTrack.Web/Models/ConnectionBadgeViewModel.cs
+    # Claimed, not allowlisted, since ShardOwnershipTests gained
+    # VitaTrack.Web/ViewComponents as a scan root. It renders from two slices' views
+    # and is owned by this one, which is exactly what a claim is for.
+    view_components:
+      - VitaTrack.Web/ViewComponents/ConnectionBadgeViewComponent.cs
+    js:
+      - VitaTrack.Web/wwwroot/js/service-connection.js
+    unit_tests:
+      - VitaTrack.Tests/Features/ServiceConnections/ServiceConnectionRepositoryTests.cs
+      - VitaTrack.Tests/Features/ServiceConnections/SaveConnectionHandlerTests.cs
+      - VitaTrack.Tests/Features/ServiceConnections/ProbeConnectionHandlerTests.cs
+      - VitaTrack.Tests/Features/ServiceConnections/ServiceDescriptorRegistryTests.cs
+      - VitaTrack.Tests/Features/ServiceConnections/ServiceCatalogClientTests.cs
+      - VitaTrack.Tests/Features/ServiceConnections/ServiceCatalogClientFailureTests.cs
+      - VitaTrack.Tests/ServiceConnectionControllerTests.cs
+      - VitaTrack.Tests/ServiceConnectionControllerProbeTests.cs
+      - VitaTrack.Tests/ServiceConnectionControllerHarness.cs
+      - VitaTrack.Tests/ConnectionBadgeViewComponentTests.cs
+      - VitaTrack.Tests/ServiceConnectionControllerCancellationTests.cs
+      - VitaTrack.Tests/ServiceConnectionFormTests.cs
+    e2e_specs:
+      - e2e-tests/playwright/tests/service-connection.spec.js
+      # The service this slice's e2e tests dial. Claimed rather than left unowned
+      # for the same reason Models was: e2e-tests/playwright/helpers is not a
+      # scan root, so a helper there is invisible to the orphan check — and an
+      # invisible artifact is not thereby cross-cutting. A test double standing
+      # in for the provider belongs to the slice that owns the connection to it.
+      - e2e-tests/playwright/helpers/llm-stub.js
 
 # Cross-cutting files that belong to no single feature slice. Listed here so
 # the ownership test does not flag them as orphans. Keep this minimal.
@@ -232,12 +323,12 @@ allowlist:
   - VitaTrack.Web/Views/_ViewImports.cshtml
   - VitaTrack.Core/Data/DbInit.cs
   - VitaTrack.Core/ServiceCollectionExtensions.cs
-  - VitaTrack.Core/VitaTrackOptions.cs
   - VitaTrack.Core/Primitives/**
   - VitaTrack.Web/wwwroot/js/table-sort.js
   - VitaTrack.Web/wwwroot/js/delete-confirm.js
   - VitaTrack.Web/wwwroot/js/delete-selected.js
   - VitaTrack.Tests/SqliteTestBase.cs
+  - VitaTrack.Tests/TestDoubles/**
   - VitaTrack.Tests/ServiceCollectionExtensionsTests.cs
   - VitaTrack.Tests/DbInitTests.cs
   - VitaTrack.Tests/Primitives/**

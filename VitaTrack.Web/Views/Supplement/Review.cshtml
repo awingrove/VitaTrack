@@ -11,6 +11,12 @@
 
 <h2>Review Supplement</h2>
 
+@* The service this page enriches with, and whether it was ever confirmed. A failed probe
+   produces no error anywhere — the connection is usable — so without this the user is
+   about to spend a request on a service nobody verified and nothing on the screen says
+   so. *@
+<p class="mb-2">@await Component.InvokeAsync("ConnectionBadge")</p>
+
 @if (!string.IsNullOrWhiteSpace(extractionError))
 {
     <div class="alert alert-warning">

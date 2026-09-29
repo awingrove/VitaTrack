@@ -10,7 +10,7 @@
 meta:
   project: VitaTrack
   description: Vitamin and Supplement Tracking Application
-  last_updated: 2026-09-14
+  last_updated: 2026-09-28
 
 activities:
   - name: Manage Family Members
@@ -360,12 +360,13 @@ activities:
         name: Auto-extract nutrients from URL
         entry_point: Supplement Create/Edit -> Enrich button
         stories:
-          - title: Scrape manufacturer URL and extract nutrients via OpenRouter
+          - title: Scrape manufacturer URL and extract nutrients from the connected service
             status: done
             priority: medium
             tests:
               - unit: LlmServiceTests.EnrichSupplementAsync_ExtractsNutrients_WhenApiReturnsValidResponse
               - e2e: supplement-llm-integration::should extract nutrients from a real product URL using LLM
+              - e2e: service-connection::should post the chosen model and reasoning effort to the connection when enriching
           - title: Extract blends with nested children from product labels
             status: done
             priority: medium
@@ -382,11 +383,26 @@ activities:
         name: Error handling
         entry_point: n/a (error-path behavior, not navigable)
         stories:
-          - title: Gracefully handle missing API key
+          - title: Gracefully handle no saved connection or no model chosen
             status: done
             priority: low
             tests:
-              - unit: LlmServiceTests.EnrichSupplementAsync_ReturnsEmpty_WhenApiKeyMissing
+              - unit: LlmServiceConnectionTests.EnrichSupplementAsync_WithNoConnection_PointsAtSettings_AndReachesNothing
+              - unit: LlmServiceConnectionTests.EnrichSupplementAsync_WithNoModelChosen_PointsAtSettings_AndReachesNothing
+              - unit: LlmClientRequestTests.PostChatAsync_WithNullModel_ReturnsErrorPointingAtSettings
+              - e2e: service-connection::should refuse an enrich with no connection at all, and name Settings as the fix
+          - title: Refuse a connection naming a service this build does not ship
+            status: done
+            priority: low
+            tests:
+              - unit: LlmClientRequestTests.PostChatAsync_WithAnUnknownService_SendsNoRequest
+              - unit: LlmServiceConnectionTests.EnrichSupplementAsync_WithAnUnknownService_ReachesNothing
+          - title: Never write the credential, the provider's error message or the base URL to the log
+            status: done
+            priority: low
+            tests:
+              - unit: LlmClientLoggingTests.OnANonSuccessStatus_LogsTheStatusAndNotTheBody
+              - unit: LlmClientLoggingTests.WhenTheRequestFails_LogsTheCategoryAndNothingIdentifying
           - title: Gracefully handle fetch failure
             status: done
             priority: low
@@ -431,3 +447,186 @@ activities:
           - title: Show error page on unhandled exception
             status: done
             priority: high
+
+  - name: Service Connection
+    tasks:
+      - id: SC-1
+        name: Save and verify a service connection
+        entry_point: n/a (backend persistence only; the Settings UI is SC-2)
+        stories:
+          - title: Persist a service connection with at-most-one-active enforcement
+            status: done
+            priority: high
+            tests:
+              - unit: ServiceConnectionRepositoryTests.SaveAsync_ThenGetActive_ReturnsRow
+              - unit: ServiceConnectionRepositoryTests.SaveAsync_SecondActiveConnection_DeactivatesTheFirst
+              - unit: ServiceConnectionRepositoryTests.SaveAsync_UpdatesExistingRow_WhenIdIsNonZero
+              - unit: ServiceConnectionRepositoryTests.GetActiveAsync_WithNoRows_ReturnsNull
+              - unit: ServiceConnectionRepositoryTests.DeleteAsync_RemovesTheRow_AndGetActiveThenReturnsNull
+              - unit: ServiceConnectionRepositoryTests.SaveAsync_StampsCreatedAtAndUpdatedAt
+              - unit: ServiceConnectionRepositoryTests.SaveAsync_UpdateById_DeactivatesTheOtherActiveRow
+              - unit: ServiceConnectionRepositoryTests.SaveAsync_UpdateById_KeepsCreatedAtImmutableAndAdvancesUpdatedAt
+              - unit: ServiceConnectionRepositoryTests.SaveAsync_WhenTheWriteFails_RollsBackTheDeactivation
+              - unit: ServiceConnectionRepositoryTests.SaveAsync_WithUnknownId_ReportsNoRowWrittenAndKeepsTheActiveRow
+              - unit: ServiceConnectionRepositoryTests.SaveAsync_InactiveRow_DeactivatesTheCurrentActive_LeavingNoneActive
+          - title: Report a write that matched no row as a failure
+            status: done
+            priority: high
+            tests:
+              - unit: SaveConnectionHandlerTests.HandleAsync_WhenNoRowIsWritten_ReportsFailureInsteadOfSuccess
+      - id: SC-2
+        name: Save a connection from the Settings page
+        entry_point: nav bar -> Settings
+        stories:
+          - title: Save a base URL, API key, and optional model and see it saved
+            status: done
+            priority: high
+            tests:
+              - unit: SaveConnectionHandlerTests.HandleAsync_ValidConnect_SavesAndActivates
+              - unit: SaveConnectionHandlerTests.HandleAsync_Reconnect_PreservesTheExistingModel
+              - unit: SaveConnectionHandlerTests.HandleAsync_Reconnect_WithANewModel_ReplacesIt
+              - unit: SaveConnectionHandlerTests.HandleAsync_FirstConnect_LeavesTheModelUnset
+              - unit: SaveConnectionHandlerTests.HandleAsync_TrimsWhitespaceFromFreeTextModel
+              - unit: SaveConnectionHandlerTests.HandleAsync_SetsVerificationToUnverified_BecauseNoProbeExistsYet
+              - unit: ServiceConnectionControllerTests.Index_WithNoConnection_RendersTheConnectForm
+              - unit: ServiceConnectionControllerTests.Connect_ValidRequest_SavesAndRedirectsToIndex
+              - e2e: service-connection::should save a connection from the Settings page and show it after reload
+          - title: Show the saved key masked, never in full
+            status: done
+            priority: high
+            tests:
+              - unit: ServiceConnectionControllerTests.Index_WithActiveConnection_RendersTheSavedConnection_WithMaskedKey
+              - unit: ServiceConnectionControllerTests.Index_WithActiveConnection_PrefillsTheFormButNotTheKey
+              - unit: ServiceConnectionControllerTests.Index_WithAKeyNoLongerThanTheMask_ShowsNoCharactersOfIt
+          - title: Refuse to save a blank base URL or API key
+            status: done
+            priority: high
+            tests:
+              - unit: SaveConnectionHandlerTests.HandleAsync_RejectsBlankBaseUrlOrKey
+              - unit: ServiceConnectionControllerTests.Connect_InvalidModelState_ReturnsTheFormWithErrors
+              - unit: ServiceConnectionControllerTests.Connect_Rejected_RedisplaysWhatWasTypedOverTheSavedValues
+              - unit: ServiceConnectionControllerTests.Connect_WhenTheHandlerRejects_ShowsTheErrorAndDoesNotRedirect
+              - unit: ServiceConnectionControllerTests.Connect_WhenNoRowIsWritten_ShowsTheErrorInsteadOfClaimingSuccess
+              - e2e: service-connection::should reject a save with a blank URL and keep the connection unchanged
+          - title: Name the two required fields the way the rest of the screen reads them
+            status: done
+            priority: low
+            tests:
+              - unit: ServiceConnectionFormTests.ConnectForm_LabelsSayBaseUrlAndApiKeyLikeTheRestOfTheScreen
+              - unit: ServiceConnectionFormTests.ConnectForm_EachErrorMessageStartsWithItsOwnLabel
+          - title: Reconnect by saving again, keeping the previous connection on record
+            status: done
+            priority: high
+            tests:
+              - unit: SaveConnectionHandlerTests.HandleAsync_SecondConnect_DeactivatesThePrevious
+          - title: Date each saved connection when it is written, not when the one it replaces was
+            status: done
+            priority: medium
+            tests:
+              - unit: SaveConnectionHandlerTests.HandleAsync_Reconnect_StampsTheNewRowInsteadOfCloningTheOldStamps
+      - id: SC-3
+        name: Confirm a connection and choose a model
+        entry_point: nav bar -> Settings
+        stories:
+          - title: Choose a service from the shipped list, not free text
+            status: done
+            priority: high
+            tests:
+              - unit: SaveConnectionHandlerTests.HandleAsync_RejectsUnknownServiceId
+              - unit: SaveConnectionHandlerTests.HandleAsync_StoresTheRegistrysSpellingOfTheChosenService
+              - unit: ServiceConnectionControllerTests.Connect_WithAServiceTheRegistryDoesNotKnow_ReturnsTheFormWithTheErrorAndWritesNothing
+              - unit: ServiceDescriptorRegistryTests.TheServiceIdTheSaveHandlerStores_ResolvesToAShippedDescriptor
+          - title: Test the service on connect and record whether the key was accepted
+            status: done
+            priority: high
+            tests:
+              - unit: ProbeConnectionHandlerTests.ProbeAsync_VerifiedProbe_StampsVerifiedAndVerifiedAt
+              - unit: ProbeConnectionHandlerTests.ProbeAsync_ProbesTheSavedConnection_NotAnEmptyOne
+              - unit: ProbeConnectionHandlerTests.ProbeAsync_AfterAVerifiedProbe_AFailedReprobeRemovesTheStamp
+              - unit: ProbeConnectionHandlerTests.ProbeAsync_WhenTheCallerAbandonsTheProbe_StampsNothing
+              - unit: ServiceConnectionControllerCancellationTests.Connect_WhenTheClientDisconnects_StampsNoVerification
+              - unit: ServiceConnectionControllerCancellationTests.Connect_ProbesWithTheTokenTheActionWasGiven_NotAFreshOne
+              - unit: ServiceConnectionControllerProbeTests.Connect_ValidProbe_StoresTheVerificationItReports
+              - unit: ServiceConnectionControllerTests.Index_DoesNotProbe_TheServiceOnEveryPageLoad
+              - e2e: service-connection::should verify a connection against a service that lists its models, and pick one of them
+              - e2e: service-connection::should probe the same path for either form of the base URL trailing slash
+              - e2e: service-connection::should leave a connection unverified when the service answers with nothing usable, and still save it
+          - title: Say in words that an unconfirmed connection is saved, and promise nothing about enrichment
+            status: done
+            priority: high
+            tests:
+              - unit: ProbeConnectionHandlerTests.ProbeAsync_FailedProbe_StampsUnverified_AndLeavesTheConnectionSaved
+              - unit: ServiceCatalogClientFailureTests.OnA200WithAnEmptyCatalog_ReturnsUnverified
+              - unit: ServiceCatalogClientFailureTests.OnA200WhoseEntriesAreAllUnusable_ReturnsUnverified
+              - unit: ServiceConnectionControllerProbeTests.Connect_FailedProbe_RendersTheUnverifiedWarningAndSavesTheConnection
+              - unit: ServiceConnectionControllerTests.Index_DoesNotProbe_TheServiceOnEveryPageLoad
+              - e2e: service-connection::should save a connection from the Settings page and show it after reload
+          - title: Show the connection state on the page enrichment happens from
+            status: done
+            priority: high
+            tests:
+              - unit: ConnectionBadgeViewComponentTests.Invoke_WithAnUnverifiedConnection_ReportsUnverified
+              - unit: ConnectionBadgeViewComponentTests.Invoke_WithAVerifiedConnection_ReportsVerified
+              - unit: ConnectionBadgeViewComponentTests.Invoke_WithNoConnection_RendersNothing
+              - unit: ConnectionBadgeViewComponentTests.Invoke_ReadsTheActiveConnectionOnce_NotOncePerPropertyOrPerPage
+              - e2e: service-connection::should show the connection state on the page enrichment happens from
+          - title: Pick a model the service listed, or name the model by hand
+            status: done
+            priority: high
+            tests:
+              - unit: ServiceConnectionControllerProbeTests.Connect_ValidProbe_RendersModelPickerWithCatalogModels
+              - unit: ServiceConnectionControllerTests.Index_WithActiveConnection_RendersTheModelPicker
+              - e2e: service-connection::should save a model and reasoning effort from the picker, then disconnect
+              - e2e: service-connection::should verify a connection against a service that lists its models, and pick one of them
+              - e2e: service-connection::should post the chosen model and reasoning effort to the connection when enriching
+          - title: Choose a reasoning effort from the six values the providers accept
+            status: done
+            priority: high
+            tests:
+              - unit: ServiceConnectionControllerProbeTests.SelectModel_PersistsModelAndVariant
+              - unit: ServiceConnectionControllerProbeTests.SelectModel_TrimsTheModelItStores
+              - unit: ServiceConnectionControllerProbeTests.SelectModel_LeavesTheConnectionSettingsAlone
+              - unit: ServiceConnectionControllerProbeTests.SelectModel_RejectsAVariantOutsideTheRegistryVocabulary
+              - unit: ServiceConnectionControllerProbeTests.SelectModel_WithNoActiveConnection_ReportsItAndWritesNothing
+              - unit: ServiceConnectionFormTests.SelectModel_RejectsAVariantTheRegistryDoesNotShip
+              - unit: ServiceConnectionFormTests.SelectModel_AcceptsEveryVariantTheRegistryShips
+              - unit: ServiceConnectionFormTests.SelectModel_RequiresAModel
+              - unit: ServiceDescriptorRegistryTests.FindVariant_ResolvesEachShippedVariantToItself
+              - unit: ServiceDescriptorRegistryTests.FindVariant_CaseDoesNotMatter_BecauseTheValueComesFromAForm
+              - unit: ServiceDescriptorRegistryTests.FindVariant_UnknownOrBlank_ReturnsNull
+          - title: Disconnect, and touch no supplement
+            status: done
+            priority: medium
+            tests:
+              - unit: ServiceConnectionControllerProbeTests.Delete_ClearsTheActiveConnection
+              - unit: ServiceConnectionControllerProbeTests.Delete_WithNothingSaved_DoesNotWriteAndStillRedirects
+              - e2e: service-connection::should save a model and reasoning effort from the picker, then disconnect
+          - title: Work with the script blocked, and show a rejected submit where the form is
+            status: done
+            priority: medium
+            tests:
+              - unit: ServiceConnectionControllerProbeTests.Connect_WithoutHtmx_RedirectsToIndex_EvenThoughTheProbeRan
+              - unit: ServiceConnectionControllerProbeTests.SelectModel_WithoutHtmx_RedirectsToIndex_AndStillSavesTheModel
+              - unit: ServiceConnectionControllerTests.Connect_InvalidModelState_OverHtmx_SwapsInTheRegionThatCarriesTheForm
+              - unit: ServiceConnectionControllerTests.Connect_InvalidModelState_ReturnsTheFormWithErrors
+              - e2e: service-connection::should reject a save with a blank URL and keep the connection unchanged
+              - e2e: service-connection::should save a model with htmx blocked, and land on a page that says so
+          - title: Stop a second submit while the first is still in flight, on every form
+            status: done
+            priority: medium
+            tests:
+              - e2e: service-connection::should disable the submit button while the connect is in flight
+              - e2e: service-connection::should guard the submit button again after a swap replaced the form
+              - e2e: service-connection::should re-enable the submit button when the response is not swapped in
+          - title: Resolve the catalog probe from the container, not just the descriptor
+            status: done
+            priority: medium
+            tests:
+              - unit: ServiceCollectionExtensionsTests.AddCore_RegistersAllRepositoriesAndServices
+          - title: Tell the connect form's model field and the picker's apart by label
+            status: done
+            priority: low
+            tests:
+              - unit: ServiceConnectionFormTests.TheConnectFormAndTheModelPicker_LabelTheModelFieldDifferently
+              - unit: ServiceConnectionFormTests.ConnectForm_LabelsTheServiceChoiceAsAChoice
+              - e2e: service-connection::should save a model and reasoning effort from the picker, then disconnect

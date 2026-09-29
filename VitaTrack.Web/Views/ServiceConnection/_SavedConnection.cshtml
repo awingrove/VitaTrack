@@ -1,0 +1,33 @@
+@using VitaTrack.Web.Models
+@model ServiceConnectionViewModel
+
+@* The whole saved-connection region: the badge, the table, and the disconnect button.
+   Rendered both by Index and by every swap into #connection-state, so a connect that
+   HTMX applied shows the same state a reload would. *@
+@if (Model.Saved is not null)
+{
+    <h3>Saved connection</h3>
+    <p class="mb-2">@await Component.InvokeAsync("ConnectionBadge")</p>
+    <table class="table">
+        <tbody>
+            <tr><th scope="row">Service</th><td>@Model.Saved.Service</td></tr>
+            <tr><th scope="row">Base URL</th><td>@Model.Saved.BaseUrl</td></tr>
+            <tr><th scope="row">Model</th><td>@(Model.Saved.Model ?? "—")</td></tr>
+            <tr><th scope="row">API key</th><td>@Model.Saved.MaskedApiKey</td></tr>
+        </tbody>
+    </table>
+    @* The confirm names the retention, because "only the connection is removed" was
+       false and nobody had written down what is true instead. `SaveConnectionHandler`
+       sets `Id = 0`, so every connect is a NEW row and the previous one is demoted, not
+       deleted; `Delete` removes the ACTIVE row only. Three connects then Disconnect
+       leaves two superseded rows holding plaintext API keys, and the page reads
+       "not connected" because nothing renders them. Retention is deliberate — storymap
+       records "keeping the previous connection on record" as a done story — so the copy
+       states it rather than the code stopping it. Whether a superseded *credential*
+       should survive is TD-028; this sentence is true under either answer, and the e2e
+       pins the retention clause so a future "fix" that only changes the words is red. *@
+    <form asp-action="Delete" asp-controller="ServiceConnection" method="post"
+          data-confirm-message="Disconnect this service? Supplements keep their nutrients. The connection in use and its key are removed; a key from an earlier connection stays on record.">
+        <input type="submit" value="Disconnect" class="btn btn-sm btn-danger" />
+    </form>
+}

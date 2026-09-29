@@ -2,7 +2,6 @@ using System.Data;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using VitaTrack.Core;
 using VitaTrack.Core.Data;
@@ -12,6 +11,7 @@ using VitaTrack.Core.Features.Reporting;
 using VitaTrack.Core.Features.LlmEnrichment;
 
 using VitaTrack.Core.Features.Nutrients;
+using VitaTrack.Core.Features.ServiceConnections;
 using VitaTrack.Core.Features.Supplements;
 
 namespace VitaTrack.Tests;
@@ -22,12 +22,10 @@ public class ServiceCollectionExtensionsTests
     private const string FileDataSource = "Data Source=cov-audit.db";
     private const string MemoryDataSource = "Data Source=covtest;Mode=Memory;Cache=Shared";
 
-    /// <summary>Builds a provider exactly like the app composes it, except options are
-    /// supplied directly (Program.cs owns the Configure&lt;VitaTrackOptions&gt; binding).</summary>
-    private static ServiceProvider BuildProvider(
-        string connectionString,
-        string? baseUrl = "https://api.example.com/v1",
-        string? apiKey = "key")
+    /// <summary>Builds a provider exactly like the app composes it, from configuration
+    /// alone. There is no connection state to supply: the named clients carry none, and
+    /// every value a request needs travels with the request.</summary>
+    private static ServiceProvider BuildProvider(string connectionString)
     {
         var services = new ServiceCollection();
         var configuration = new ConfigurationBuilder()
@@ -37,11 +35,6 @@ public class ServiceCollectionExtensionsTests
             })
             .Build();
 
-        services.AddSingleton(Options.Create(new VitaTrackOptions
-        {
-            BaseUrl = baseUrl,
-            ApiKey = apiKey,
-        }));
         services.AddCore(configuration);
 
         return services.BuildServiceProvider();
@@ -107,6 +100,12 @@ public class ServiceCollectionExtensionsTests
         var labelParser = sp.GetRequiredService<ISupplementLabelParser>();
         var csvImport = sp.GetRequiredService<ICsvImportService>();
         var llmService = sp.GetRequiredService<ILlmService>();
+        // Resolved, not merely registered. `AddHttpClient<IServiceCatalogClient,
+        // ServiceCatalogClient>()` compiles and fails at resolution — the typed-client
+        // factory demands a constructor taking HttpClient, and this one takes an
+        // IHttpClientFactory — so nothing but an actual resolve catches that mistake.
+        var catalogClient = sp.GetRequiredService<IServiceCatalogClient>();
+        var probeHandler = sp.GetRequiredService<ProbeConnectionHandler>();
 
         Assert.IsNotNull(familyRepo);
         Assert.IsNotNull(supplementRepo);
@@ -119,6 +118,8 @@ public class ServiceCollectionExtensionsTests
         Assert.IsNotNull(labelParser);
         Assert.IsNotNull(csvImport);
         Assert.IsNotNull(llmService);
+        Assert.IsInstanceOfType(catalogClient, typeof(ServiceCatalogClient));
+        Assert.IsNotNull(probeHandler);
 
         // Each interface maps to its own concrete component.
         CollectionAssert.AllItemsAreUnique(
@@ -132,39 +133,85 @@ public class ServiceCollectionExtensionsTests
         // Scoped lifetime: same interface within one scope resolves to the same instance.
         Assert.AreSame(familyRepo, sp.GetRequiredService<IFamilyRepository>());
         Assert.AreSame(llmService, sp.GetRequiredService<ILlmService>());
+
+        // The catalog client must see the connection the user just saved, not one
+        // captured when the pooled handler was built.
+        Assert.AreSame(catalogClient, sp.GetRequiredService<IServiceCatalogClient>());
+
+        // One session id per process, shared with the descriptor the probe reads.
+        var sessionId = sp.GetRequiredService<LlmSessionId>();
+        Assert.AreSame(sessionId, sp.GetRequiredService<LlmSessionId>(),
+            "a second id would leave the x-opencode-session header correlating nothing");
+        Assert.AreEqual(ServiceDescriptorRegistry.SessionId, sessionId.Value,
+            "the session id is the registry's, not a second one minted beside it");
     }
 
+    /// <summary>The named client's pooled instance carries neither a destination nor a
+    /// credential. Both are per-request values that belong to the connection being
+    /// called (<see cref="LlmClientRequestTests"/>), and a default left here would be a
+    /// second, silent source of both: a stale <c>BaseAddress</c> would resolve a
+    /// relative URI against whatever connection used the pool last, and a default
+    /// <c>Authorization</c> is copied onto any request that does not carry its own —
+    /// so the credential one caller saved would ride along on another's call.
+    /// <para>
+    /// These three assertions pin two <em>values</em>, not the absence of a configure
+    /// delegate: one that set a <c>User-Agent</c> or a retry policy would pass all three.
+    /// </para>
+    /// <para>
+    /// What they do not pin is the registration itself, and nothing here can.
+    /// <c>IHttpClientFactory.CreateClient</c> on an unknown name returns a fresh,
+    /// unconfigured client and does not throw, so deleting the
+    /// <c>AddHttpClient("llm", …)</c> line leaves this test green. The one assertion that
+    /// does catch that is <see cref="AddCore_LlmClient_HasTheAppOwnedTimeout"/>, because
+    /// an unregistered name comes back with the framework's default wait — which is the
+    /// whole of the difference, not a symptom of a larger one: the handler cache is
+    /// keyed by name whether or not the name was ever registered, so losing the
+    /// registration costs that timeout and nothing else, silently rather than loudly.
+    /// </para></summary>
     [TestMethod]
-    public void AddCore_LlmClient_HasBaseUrlAndAuthHeader()
+    public void AddCore_LlmClient_CarriesNoBaseAddressAndNoAuthorization()
     {
-        using (var provider = BuildProvider(MemoryDataSource))
-        {
-            var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("llm");
+        using var provider = BuildProvider(MemoryDataSource);
+        var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("llm");
 
-            Assert.AreEqual(new Uri("https://api.example.com/v1/"), client.BaseAddress, "Trailing slash must be appended.");
-            Assert.AreEqual("Bearer", client.DefaultRequestHeaders.Authorization?.Scheme);
-            Assert.AreEqual("key", client.DefaultRequestHeaders.Authorization?.Parameter);
-            Assert.AreEqual(TimeSpan.FromSeconds(120), client.Timeout);
-        }
+        Assert.IsNull(
+            client.BaseAddress,
+            "No BaseAddress: the request URI is absolute, so nothing on the client can redirect it.");
+        Assert.IsNull(
+            client.DefaultRequestHeaders.Authorization,
+            "No default Authorization: the credential belongs to the connection being called, and a pooled "
+            + "default is copied onto any request that does not set its own.");
+        Assert.IsFalse(
+            client.DefaultRequestHeaders.Contains("Authorization"),
+            "Checked by name as well as by parsed value: a header .NET did not parse into Authorization "
+            + "would still be copied onto the request.");
+    }
 
-        // A BaseUrl without a trailing slash normalizes identically.
-        using (var provider = BuildProvider(MemoryDataSource, baseUrl: "https://api.example.com/v1"))
-        {
-            var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("llm");
+    /// <summary>The named client's wait is the app's rather than the framework's.
+    /// <c>HttpClient.Timeout</c> defaults to 100 seconds, an unregistered name comes
+    /// back with exactly that default, and nothing else in the suite would notice the
+    /// registration going — so this is the assertion standing in for it.
+    /// <para>
+    /// Asserted against the constant so the pin and the source cannot drift apart, and
+    /// against the literal so that moving the constant is something argued for here
+    /// rather than something inherited silently.
+    /// </para></summary>
+    [TestMethod]
+    public void AddCore_LlmClient_HasTheAppOwnedTimeout()
+    {
+        using var provider = BuildProvider(MemoryDataSource);
+        var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("llm");
 
-            Assert.AreEqual(new Uri("https://api.example.com/v1/"), client.BaseAddress,
-                "Base URL without trailing slash must normalize identically.");
-        }
-
-        // An empty BaseUrl leaves BaseAddress unset (but the auth header is still applied).
-        using (var provider = BuildProvider(MemoryDataSource, baseUrl: ""))
-        {
-            var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("llm");
-
-            Assert.IsNull(client.BaseAddress, "Empty BaseUrl must leave BaseAddress unset.");
-            Assert.AreEqual("Bearer", client.DefaultRequestHeaders.Authorization?.Scheme);
-            Assert.AreEqual("key", client.DefaultRequestHeaders.Authorization?.Parameter);
-        }
+        Assert.AreEqual(
+            120,
+            ServiceCollectionExtensions.LlmTimeoutSeconds,
+            "A non-streaming completion carrying up to 16k tokens has to finish inside the wait, and the "
+            + "enrichment e2e spec budgets 180s for the same call. Move this deliberately, not by accident.");
+        Assert.AreEqual(
+            TimeSpan.FromSeconds(ServiceCollectionExtensions.LlmTimeoutSeconds),
+            client.Timeout,
+            "The 'llm' client must carry the app-owned timeout rather than HttpClient's 100s default, which "
+            + "is also what an unregistered name would silently get.");
     }
 
     [TestMethod]

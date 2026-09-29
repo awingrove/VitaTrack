@@ -2,10 +2,10 @@
 
 ## Responsibilities
 - Persist data using **Dapper** over SQLite.
-- Define repository interfaces (`IFamilyRepository`, `ISupplementRepository`, `ISupplementNutrientRepository`, `IPrescribedDoseRepository`).
+- Define repository interfaces (`IFamilyRepository`, `ISupplementRepository`, `ISupplementNutrientRepository`, `IPrescribedDoseRepository`, `IServiceConnectionRepository`).
 - Implement repositories with async CRUD methods.
 - Provide access to external services (LLM) via `ILlmService`.
-- Contain models used across layers; every slice owns its models under `Features/<Slice>/` (`Supplement`, `FamilyMember`, `SupplementNutrient`, `PrescribedDose`, `LlmResult`, report records). `VitaTrack.Core/Models` and the flat `VitaTrack.Core/Services` namespace are retired — neither exists.
+- Contain models used across layers; every slice owns its models under `Features/<Slice>/` (`Supplement`, `FamilyMember`, `SupplementNutrient`, `PrescribedDose`, `ServiceConnection`, `LlmResult`, report records). `VitaTrack.Core/Models` and the flat `VitaTrack.Core/Services` namespace are retired — neither exists.
 - Shared value objects live in `VitaTrack.Core/Primitives/` (`Dosage`, `Unit`, `Money`, and the Dosing objects). All dosage parsing and unit recognition lives there; see the root `AGENTS.md` dosage rules.
 - No direct HTTP or UI concerns; keep pure C#.
 
@@ -13,11 +13,11 @@
 - Interfaces: prefix `I`, co-located with their implementation — feature slices own theirs under `VitaTrack.Core/Features/<Slice>/` (ADR-0006); shared infrastructure interfaces live in `VitaTrack.Core.Data`. There is no `VitaTrack.Core.Services` (retired).
 - Implementations: suffix `Repository` or `Service`, same namespace.
 - Models: plain POCOs with public get/set; default string values `string.Empty`. Feature-owned models live in their slice folder, not `VitaTrack.Core/Models`.
-- Constructor injection: receive `IDbConnection` (repositories) or `HttpClient` + `IConfiguration` (LLM service).
+- Constructor injection: receive `IDbConnection` (repositories) or `IHttpClientFactory` + `ILogger<T>` (the HTTP-touching types: `ServiceCatalogClient`, `LlmClient`, `HtmlScraperService`). **No constructor here takes `IConfiguration`** — the one method in the assembly that does is `ServiceCollectionExtensions.AddCore` (`ServiceCollectionExtensions.cs:28`), and it reads the connection string and nothing else. Connection state lives in the database (`ServiceConnections`), and the options type that used to carry it is deleted; `ConfigBindingAbsentTests` is the guard, and it scans this file, so do not name the deleted type here. The typed-client factory cannot build a type whose constructor takes `HttpClient` without `AddHttpClient<TInterface, TImplementation>()`; see "Adding New Features" step 4.
 - All I/O methods are `async` and return `Task<T>` or `Task<IReadOnlyList<T>>`.
 - Use `await _db.QueryAsync<T>(sql)` for reads.
 - Use `await _db.ExecuteAsync(sql, param)` for writes.
-- For inserts returning identity, execute `INSERT` then `SELECT last_insert_rowid()` as two separate calls (SQLite limitation).
+- For inserts returning identity, put the `INSERT` and a trailing `SELECT last_insert_rowid();` on the same batch and read it with `ExecuteScalarAsync` — `ExecuteAsync` returns a row count, not the identity. `ServiceConnectionRepository.InsertAsync` is the exemplar, and it puts the deactivation on that same batch so both land in one transaction.
 
 ## Foreign Key Delete Order
 SQLite enforces foreign keys. When implementing `DeleteAsync` for a parent table, **always delete child rows first**. The current dependency chain is:
@@ -50,8 +50,8 @@ When deleting a `SupplementNutrient` that is a blend parent, delete its children
 When adding new tables (or FK-like columns, via `CREATE TABLE` or `ALTER TABLE` migration in `DbInit`) with foreign keys, update the relevant `DeleteAsync` methods **in the same change** — a migration without its cascade update silently orphans or blocks deletes at runtime. Add cascade-delete unit tests alongside (`Delete_Parent_AlsoDeletesChildren` pattern).
 
 ## Transaction Handling
-- Currently each repository method opens/closes the connection via Dapper (connection is scoped from Web).
-- If multiple operations need a transaction, open a connection and use `IDbTransaction` (future work).
+- A single-statement repository method runs on the injected `IDbConnection` and lets Dapper open/close it. The connection is scoped from Web.
+- A method that must write more than one row as a unit opens the connection itself, begins an `IDbTransaction`, commits on success and rolls back on failure or when the batch reports no row written, and closes the connection again in `finally` **if this method was the one that opened it** — record that in a `wasClosed` local before opening, or the method will close a connection its owner (Web) still expects to be open. `ServiceConnectionRepository.SaveAsync` is the exemplar: the deactivation of the previously active row and the new row land together, so a failed save cannot leave the user with no active connection.
 
 ## Dependencies
 - Packages: `Dapper`, `Microsoft.Data.Sqlite`, `Microsoft.Extensions.Configuration.Abstractions`, `Microsoft.Extensions.Http`.
@@ -62,13 +62,13 @@ When adding new tables (or FK-like columns, via `CREATE TABLE` or `ALTER TABLE` 
 - Unit tests must pass before considering a feature complete; the aim of unit testing is to verify that a piece of functionality is defect‑free under the tested conditions.
 - Use **in‑memory SQLite** (`Microsoft.Data.Sqlite`) with connection string `Data Source=:memory:`.
 - Base class `SqliteTestBase` handles connection creation and schema initialization.
-- Mock `HttpClient` (with Moq) for `OpenRouterLlmService` tests.
+- For the LLM seam, supply connection state as a `ServiceConnection` plus `LlmRequestSettings` from `LlmTestData` (`VitaTrack.Tests/TestDoubles/LlmTestData.cs`) and fake the transport with a stub `HttpMessageHandler`, not a mocked `HttpClient` — there is nothing to configure, because the base URL, key and model travel per request. `VitaTrack.Tests/AGENTS.md` is the authority on the test side; `OpenRouterLlmService` is long gone.
 
 ## Adding New Features
 1. Add model (if needed) to the owning feature slice under `VitaTrack.Core/Features/<Slice>/`.
 2. Extend repository interface (if new entity) and implement.
-3. Register new interface/implementation in `VitaTrack.Web/Program.cs` via `builder.Services.AddScoped<...>()`.
-4. If external service, add it to the owning slice folder (e.g. `Features/LlmEnrichment/`) and register via `AddHttpClient<TInterface, TImplementation>()` (you may also need to register `HttpClient` separately if not already).
+3. Register new interface/implementation in `VitaTrack.Core/ServiceCollectionExtensions.cs` via `builder.Services.AddScoped<...>()`.
+4. If external service, add it to the owning slice folder (e.g. `Features/LlmEnrichment/`) and register it in `ServiceCollectionExtensions.AddCore` with `AddScoped<TInterface, TImplementation>()`. **Do not** reach for `AddHttpClient<TInterface, TImplementation>()`: the typed-client factory builds the implementation through `DefaultTypedHttpClientFactory<T>`, which requires a constructor taking an `HttpClient`. A type that takes `IHttpClientFactory` (as `ServiceCatalogClient` does) **compiles fine and throws at resolution** — the page, not the build — so `ServiceCollectionExtensionsTests.AddCore_RegistersAllRepositoriesAndServices` resolves each new one for real rather than reading the descriptor. Configure the client itself by *name* (`AddHttpClient("llm", …)`) and take `IHttpClientFactory` in the implementation.
 5. Write unit tests in `VitaTrack.Tests` before or after implementation (TDD encouraged).
 
 ## Build

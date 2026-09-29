@@ -1,0 +1,59 @@
+@using VitaTrack.Web.Models
+@model ModelPickerViewModel
+
+@* The picker. A dropdown when the probe this response answers listed models, free text
+   when it did not — the catalog is null on a path that did not just probe, so a reload
+   renders free text. One signal (Models) decides, so the two branches cannot disagree
+   about when a picker is offered. The variant list is the registry's fixed vocabulary rendered
+   whole: there is nothing to discover, because /v1/models carries no variants.
+   asp-action/asp-controller/method are load-bearing, not decoration: hx-post is an
+   enhancement, and a form carrying only it degrades to a GET of the current URL, which
+   discards the choice with no error at all. With them, a browser without htmx posts for
+   real and the controller redirects to Index, which is where the saved model comes back. *@
+<h3>Model</h3>
+@if (Model.JustSaved)
+{
+    <div class="alert alert-success" role="alert">Model and reasoning effort saved.</div>
+}
+<form asp-action="SelectModel" asp-controller="ServiceConnection" method="post"
+      hx-post="@Url.Action("SelectModel", "ServiceConnection")"
+      hx-target="#connection-state" hx-swap="outerHTML"
+      id="model-picker-form">
+    @Html.AntiForgeryToken()
+    <div class="mb-3">
+        @* Ids are prefixed, names are not. The connect form's own model field is
+           asp-for="Model", which renders id="Model" — and two elements with one id on a
+           page break the <label for> association for both, so the picker's accessible
+           name came out as "Model Model (optional)". The name is what the POST binds;
+           the id only has to be unique. *@
+        <label class="control-label" for="picker-model">Model</label>
+        @if (Model.Models.Count > 0)
+        {
+            <select class="form-select" id="picker-model" name="Model">
+                @foreach (var listed in Model.Models)
+                {
+                    <option value="@listed" selected="@(listed == Model.SelectedModel)">@listed</option>
+                }
+            </select>
+            <div class="form-text text-muted">Listed by your service.</div>
+        }
+        else
+        {
+            <input class="form-control" id="picker-model" name="Model" value="@Model.SelectedModel" />
+            <div class="form-text text-muted">Type the model name your service expects.</div>
+        }
+    </div>
+    <div class="mb-3">
+        <label class="control-label" for="picker-variant">Reasoning effort</label>
+        <select class="form-select" id="picker-variant" name="Variant">
+            @foreach (var variant in Model.Variants)
+            {
+                <option value="@variant" selected="@(variant == Model.SelectedVariant)">@variant</option>
+            }
+        </select>
+        <div class="form-text text-muted">Not every service uses one; leave it at none.</div>
+    </div>
+    <div class="mb-3">
+        <input type="submit" value="Save model" class="btn btn-sm btn-primary" />
+    </div>
+</form>

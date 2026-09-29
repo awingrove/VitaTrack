@@ -188,9 +188,18 @@ public class StoryMapConsistencyTests
     private static bool ResolvesToUnitTest(string className, string methodName, string[] unitSources) =>
         unitSources.Any(source => source.Contains($"class {className}") && Regex.IsMatch(source, $@"\s{methodName}\("));
 
+    /// <summary>Recursive: slice tests live under VitaTrack.Tests/Features/&lt;Slice&gt;/
+    /// (ADR-0006), so a top-level-only read made every slice test unrefable and silently
+    /// forced those stories to declare no <c>tests:</c> key at all — the unfalsifiable
+    /// claim TD-020 is about.</summary>
     private static string[] ReadAllUnitTestSources(string repoRoot)
     {
         var dir = Path.Combine(repoRoot, "VitaTrack.Tests");
-        return Directory.GetFiles(dir, "*.cs").Select(File.ReadAllText).ToArray();
+        return Directory
+            .EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                .Any(segment => segment is "bin" or "obj"))
+            .Select(File.ReadAllText)
+            .ToArray();
     }
 }

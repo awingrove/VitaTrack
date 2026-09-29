@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Coverage floor set at 92% line coverage (actual 92.53% after the dosage-shape
-# enforcement work; ratcheted up from 90% — the floor only ever moves up).
+# Coverage floor set at 93% line coverage (actual 93.29% after the service-connection
+# tracer's handler tests; ratcheted up from 92% — the floor only ever moves up).
 set -euo pipefail
 
-THRESHOLD="${COVERAGE_THRESHOLD:-92}"
+THRESHOLD="${COVERAGE_THRESHOLD:-93}"
 THRESHOLD_TYPE="${THRESHOLD_TYPE:-line}"
 CONFIGURATION="${CONFIGURATION:-Debug}"
 

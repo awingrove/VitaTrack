@@ -25,6 +25,7 @@
                     <li class="nav-item"><a class="nav-link" asp-controller="PrescribedDose" asp-action="Index">Doses</a></li>
                     <li class="nav-item"><a class="nav-link" asp-controller="Reporting" asp-action="NutrientReport">Report</a></li>
                     <li class="nav-item"><a class="nav-link" asp-controller="Reporting" asp-action="CostReport">Cost Report</a></li>
+                    <li class="nav-item"><a class="nav-link" asp-controller="ServiceConnection" asp-action="Index">Settings</a></li>
                 </ul>
             </div>
         </div>
@@ -39,8 +40,13 @@
             integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
             crossorigin="anonymous"></script>
 
-    <!-- HTMX (self-hosted to satisfy CSP script-src 'self'; avoids CDN runtime dep) -->
-    <script src="/lib/htmx/htmx.min.js"></script>
+    <!-- HTMX (self-hosted to satisfy CSP script-src 'self'; avoids CDN runtime dep).
+         asp-append-version is required by the root AGENTS.md cache-busting rule, and it
+         matters more here than anywhere else on the page: Kestrel sends this file with an
+         ETag and no Cache-Control, so a browser may serve a stale htmx indefinitely
+         without revalidating — and a stale htmx silently breaks every swap in the app
+         while the markup around it looks correct. -->
+    <script src="/lib/htmx/htmx.min.js" asp-append-version="true"></script>
 
     @RenderSection("Scripts", required: false)
 </body>

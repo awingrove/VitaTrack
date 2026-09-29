@@ -219,6 +219,7 @@ Cards, modals, and inputs keep their default component radii.
 | Delete | `btn btn-sm btn-danger` |
 | Secondary dialog opener (Import CSV) | `btn btn-outline-primary` |
 | Bulk destructive | `btn btn-danger` |
+| Bulk compare (Compare Selected) | `btn btn-outline-primary` |
 | Cancel / dismiss | `btn btn-outline-secondary` |
 | Save/confirm a setting that persists (Settings page) | `btn btn-success` |
 | Save a subordinate choice (model, reasoning effort) | `btn btn-sm btn-primary` |
@@ -248,7 +249,13 @@ full-screen overlay.
 Standard pattern per `Views/Supplement/Index.cshtml`: checkbox column for bulk
 select (`select-all` + `row-checkbox` wired to a shared delete form), sortable
 headers via `data-sort-key`, actions column last. Row checkboxes belong to the
-bulk-delete form via the `form` attribute.
+bulk-delete form via the `form` attribute. The same selection also feeds
+**Compare Selected** (`#compare-selected-btn`): the anchor is disabled until at
+least 2 rows are checked, its `href` is rebuilt by
+`wwwroot/js/compare-selected.js` from the checked boxes in DOM order, and a
+selection is capped at 5 — the 6th checked box is unchecked and `#compare-hint`
+("Compare up to 5 supplements.") becomes visible at the cap. The cap is
+client-side only; the server accepts any ≥ 2 ids.
 
 Expandable detail rows use Bootstrap collapse on `<tr>` targets: a
 `btn btn-link p-0` trigger with `data-bs-toggle="collapse"` /
@@ -265,6 +272,17 @@ Expand/collapse affordance: an inline SVG chevron rides in the trigger
 chevrons in HTML `<span>`s, never toggle `hidden` on `<svg>` directly (the
 `hidden` attribute's UA `display:none` rule does not apply to SVG elements).
 No icon fonts, no custom CSS.
+
+### Comparison grid
+
+`Views/Supplement/Compare.cshtml` renders one plain `table` (never
+`data-sortable`) from the `ComparisonGrid` model. Each column header is three
+lines: supplement name, brand and serving (`DailyDose` free text, shown as-is),
+with the latter two as `text-muted small`. The first cell of each body row is
+the nutrient label; blend children are indented beneath their parent via
+Bootstrap spacing (`ps-4` on the label cell), and an em dash (`—`) marks "not
+in this supplement". Cells show the specific form with the normalized dosage
+after it in `text-muted` — stock Bootstrap only, no custom CSS.
 
 ### Forms
 

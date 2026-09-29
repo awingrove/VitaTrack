@@ -44,6 +44,19 @@ public class SupplementNutrientRepository(IDbConnection db) : ISupplementNutrien
         return rows.ToDictionary(r => r.SupplementId, r => r.Count);
     }
 
+    public async Task<IReadOnlyList<SupplementNutrient>> GetBySupplementIdsAsync(IEnumerable<int> supplementIds)
+    {
+        var ids = supplementIds.ToList();
+        if (ids.Count == 0) return new List<SupplementNutrient>();
+
+        const string sql = @"
+                SELECT *
+                FROM SupplementNutrients
+                WHERE SupplementId IN @Ids";
+        var rows = await _db.QueryAsync<SupplementNutrient>(sql, new { Ids = ids });
+        return rows.ToList();
+    }
+
     public async Task<SupplementNutrient?> GetByIdAsync(int id)
     {
         const string sql = @"

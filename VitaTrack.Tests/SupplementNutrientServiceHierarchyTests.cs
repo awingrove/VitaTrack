@@ -94,6 +94,10 @@ public class SupplementNutrientServiceHierarchyTests
             Task.FromResult<IDictionary<int, int>>(
                 supplementIds.ToDictionary(id => id, id => _byId.Values.Count(n => n.SupplementId == id)));
 
+        public Task<IReadOnlyList<SupplementNutrient>> GetBySupplementIdsAsync(IEnumerable<int> supplementIds) =>
+            Task.FromResult<IReadOnlyList<SupplementNutrient>>(
+                _byId.Values.Where(n => supplementIds.Contains(n.SupplementId)).ToList());
+
         public Task<SupplementNutrient?> GetByIdAsync(int id) =>
             Task.FromResult(GetById(id));
 

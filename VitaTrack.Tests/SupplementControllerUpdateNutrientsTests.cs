@@ -31,7 +31,8 @@ public class SupplementControllerUpdateNutrientsTests
             _suppRepo.Object,
             _nutrientRepo.Object,
             _nutrientService.Object,
-            _llmService.Object);
+            _llmService.Object,
+            new BuildSupplementComparisonHandler(_suppRepo.Object, _nutrientRepo.Object));
     }
 
     [TestMethod]

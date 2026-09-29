@@ -64,6 +64,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<PrescribeDoseHandler>();
         services.AddScoped<AmendDoseHandler>();
         services.AddScoped<ImportSupplementsHandler>();
+        services.AddScoped<BuildSupplementComparisonHandler>();
         services.AddScoped<SaveConnectionHandler>();
         services.AddScoped<ProbeConnectionHandler>();
 

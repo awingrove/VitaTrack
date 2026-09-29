@@ -10,7 +10,7 @@
 meta:
   project: VitaTrack
   description: Vitamin and Supplement Tracking Application
-  last_updated: 2026-09-28
+  last_updated: 2026-09-29
 
 activities:
   - name: Manage Family Members
@@ -145,6 +145,18 @@ activities:
             priority: medium
             tests:
               - e2e: csv-import::should open import modal and download sample CSV
+
+      - id: MS-6
+        name: Compare supplements
+        entry_point: Supplements index -> Compare Selected
+        stories:
+          - title: Select supplements and open the comparison grid
+            status: done
+            priority: medium
+            tests:
+              - e2e: supplement-comparison::should compare selected supplements via the Compare Selected button
+              - unit: SupplementComparisonBuilderTests.Build_MergesNamesTrimmedAndCaseInsensitive
+              - unit: SupplementControllerCompareTests.Compare_ValidTwoIds_ReturnsViewWithGridInRequestOrder
 
       - name: Manage supplement nutrients
         id: NT-1

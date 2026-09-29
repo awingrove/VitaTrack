@@ -42,6 +42,13 @@ internal sealed class MockRepo : ISupplementNutrientRepository
         return Task.FromResult<IDictionary<int, int>>(dict);
     }
 
+    public Task<IReadOnlyList<SupplementNutrient>> GetBySupplementIdsAsync(IEnumerable<int> supplementIds)
+    {
+        var ids = supplementIds.ToHashSet();
+        var list = _bySupplement.Where(kv => ids.Contains(kv.Key)).SelectMany(kv => kv.Value).ToList();
+        return Task.FromResult<IReadOnlyList<SupplementNutrient>>(list);
+    }
+
     public Task<SupplementNutrient?> GetByIdAsync(int id)
     {
         _byId.TryGetValue(id, out var n);

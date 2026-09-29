@@ -1,0 +1,49 @@
+@{
+    ViewData["Title"] = "Compare Supplements";
+    Layout = "_Layout";
+}
+@model VitaTrack.Core.Features.Supplements.ComparisonGrid
+
+<h2>@ViewData["Title"]</h2>
+
+<p>
+    <a class="btn btn-outline-secondary" asp-action="Index">Back to Supplements</a>
+</p>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Nutrient</th>
+            @foreach (var c in Model.Columns)
+            {
+                <th>
+                    @c.Name<br />
+                    <span class="text-muted small">@c.Brand</span><br />
+                    <span class="text-muted small">@c.DailyDose</span>
+                </th>
+            }
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var row in Model.Rows)
+        {
+            <tr>
+                <td class="@(row.IsBlendChild ? "ps-4" : "")">@row.Label</td>
+                @foreach (var cell in row.Cells)
+                {
+                    if (cell == null)
+                    {
+                        <td>—</td>
+                    }
+                    else
+                    {
+                        <td>@cell.SpecificForm@if (!string.IsNullOrEmpty(cell.Dosage))
+                        {
+                            <span class="text-muted"> @cell.Dosage</span>
+                        }</td>
+                    }
+                }
+            </tr>
+        }
+    </tbody>
+</table>

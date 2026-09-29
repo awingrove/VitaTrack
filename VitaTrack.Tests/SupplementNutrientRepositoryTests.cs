@@ -139,6 +139,39 @@ public class SupplementNutrientRepositoryTests : SqliteTestBase
     }
 
     [TestMethod]
+    public async Task GetBySupplementIdsAsync_ReturnsRowsForAllRequestedSupplements()
+    {
+        var supA = await SeedSupplementAsync();
+        var supB = await SeedSupplementAsync();
+        var supC = await SeedSupplementAsync();
+        await _nutrientRepo.AddAsync(new SupplementNutrient { SupplementId = supA, GenericName = "Zinc", SpecificForm = "Picolinate", Dosage = "5mg" });
+        await _nutrientRepo.AddAsync(new SupplementNutrient { SupplementId = supA, GenericName = "Iron", SpecificForm = "Bisglycinate", Dosage = "18mg" });
+        await _nutrientRepo.AddAsync(new SupplementNutrient { SupplementId = supB, GenericName = "Vitamin C", SpecificForm = "Ascorbic Acid", Dosage = "500mg" });
+
+        // Act – bulk fetch for two of the three supplements
+        var rows = await _nutrientRepo.GetBySupplementIdsAsync(new List<int> { supA, supB });
+
+        // Assert – all 3 rows across A and B, nothing from C
+        Assert.AreEqual(3, rows.Count);
+        Assert.IsTrue(rows.All(r => r.SupplementId == supA || r.SupplementId == supB));
+        Assert.IsFalse(rows.Any(r => r.SupplementId == supC));
+    }
+
+    [TestMethod]
+    public async Task GetBySupplementIdsAsync_UnknownId_ReturnsNoRowsForIt()
+    {
+        var supA = await SeedSupplementAsync();
+        await _nutrientRepo.AddAsync(new SupplementNutrient { SupplementId = supA, GenericName = "Zinc", SpecificForm = "Picolinate", Dosage = "5mg" });
+
+        // Act – a mix of a real and an unknown id
+        var rows = await _nutrientRepo.GetBySupplementIdsAsync(new List<int> { supA, 999999 });
+
+        // Assert – only the real supplement's rows come back
+        Assert.AreEqual(1, rows.Count);
+        Assert.AreEqual(supA, rows[0].SupplementId);
+    }
+
+    [TestMethod]
     public async Task Update_PersistsParentNutrientIdChange()
     {
         var supplementId = await SeedSupplementAsync();

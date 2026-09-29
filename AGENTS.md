@@ -74,6 +74,7 @@ This document defines the coding standards, architectural guidelines, testing ph
     *   Return result-shaped records carrying success/error state for logic flow and validation (e.g. `LlmResult.ExtractionError`, `CsvParseResult`, `ReplaceNutrientsResult`) — the bare generic `Result<T>` was removed as dead code in Sep 2026.
     *   **Do not** use exceptions for control flow. Reserve exceptions strictly for exceptional, unexpected system failures.
 *   **Documentation:** Favor highly descriptive, clear naming for variables, methods, and classes over writing comments. 
+    *   **No hand-written CI-derivable counts in docs.** Test totals, arch-class counts, file counts, and coverage percentages rot the moment they are pasted (this rule exists because `new-shard.md` advertised "arch (27) + unit (234)" while the run said 29/358, and `ci.yml` claimed a 65% floor against a script default of 93%). The command's own output is the source — print it at verify time; never paste it into prose. Review-enforced, deliberately: a mechanical scan cannot distinguish a count from a line range like `AGENTS.md:241-244`.
 
 ## 🧪 Testing Philosophy
 *   **Framework:** MSTest. Run `dotnet test` and keep the suite green. Tests must verify *actual functionality*.

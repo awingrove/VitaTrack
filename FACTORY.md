@@ -66,7 +66,7 @@ the human** — never hunt for another route around a gate.
 - Typed contracts — no `Dictionary<string,string>` view data.
 - Unit test + e2e spec green; story-map entry + shard-manifest entry present.
 - UI reachable (no orphan page); cross-layer tracer green.
-- Docs updated (`AGENTS.md`, ADR if architecture changed); metrics recorded.
+- Docs updated (`AGENTS.md`, ADR if architecture changed); metrics recorded; no CI-derivable counts pasted into prose.
 
 ## Capability ladder
 

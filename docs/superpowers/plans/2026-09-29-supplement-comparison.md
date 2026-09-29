@@ -221,9 +221,9 @@ Expected: all green — pipe works end to end at commit one.
 - [ ] **Step 1: Write the failing edge tests:**
 
 ```csharp
-Compare_JunkQuery_RendersWhenTwoValidRemain              // "abc,-1,,2,,2" -> ViewResult, 2 columns, no throw
+Compare_JunkQuery_RendersWhenTwoValidRemain              // "abc,-1,,1,,2" -> ViewResult, 2 columns, no throw
 Compare_MalformedAndDuplicateIds_RedirectsWhenFewerThanTwoResolve // "abc,2,2" -> redirect (dedupe leaves 1)
-Compare_UnknownIdsSkipped_RendersWithSurvivors           // "known1,999999,known2" -> 2 columns, order known1, known2
+Compare_UnknownIdsSkipped_RendersWithSurvivors           // "1,999999,2" -> 2 columns, order 1, 2
 Compare_UnknownIdsOnly_Redirects                         // "999999,1000000" -> redirect
 Compare_BeyondCapUrl_StillRenders                        // 6 valid ids -> ViewResult, 6 columns (server ignores client cap)
 ```

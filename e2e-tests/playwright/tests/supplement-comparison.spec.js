@@ -41,4 +41,49 @@ test.describe('Supplement comparison', () => {
 
     await screenshot(page, testInfo, 'comparison-grid');
   });
+
+  test('should gate Compare Selected below two and cap at five', async ({ page }, testInfo) => {
+    // Create our own rows so the page has >= 6 regardless of seed state —
+    // the shared in-memory DB gives no guarantee about row count.
+    const unique = Date.now();
+    for (let i = 0; i < 6; i++) {
+      await page.goto('/Supplement/Create');
+      await page.fill('input#Name', `GateSupp${unique}_${i}`);
+      await page.fill('input#Brand', 'GateBrand');
+      await page.fill('input#DailyDose', '1 tablet');
+      await page.fill('input#Cost', '4.99');
+      await page.click('button[hx-post="/Supplement/CreateSave"]');
+      await expect(page.locator('h2')).toHaveText('Supplements');
+    }
+
+    await page.goto('/Supplement');
+    await expect(page.locator('h2')).toHaveText('Supplements');
+
+    // 0 checked -> button gated.
+    await expect(page.locator('#compare-selected-btn')).toHaveClass(/disabled/);
+
+    // 1 checked (one named row) -> still gated.
+    await page.locator(`tr:has-text("GateSupp${unique}_0") .row-checkbox`).check();
+    await expect(page.locator('#compare-selected-btn')).toHaveClass(/disabled/);
+
+    // Select-all flips every box via delete-selected.js; compare-selected.js
+    // caps the selection at 5 in DOM order and reveals the hint.
+    await page.click('#select-all');
+    await expect(page.locator('#compare-hint')).toBeVisible();
+    await expect(page.locator('.row-checkbox:checked')).toHaveCount(5);
+
+    // Attempt a 6th -> cap holds at 5.
+    await page.locator('.row-checkbox:not(:checked)').first().click();
+    await expect(page.locator('.row-checkbox:checked')).toHaveCount(5);
+    await expect(page.locator('#compare-hint')).toBeVisible();
+
+    await screenshot(page, testInfo, 'compare-gating-cap');
+  });
+
+  test('should redirect to the list when no valid ids resolve', async ({ page }, testInfo) => {
+    // 999999 parses but resolves to no supplement; abc fails to parse.
+    await page.goto('/Supplement/Compare?ids=999999,abc');
+    await expect(page.locator('h2')).toHaveText('Supplements');
+    await screenshot(page, testInfo, 'compare-stale-id-redirect');
+  });
 });

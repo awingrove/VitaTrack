@@ -157,6 +157,13 @@ activities:
               - e2e: supplement-comparison::should compare selected supplements via the Compare Selected button
               - unit: SupplementComparisonBuilderTests.Build_MergesNamesTrimmedAndCaseInsensitive
               - unit: SupplementControllerCompareTests.Compare_ValidTwoIds_ReturnsViewWithGridInRequestOrder
+          - title: Selection gating (min two, cap five) and stale-id redirects
+            status: done
+            priority: medium
+            tests:
+              - e2e: supplement-comparison::should gate Compare Selected below two and cap at five
+              - e2e: supplement-comparison::should redirect to the list when no valid ids resolve
+              - unit: SupplementControllerCompareTests.Compare_FewerThanTwoValidIds_RedirectsToIndex
 
       - name: Manage supplement nutrients
         id: NT-1

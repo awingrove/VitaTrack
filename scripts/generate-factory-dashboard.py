@@ -82,6 +82,7 @@ REQUIRED_LEDGER_FIELDS = (
     "name",
     "agent",
     "human_interventions",
+    "agent_review_rounds",
     "guardrail_failures",
     "fix_commits",
     "defects_escaped",
@@ -97,6 +98,7 @@ OPTIONAL_METRIC_FIELDS = (
 )
 REQUIRED_INTEGER_FIELDS = (
     "human_interventions",
+    "agent_review_rounds",
     "guardrail_failures",
     "fix_commits",
     "defects_escaped",
@@ -263,6 +265,7 @@ SHARD_COLUMNS = (
     "Agent",
     "Model",
     "Interventions",
+    "Agent review rounds",
     "Guardrail failures",
     "Fix commits",
     "Escaped defects",
@@ -342,12 +345,13 @@ def _shard_row(shard: dict[str, Any], entry: dict[str, Any] | None) -> str:
     ]
     if entry is None:
         cells.append('<td><span class="badge bg-danger">Missing ledger</span></td>')
-        cells.extend("<td>—</td>" for _ in range(8))
+        cells.extend("<td>—</td>" for _ in range(9))
     else:
         cells.append('<td><span class="badge bg-success">Recorded</span></td>')
         cells.append(f"<td>{display_metric(entry.get('agent'))}</td>")
         cells.append(f"<td>{display_metric(entry.get('agent_model'))}</td>")
         cells.append(f"<td>{display_metric(entry.get('human_interventions'))}</td>")
+        cells.append(f"<td>{display_metric(entry.get('agent_review_rounds'))}</td>")
         cells.append(f"<td>{display_metric(entry.get('guardrail_failures'))}</td>")
         cells.append(f"<td>{display_metric(entry.get('fix_commits'))}</td>")
         cells.append(f"<td>{display_metric(entry.get('defects_escaped'))}</td>")

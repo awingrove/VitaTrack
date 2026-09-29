@@ -128,7 +128,7 @@ is written down so at least the disagreement is visible.
 ```bash
 dotnet format VitaTrack.sln --verify-no-changes   # format
 dotnet build VitaTrack.sln -c Release             # build
-dotnet test VitaTrack.sln -c Release              # arch (27) + unit (234)
+dotnet test VitaTrack.sln -c Release
 cd e2e-tests/playwright && npx playwright test tests/<name>.spec.js
 ```
 

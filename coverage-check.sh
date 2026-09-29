@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# Coverage floor set at 93% line coverage (actual 93.29% after the service-connection
-# tracer's handler tests; ratcheted up from 92% — the floor only ever moves up).
+# Coverage floor: 93% line. Fixed — raising it is a deliberate, reviewed edit, not a ratchet.
 set -euo pipefail
 
-THRESHOLD="${COVERAGE_THRESHOLD:-93}"
+THRESHOLD=93
 THRESHOLD_TYPE="${THRESHOLD_TYPE:-line}"
 CONFIGURATION="${CONFIGURATION:-Debug}"
 
@@ -20,4 +19,4 @@ dotnet test VitaTrack.Tests/VitaTrack.Tests.csproj --configuration "$CONFIGURATI
 
 echo
 echo "Coverage report: TestResults/coverage/coverage.cobertura.xml"
-echo "Floor: $THRESHOLD% ($THRESHOLD_TYPE). Raise via COVERAGE_THRESHOLD=NN ./coverage-check.sh."
+echo "Floor: $THRESHOLD% ($THRESHOLD_TYPE). Raising it means editing THRESHOLD in this script — deliberately, in its own reviewed change."

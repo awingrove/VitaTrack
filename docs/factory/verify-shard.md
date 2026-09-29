@@ -35,7 +35,7 @@ missing entry fails the gate, and `human_interventions` above the ratchet target
 
 Before merging, reconcile the entry against the review outcome:
 
-- A review finding that forced changes ⇒ `human_interventions ≥ 1`.
+- A review finding that forced changes ⇒ `agent_review_rounds ≥ 1` (or `human_interventions ≥ 1` when the **person** found it).
 - Any commit after the executor's first done claim ⇒ `fix_commits ≥ 1`.
 - A plan-mandated Important finding (or any finding that conflicts with the
   plan's text) is the human's decision — surface it; do not self-adjudicate

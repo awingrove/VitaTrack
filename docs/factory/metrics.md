@@ -15,7 +15,8 @@ A shard only counts toward the proof when its ledger entry records `agent` in th
 | Field | Meaning |
 |---|---|
 | `agent` | Model class that built it (`frontier` / `cheap` / `human`). Only `cheap` entries count toward the productivity proof. |
-| `human_interventions` | Every stop that needed a human: design-review prompts, corrections, unblocks, review findings that forced changes. **The headline number.** `0` = fully autonomous. |
+| `human_interventions` | Every stop that needed **the human person**: design-review prompts, human-gate decisions, unblocks, corrections issued by the person. Controller-agent review rounds do NOT count — they are `agent_review_rounds`. **The headline number.** `0` = fully autonomous of the person. |
+| `agent_review_rounds` | Review rounds run by a controller/agent session against the executor's work (per-task findings, whole-branch review passes). Agent work, not human touch — kept visible because a high count still means the recipe under-contextualizes the shard. No ratchet target yet: SC's 15 is the baseline until the next greenfield shard sets one. |
 | `guardrail_failures` | Red gate cycles (arch/format/build/e2e failures before green). Loud failures are the design working; a high count means the recipe under-contextualizes the shard. |
 | `fix_commits` | Commits after the first "done" claim. Measures verification honesty. |
 | `defects_escaped` | Defects found after merge (from the defect log in `technical-debt.yaml`). |
@@ -71,7 +72,8 @@ the agent records them from the branch's actual commit/test history.
   and the numbers are plausible.
 - **Hard afterward**: a shipped slice without a ledger entry fails `verify-shard`, and
   `human_interventions` above the ratchet target (start: **≤ 1 per shard**) fails review —
-  the target ratchets down as the recipe improves.
+  the target ratchets down as the recipe improves. `agent_review_rounds` is measured but
+  carries no target yet (baseline set by SC; target set after the next greenfield shard).
 
 ## Reading the numbers
 

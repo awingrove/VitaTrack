@@ -74,10 +74,12 @@ This document defines the coding standards, architectural guidelines, testing ph
     *   Return result-shaped records carrying success/error state for logic flow and validation (e.g. `LlmResult.ExtractionError`, `CsvParseResult`, `ReplaceNutrientsResult`) — the bare generic `Result<T>` was removed as dead code in Sep 2026.
     *   **Do not** use exceptions for control flow. Reserve exceptions strictly for exceptional, unexpected system failures.
 *   **Documentation:** Favor highly descriptive, clear naming for variables, methods, and classes over writing comments. 
+    *   **No hand-written CI-derivable counts in docs.** Test totals, arch-class counts, file counts, and coverage percentages rot the moment they are pasted (this rule exists because `new-shard.md` advertised "arch (27) + unit (234)" while the run said 29/358, and `ci.yml` claimed a 65% floor against a script default of 93%). The command's own output is the source — print it at verify time; never paste it into prose. Review-enforced, deliberately: a mechanical scan cannot distinguish a count from a line range like `AGENTS.md:241-244`.
 
 ## 🧪 Testing Philosophy
 *   **Framework:** MSTest. Run `dotnet test` and keep the suite green. Tests must verify *actual functionality*.
 *   **Architecture Tests:** `VitaTrack.ArchitectureTests` project uses NetArchTest + reflection to enforce rules csproj can't express: Web controllers must not depend on `System.Data`/`Dapper`/`Microsoft.Data.Sqlite`; Core services must not depend on `System.Data`/`Dapper`/`Microsoft.Data.Sqlite`; no assembly transitively references EF Core; `VitaTrack.Core.Data` concrete classes must end in `Repository` (known exception: `DbInit`); no *complete type* (including partials) exceeds the 300-line split trigger; controllers must not `catch (Exception)` (active — CSV import row-level failures return result records; genuinely exceptional failures propagate to the global error handler); every SQL table referenced from a slice's core files must appear in that slice's `tables` declaration in `shards.yaml` (`CrossSliceSqlTests`).
+*   **Claim vocabulary for guarantee-comments.** A comment that claims what code *does* — as opposed to explaining why — must state the claim with one of three keywords: `CHECKS: <claim>` (this test asserts `<claim>`), `PINS: <claim>` (regression test — `<claim>` once failed), `DOCUMENTS: <behavior>` (descriptive; no assertion claimed). Guarantee-language outside a claim (`guarantees`, `always`, `never`, `ensures` used as a promise) is a review defect — the DL-006 class. `ClaimCommentTests` mechanically enforces that every `CHECKS:`/`PINS:` in `VitaTrack.Tests` has an `Assert.` in its enclosing method; it does **not** scan Playwright specs or judge claim wording — those stay review-enforced.
 *   **Unit Tests:**
     *   Test business logic in Services and Repositories.
     *   `Moq` is permitted only to mock out dependencies (e.g., Repositories when testing Services, or `HttpClient` for LLM service tests) to isolate the unit under test.
@@ -102,7 +104,7 @@ This document defines the coding standards, architectural guidelines, testing ph
     *   Run Web: `dotnet run --project VitaTrack.Web`
     *   Test: `dotnet test`
     *   Format: `dotnet format VitaTrack.sln` (auto-fix) or `./format-check.sh` (verify-only)
-    *   Coverage: `./coverage-check.sh` (gates Infrastructure line coverage at \`COVERAGE_THRESHOLD\` env, default 65%; ratchet upward as coverage grows)
+    *   Coverage: `./coverage-check.sh` (gates line coverage at the fixed `THRESHOLD` floor inside the script — 93% as of 2026-09; raising it is a deliberate reviewed edit to that script, not a ratchet)
 *   **Pre-commit Hook:** run `./scripts/install-pre-commit-hook.sh` once after clone. It gates on `dotnet format --verify-no-changes` and `VitaTrack.ArchitectureTests` (sub-second). Bypass with `git commit --no-verify` when intentionally sidestepping it.
 *   **Architecture Decision Records** live in [`docs/adr/`](docs/adr/). Check for relevant ADRs before adding abstractions that might fight the original intent (pragmatic MVC vs Clean Arch, Dapper vs EF Core, SQLite vs PostgreSQL, no auth, HTMX vs SPA). Each ADR is append-only — supersede by adding `NNNN-...`, never edit an existing one.
 

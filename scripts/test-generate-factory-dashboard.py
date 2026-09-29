@@ -14,6 +14,7 @@ _VALID_LEDGER_ENTRY = """  - id: X1
     name: Example
     agent: human
     human_interventions: 0
+    agent_review_rounds: 0
     guardrail_failures: 0
     fix_commits: 0
     defects_escaped: 0
@@ -377,6 +378,7 @@ class SourceLoadingTests(unittest.TestCase):
             "name",
             "agent",
             "human_interventions",
+            "agent_review_rounds",
             "guardrail_failures",
             "fix_commits",
             "defects_escaped",
@@ -399,6 +401,7 @@ class SourceLoadingTests(unittest.TestCase):
             ("name", "123"),
             ("agent", "[]"),
             ("human_interventions", "-1"),
+            ("agent_review_rounds", "-1"),
             ("guardrail_failures", "1.5"),
             ("tokens_input", "-1"),
             ("tokens_output", "1.5"),
@@ -468,6 +471,7 @@ class DashboardRenderingTests(unittest.TestCase):
                     "agent": "cheap",
                     "agent_model": "<script>model</script>",
                     "human_interventions": 0,
+                    "agent_review_rounds": 0,
                     "guardrail_failures": 0,
                     "fix_commits": 0,
                     "defects_escaped": 0,
@@ -497,6 +501,7 @@ class DashboardRenderingTests(unittest.TestCase):
                     "name": "Covered",
                     "agent": "cheap",
                     "human_interventions": 0,
+                    "agent_review_rounds": 0,
                     "guardrail_failures": 2,
                     "fix_commits": 1,
                     "defects_escaped": 0,

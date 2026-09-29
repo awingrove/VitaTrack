@@ -1,8 +1,8 @@
 # Shard intervention/rework ledger. See docs/factory/metrics.md.
 # One entry per shipped shard. Only `agent: cheap` entries count toward the
 # productivity proof (<= $1/1M token models, e.g. GLM-5.3-Flash / Hy3 class).
-# Required fields: id, name, agent, human_interventions, guardrail_failures,
-# fix_commits, defects_escaped.
+# Required fields: id, name, agent, human_interventions, agent_review_rounds,
+# guardrail_failures, fix_commits, defects_escaped.
 # Optional usage fields (recorded when the executing session's numbers are known):
 #   agent_model      exact provider/model of the executor, e.g. opencode-go/glm-5.3-flash
 #   tokens_input     prompt tokens billed as input
@@ -15,7 +15,8 @@
 #
 # SHELL (Application Shell) is shipped — `shards.yaml:244`, with SHELL-1..3 all
 # `done` in storymap.yaml — and deliberately has no entry here. Its
-# `human_interventions`, `guardrail_failures` and `fix_commits` are not derivable
+# `human_interventions`, `agent_review_rounds`, `guardrail_failures` and
+# `fix_commits` are not derivable
 # from this repository's record, so none were invented: a guessed flattering
 # number is exactly what the SC entry's own notes condemn. Owner: the next pass
 # that touches the shell slice and has the counters in hand. Until then the
@@ -28,6 +29,7 @@ shards:
     name: Prescribed Doses
     agent: frontier
     human_interventions: 0
+    agent_review_rounds: 0
     guardrail_failures: 0
     fix_commits: 0
     defects_escaped: 0
@@ -40,6 +42,7 @@ shards:
     name: Nutrients & Blends
     agent: cheap
     human_interventions: 0
+    agent_review_rounds: 0
     guardrail_failures: 1
     fix_commits: 0
     defects_escaped: 0
@@ -60,6 +63,7 @@ shards:
     name: Reports (nutrient + cost)
     agent: cheap
     human_interventions: 0
+    agent_review_rounds: 0
     guardrail_failures: 0
     fix_commits: 0
     defects_escaped: 0
@@ -82,6 +86,7 @@ shards:
     name: Supplements (CRUD, CSV import)
     agent: cheap
     human_interventions: 0
+    agent_review_rounds: 0
     guardrail_failures: 1
     fix_commits: 0
     defects_escaped: 0
@@ -108,6 +113,7 @@ shards:
     name: Family Members
     agent: cheap
     human_interventions: 0
+    agent_review_rounds: 0
     guardrail_failures: 0
     fix_commits: 0
     defects_escaped: 0
@@ -137,6 +143,7 @@ shards:
     name: LLM Enrichment
     agent: cheap
     human_interventions: 1
+    agent_review_rounds: 0
     guardrail_failures: 3
     fix_commits: 1
     defects_escaped: 0
@@ -182,7 +189,8 @@ shards:
   - id: SC
     name: Service Connections
     agent: cheap
-    human_interventions: 16
+    human_interventions: 1
+    agent_review_rounds: 15
     guardrail_failures: 3
     fix_commits: 17
     defects_escaped: 0
@@ -212,17 +220,18 @@ shards:
       about. An absent field is the honest entry (metrics.md: "an empty field is more
       honest than a guess"). This is a gap in how the branch was run, not a measurement.
 
-      **human_interventions = 16 exceeds the <= 1 ratchet, and that is the finding, not
-      a rounding error.** Derived by counting the stops that needed someone other than
-      the implementer, per metrics.md's own definition ("review findings that forced
-      changes" included): 14 per-task review rounds (findings files for tasks 1-8, six of
-      them second or third rounds), the whole-branch review, and the human partner's
-      model-allocation instruction. The pre-flight scan in progress.md found 3 defects in
-      the plan before a line of code was written, and the plan needed its own corrective
-      commit (`35f4f47`) after the debt-register id collided structurally three times.
-      A recipe that needs sixteen interventions to ship one slice is not autonomous by
-      the metric's own words; the ratchet target, not the number, is what a reader should
-      act on. The dominant class is the one DL-006 already names: a comment or doc
+      **human_interventions = 1, agent_review_rounds = 15 (reclassified 2026-09-29).**
+      The original entry recorded 16 human_interventions, but 15 of those stops were the
+      controller agent's review rounds — 14 per-task findings rounds for tasks 1-8 (six
+      of them second or third rounds) plus the whole-branch review pass. The one human
+      stop was the model-allocation instruction (GLM quota exhausted -> move subagents
+      to space-bunny-free). metrics.md now splits the two fields; this entry was the
+      motivating case: a metric that counts the controller as "human" overstates human
+      touch by 15x on this shard and would have made the <= 1 ratchet unfalsifiable in
+      either direction. The pre-flight scan in progress.md found 3 defects in the plan
+      before a line of code was written, and the plan needed its own corrective commit
+      (`35f4f47`) after the debt-register id collided structurally three times.
+      The dominant class is the one DL-006 already names: a comment or doc
       sentence asserting something the code had changed. It recurred about a dozen times
       on this branch and was found only by mutating the *claim* and re-running — which is
       why the whole-branch review pass, and this ledger entry, exist.

@@ -16,7 +16,7 @@ namespace VitaTrack.ArchitectureTests;
 public class ShardMetricsLedgerTests
 {
     private static readonly string[] RequiredFields =
-        ["agent", "human_interventions", "guardrail_failures", "fix_commits", "defects_escaped"];
+        ["agent", "human_interventions", "agent_review_rounds", "guardrail_failures", "fix_commits", "defects_escaped"];
 
     private static readonly string[] NumericUsageFields =
         ["tokens_input", "tokens_output", "tokens_reasoning", "tokens_cache_read", "cost_usd"];

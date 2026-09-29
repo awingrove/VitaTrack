@@ -83,3 +83,6 @@ FodyWeavers.xml
 # Bencher
 bencher.toml
 __pycache__/
+
+# Isolated worktrees (using-git-worktrees skill)
+.worktrees/

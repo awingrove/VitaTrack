@@ -178,7 +178,7 @@ public class SupplementControllerEditTests
         Assert.IsNotNull(merged);
         Assert.AreEqual(1, merged.Count);
         Assert.IsNotNull(merged[0].Children);
-        var children = merged[0].Children!; // non-null guaranteed by the Assert.IsNotNull above
+        var children = merged[0].Children!; // CHECKS: merged[0].Children is non-null — Assert.IsNotNull above
         Assert.AreEqual(1, children.Count);
         Assert.AreEqual("B12", children[0].GenericName);
     }

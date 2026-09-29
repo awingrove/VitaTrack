@@ -219,7 +219,7 @@ public class SupplementControllerTests
         Assert.IsNotNull(model);
         Assert.AreEqual(1, model.Nutrients.Count);
         Assert.IsNotNull(model.Nutrients[0].Children);
-        var children = model.Nutrients[0].Children!; // non-null guaranteed by the Assert.IsNotNull above
+        var children = model.Nutrients[0].Children!; // CHECKS: model.Nutrients[0].Children is non-null — Assert.IsNotNull above
         Assert.AreEqual(1, children.Count);
         Assert.AreEqual("B12", children[0].GenericName);
     }

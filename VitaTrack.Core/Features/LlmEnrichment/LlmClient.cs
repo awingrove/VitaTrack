@@ -171,9 +171,11 @@ public class LlmClient(
             ["temperature"] = settings.Temperature
         };
 
-        // Present only when chosen: an absent effort is what "not selected" means on
-        // the wire, and sending a null-valued key is a different statement.
-        if (settings.Variant is not null)
+        // Present only when set: an absent effort is what "not selected" and the
+        // picker's "default" both mean on the wire — the model uses its own effort,
+        // and a literal cannot stand in for that (models without a default effort
+        // reject "default"/"none" the same way they reject an unknown value).
+        if (settings.Variant is not null and not "default")
             body["reasoning_effort"] = settings.Variant;
 
         return JsonSerializer.Serialize(body);

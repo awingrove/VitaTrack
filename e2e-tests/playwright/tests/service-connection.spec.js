@@ -157,11 +157,11 @@ test.describe.serial('Service Connection', () => {
     await expect(pickerModelField).toBeVisible();
     await pickerModelField.fill('gpt-4o');
     // The reasoning-effort vocabulary is rendered whole and there is nothing to
-    // discover, so the six values are pinned as rendered. A count would not do: a
+    // discover, so the seven values are pinned as rendered. A count would not do: a
     // dropdown that quietly lost "xhigh" would still satisfy any assertion about how
     // many options there are, and "xhigh" is a value the providers accept.
     await expect(page.getByLabel('Reasoning effort').locator('option'))
-      .toHaveText(['none', 'low', 'medium', 'high', 'xhigh', 'max']);
+      .toHaveText(['default', 'none', 'low', 'medium', 'high', 'xhigh', 'max']);
     await page.getByLabel('Reasoning effort').selectOption('high');
     await page.getByRole('button', { name: 'Save model' }).click();
 

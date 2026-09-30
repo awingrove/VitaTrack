@@ -242,6 +242,7 @@ slices:
       - VitaTrack.Tests/LlmServiceConnectionTests.cs
       - VitaTrack.Tests/LlmClientTests.cs
       - VitaTrack.Tests/LlmClientRequestTests.cs
+      - VitaTrack.Tests/LlmClientReasoningEffortTests.cs
       - VitaTrack.Tests/LlmClientLoggingTests.cs
       - VitaTrack.Tests/LlmClientHeaderTests.cs
       - VitaTrack.Tests/UrlSafetyValidatorTests.cs

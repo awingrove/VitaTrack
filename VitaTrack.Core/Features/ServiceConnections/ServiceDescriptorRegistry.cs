@@ -36,10 +36,12 @@ public static class ServiceDescriptorRegistry
     ];
 
     /// <summary>The variant vocabulary, exactly: what <c>reasoning_effort</c> accepts
-    /// across the OpenAI-compatible providers in scope. Fixed rather than discovered —
-    /// <c>/v1/models</c> does not carry variants, so there is nothing to discover
-    /// them from.</summary>
-    public static IReadOnlyList<string> Variants { get; } = ["none", "low", "medium", "high", "xhigh", "max"];
+    /// across the OpenAI-compatible providers in scope, plus <c>default</c> — the
+    /// "let the model use its own effort" choice, which is absent on the wire (see
+    /// <see cref="LlmEnrichment.LlmClient"/>) and exists for models that accept none
+    /// of the literal values. Fixed rather than discovered — <c>/v1/models</c> does
+    /// not carry variants, so there is nothing to discover them from.</summary>
+    public static IReadOnlyList<string> Variants { get; } = ["default", "none", "low", "medium", "high", "xhigh", "max"];
 
     /// <summary>The descriptor for a stored service id, or null when the id names no
     /// shipped service. Case-insensitive: it comes from a form and a text column.</summary>
@@ -47,7 +49,7 @@ public static class ServiceDescriptorRegistry
         All.FirstOrDefault(d => string.Equals(d.ServiceId, serviceId, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>The registry's own spelling of a submitted variant, or null when it is
-    /// not one of the six. Both halves of the round trip live here: the form renders
+    /// not one of the seven. Both halves of the round trip live here: the form renders
     /// <see cref="Variants"/> and the controller stores what this returns, so the value
     /// in the column is always a value from the list rather than a differently-cased
     /// copy of one. Case-insensitive for the same reason <see cref="Find"/> is.</summary>

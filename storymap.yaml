@@ -598,7 +598,7 @@ activities:
               - e2e: service-connection::should save a model and reasoning effort from the picker, then disconnect
               - e2e: service-connection::should verify a connection against a service that lists its models, and pick one of them
               - e2e: service-connection::should post the chosen model and reasoning effort to the connection when enriching
-          - title: Choose a reasoning effort from the six values the providers accept
+          - title: Choose a reasoning effort from the seven values the providers accept
             status: done
             priority: high
             tests:

@@ -105,7 +105,7 @@ This document defines the coding standards, architectural guidelines, testing ph
     *   Test: `dotnet test`
     *   Format: `dotnet format VitaTrack.sln` (auto-fix) or `./format-check.sh` (verify-only)
     *   Coverage: `./coverage-check.sh` (gates line coverage at the fixed `THRESHOLD` floor inside the script — 93% as of 2026-09; raising it is a deliberate reviewed edit to that script, not a ratchet)
-*   **Pre-commit Hook:** run `./scripts/install-pre-commit-hook.sh` once after clone. It gates on `dotnet format --verify-no-changes` and `VitaTrack.ArchitectureTests` (sub-second). Bypass with `git commit --no-verify` when intentionally sidestepping it.
+*   **Pre-commit Hook:** run `./scripts/install-pre-commit-hook.sh` once after clone. It gates on `dotnet format --verify-no-changes` and `VitaTrack.ArchitectureTests` (sub-second), and prints a non-blocking warning when local `main` is ahead of `origin/main` — the remote rejects direct pushes to main, so such commits must ride a PR branch. Bypass with `git commit --no-verify` when intentionally sidestepping it.
 *   **Architecture Decision Records** live in [`docs/adr/`](docs/adr/). Check for relevant ADRs before adding abstractions that might fight the original intent (pragmatic MVC vs Clean Arch, Dapper vs EF Core, SQLite vs PostgreSQL, no auth, HTMX vs SPA). Each ADR is append-only — supersede by adding `NNNN-...`, never edit an existing one.
 
 ## 📋 Story Map

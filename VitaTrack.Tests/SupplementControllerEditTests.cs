@@ -29,7 +29,7 @@ public class SupplementControllerEditTests
         _llmService = new Mock<ILlmService>();
         _controller = new SupplementController(
             _suppRepo.Object, _nutrientRepo.Object, _nutrientService.Object,
-            _llmService.Object);
+            _llmService.Object, new BuildSupplementComparisonHandler(_suppRepo.Object, _nutrientRepo.Object));
 
         var urlHelper = new Mock<IUrlHelper>();
         urlHelper.Setup(u => u.Action(It.IsAny<Microsoft.AspNetCore.Mvc.Routing.UrlActionContext>()))

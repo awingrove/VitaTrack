@@ -107,6 +107,12 @@ slices:
       - VitaTrack.Core/Features/Supplements/CsvCostRule.cs
       - VitaTrack.Core/Features/Supplements/CsvServingsRule.cs
       - VitaTrack.Core/Features/Supplements/ImportSupplementsHandler.cs
+      - VitaTrack.Core/Features/Supplements/ComparisonCell.cs
+      - VitaTrack.Core/Features/Supplements/ComparisonRow.cs
+      - VitaTrack.Core/Features/Supplements/ComparisonColumn.cs
+      - VitaTrack.Core/Features/Supplements/ComparisonGrid.cs
+      - VitaTrack.Core/Features/Supplements/SupplementComparisonBuilder.cs
+      - VitaTrack.Core/Features/Supplements/BuildSupplementComparisonHandler.cs
     views:
       - VitaTrack.Web/Views/Supplement/**
     models:
@@ -117,6 +123,7 @@ slices:
       - VitaTrack.Web/Models/SupplementEditorViewModel.cs
     view_components: []
     js:
+      - VitaTrack.Web/wwwroot/js/compare-selected.js
       - VitaTrack.Web/wwwroot/js/create.js
       - VitaTrack.Web/wwwroot/js/edit.js
       - VitaTrack.Web/wwwroot/js/import-csv.js
@@ -128,11 +135,15 @@ slices:
       - VitaTrack.Tests/SupplementControllerImportCsvTests.cs
       - VitaTrack.Tests/SupplementControllerUpdateNutrientsTests.cs
       - VitaTrack.Tests/CsvImportServiceTests.cs
+      - VitaTrack.Tests/BuildSupplementComparisonHandlerTests.cs
+      - VitaTrack.Tests/SupplementComparisonBuilderTests.cs
+      - VitaTrack.Tests/SupplementControllerCompareTests.cs
     e2e_specs:
       - e2e-tests/playwright/tests/supplement-crud.spec.js
       - e2e-tests/playwright/tests/supplement-llm-flow.spec.js
       - e2e-tests/playwright/tests/csv-import.spec.js
       - e2e-tests/playwright/tests/enrich-without-url-roundtrip.spec.js
+      - e2e-tests/playwright/tests/supplement-comparison.spec.js
 
   - id: NT
     name: Nutrients & Blends

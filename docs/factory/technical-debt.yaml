@@ -516,6 +516,37 @@ open:
       re-labelling the entry would hide the gap instead of closing it. Whichever branch is
       taken, the header has to state what the word means, because today nothing does.
 
+  - id: TD-029
+    title: >-
+      The metrics ledger has no home for work that revisits an already-shipped shard
+    where: >-
+      `docs/factory/shard-metrics.yaml` (one block per shipped shard, per
+      `docs/factory/metrics.md`)
+    what: >-
+      The ledger schema carries one block per **shipped shard** — the supplement-comparison
+      run (2026-09-29) was new work inside the already-shipped MS slice, so it produced no
+      new block, and the MS block has no field that records a second visit. The run's
+      touch and intervention counts are therefore unmeasured, and the ledger cannot
+      distinguish "MS shipped once" from "MS shipped once and revisited twice." The
+      comparison run is invisible in the productivity metrics by schema design, not by
+      a recorded decision.
+    interest: >-
+      The factory's central measurement claim is "measure touch, not time" per shipped
+      shard. A schema that only sees first visits systematically under-counts revisit
+      work — the common case for a maturing app, where most work after the first pass is
+      revisits rather than new slices. If revisits are meant to be invisible, that is a
+      deliberate scope statement and belongs in writing in `metrics.md`; if they are meant
+      to be measured, the schema needs a per-work-item record (a visits list or
+      work-items array) and the dashboard generator plus its test suite must carry it in
+      the same change. Today the state is an accident of schema growth, not a decision.
+    paydown: >-
+      Decide which branch is true. Document-only: one line in `metrics.md` stating that
+      revisits of shipped shards are deliberately not measured per work item. Schema
+      change: add the per-work-item record to the ledger, extend
+      `ShardMetricsLedgerTests` and the dashboard generator and its test suite in the
+      same change. Do not add a second ad-hoc field without the generator and tests —
+      a ledger field nothing renders is the TD-020 shape.
+
 closed:
   - id: TD-012
     title: >-

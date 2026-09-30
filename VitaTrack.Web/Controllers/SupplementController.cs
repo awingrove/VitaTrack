@@ -12,12 +12,14 @@ public partial class SupplementController(
     ISupplementRepository suppRepo,
     ISupplementNutrientRepository nutrientRepo,
     ISupplementNutrientService nutrientService,
-    ILlmService llmService) : Controller
+    ILlmService llmService,
+    BuildSupplementComparisonHandler comparisonHandler) : Controller
 {
     private readonly ISupplementRepository _suppRepo = suppRepo;
     private readonly ISupplementNutrientRepository _nutrientRepo = nutrientRepo;
     private readonly ISupplementNutrientService _nutrientService = nutrientService;
     private readonly ILlmService _llmService = llmService;
+    private readonly BuildSupplementComparisonHandler _comparisonHandler = comparisonHandler;
 
     public async Task<IActionResult> Index()
     {
@@ -25,6 +27,26 @@ public partial class SupplementController(
         var counts = await _nutrientRepo.GetCountsBySupplementIdsAsync(supplements.Select(s => s.Id));
         foreach (var s in supplements) { counts.TryGetValue(s.Id, out var c); s.NutrientCount = c; }
         return View(supplements);
+    }
+
+    /// <summary>GET /Supplement/Compare?ids=1,2,3 — column order follows the id
+    /// order; fewer than two resolving ids redirects to the list.</summary>
+    [HttpGet]
+    public async Task<IActionResult> Compare(string? ids)
+    {
+        var ordered = new List<int>();
+        if (ids != null)
+        {
+            foreach (var token in ids.Split(','))
+            {
+                if (int.TryParse(token, out var id) && id > 0 && !ordered.Contains(id))
+                    ordered.Add(id);
+            }
+        }
+
+        var grid = await _comparisonHandler.BuildAsync(ordered);
+        if (grid == null) return RedirectToAction(nameof(Index));
+        return View(grid);
     }
 
     public IActionResult Create() => View();

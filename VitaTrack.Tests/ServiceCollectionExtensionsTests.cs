@@ -106,6 +106,7 @@ public class ServiceCollectionExtensionsTests
         // IHttpClientFactory — so nothing but an actual resolve catches that mistake.
         var catalogClient = sp.GetRequiredService<IServiceCatalogClient>();
         var probeHandler = sp.GetRequiredService<ProbeConnectionHandler>();
+        var comparisonHandler = sp.GetRequiredService<BuildSupplementComparisonHandler>();
 
         Assert.IsNotNull(familyRepo);
         Assert.IsNotNull(supplementRepo);
@@ -120,6 +121,7 @@ public class ServiceCollectionExtensionsTests
         Assert.IsNotNull(llmService);
         Assert.IsInstanceOfType(catalogClient, typeof(ServiceCatalogClient));
         Assert.IsNotNull(probeHandler);
+        Assert.IsNotNull(comparisonHandler);
 
         // Each interface maps to its own concrete component.
         CollectionAssert.AllItemsAreUnique(

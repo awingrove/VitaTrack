@@ -119,9 +119,13 @@ A branch whose non-product commits (tests, docs, guardrails) outnumber its produ
 register as well as the guardrails: a branch that opens five register entries and closes none
 is not product work, whatever its commit subjects say. The meta-layer is the runaway path
 here — not a test that checks a test, but a register that keeps justifying the next entry,
-one honest-sounding entry at a time. Only the commit-mix trigger is machine-checkable (ten
-seconds with `git log --oneline main..HEAD`); the guardrail discipline above is judgement, and
-is written down so at least the disagreement is visible.
+one honest-sounding entry at a time. Only the commit-mix trigger is machine-checkable, and CI
+now runs it: `scripts/check-commit-mix.sh` posts a warning annotation on every PR (ten seconds
+by hand: `git log --oneline main..HEAD`). The warning never fails the build — the remedy is a
+human ruling, recorded in the PR body — whether feature-test commits count as product quality
+is judgement, not arithmetic.
+The guardrail discipline is judgement too, and is written down so at least the disagreement is
+visible.
 
 ## verify-shard gate (same checks CI runs)
 

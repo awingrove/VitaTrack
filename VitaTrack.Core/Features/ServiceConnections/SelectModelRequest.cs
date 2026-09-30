@@ -10,7 +10,7 @@ namespace VitaTrack.Core.Features.ServiceConnections;
 /// <para>
 /// The variant vocabulary is checked here, against
 /// <see cref="ServiceDescriptorRegistry.Variants"/>, rather than by a second list of
-/// the six values. A value outside the vocabulary is a <c>reasoning_effort</c> the
+/// the seven values. A value outside the vocabulary is a <c>reasoning_effort</c> the
 /// providers reject — at request time, long after the user thought they had chosen —
 /// and <c>/v1/models</c> carries nothing to discover it from, so this is the only place
 /// a bad one can be caught.

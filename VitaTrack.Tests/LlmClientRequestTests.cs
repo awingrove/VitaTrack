@@ -13,7 +13,9 @@ namespace VitaTrack.Tests;
 /// The request <see cref="LlmClient"/> builds: where it goes, what it authenticates
 /// with, and what it says. Every value on it comes from the connection and the
 /// settings handed to the call — nothing from configuration — and each test below
-/// pins one of those by reading the request the client actually built.
+/// pins one of those by reading the request the client actually built. The reasoning
+/// effort the picker's "default" value produces has its own class,
+/// <see cref="LlmClientReasoningEffortTests"/>.
 /// <para>
 /// The connection and settings come from <see cref="LlmTestData"/>, and the body is
 /// read through <see cref="RecordingHandler.SentBody"/> rather than off the captured

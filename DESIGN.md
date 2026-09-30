@@ -344,7 +344,7 @@ does so the next reader is not surprised, and changing it would be a
 "Models" is deliberately *not* a stored fact: a reload does not re-probe, so the
 same saved connection renders free text after a load and a dropdown right after
 the connect that discovered its models. Reasoning effort is always a
-`form-select` of the registry's fixed six values, with help text saying not every
+`form-select` of the registry's fixed seven values, with help text saying not every
 service uses one.
 
 Both forms carry `asp-action`/`asp-controller`/`method` *as well as* `hx-post`.

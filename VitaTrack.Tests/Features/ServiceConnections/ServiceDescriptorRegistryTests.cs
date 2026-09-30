@@ -28,9 +28,9 @@ public class ServiceDescriptorRegistryTests
     }
 
     [TestMethod]
-    public void Variants_Are_ExactlyTheSixDocumentedValues()
+    public void Variants_Are_ExactlyTheSevenDocumentedValues()
     {
-        string[] expected = ["none", "low", "medium", "high", "xhigh", "max"];
+        string[] expected = ["default", "none", "low", "medium", "high", "xhigh", "max"];
 
         // Counted as well as compared: AreEquivalent alone would accept a list that
         // repeated one of the six and dropped another, and a duplicate variant would

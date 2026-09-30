@@ -14,7 +14,7 @@
 <form asp-action="DeleteSelected" method="post" id="delete-selected-form" data-entity-name="supplement"
       data-cascade-warning="Their nutrients and prescribed doses will be deleted as well.">
     @Html.AntiForgeryToken()
-    <button type="submit" class="btn btn-danger mb-3" id="delete-selected-btn" disabled>Delete Selected</button>
+    <button type="submit" class="btn btn-danger" id="delete-selected-btn" disabled>Delete Selected</button>
     <a asp-action="Compare" id="compare-selected-btn" class="btn btn-outline-primary disabled" aria-disabled="true">Compare Selected</a>
     <span id="compare-hint" class="text-muted ms-2" hidden>Compare up to 5 supplements.</span>
 </form>

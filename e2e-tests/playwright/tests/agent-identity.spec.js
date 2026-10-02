@@ -131,3 +131,179 @@ test.describe('agent identity plugin (V1 named export stays in lockstep)', () =>
     expect(viaHook.env).toEqual(direct.env);
   });
 });
+
+// ── GitHub enforcement half ─────────────────────────────────────────────────────
+//
+// The plugin describes above prove what the plugin *injects*; these five prove what
+// GitHub itself *answers* when that identity is used. API-only (Node fetch against
+// api.github.com — no browser, no app under test) because the enforcement under test
+// lives server-side in GitHub's rulesets, not in this codebase. Nothing here is a
+// double: real endpoint, real credentials, real answers (per AGENTS.md's no-mock
+// rule this is the external-dependency shape — a dependency this app does not own).
+//
+// DOCUMENTS: the skip is decided from the environment alone, before any network call
+// — the same shape as supplement-llm-integration.spec.js deciding its skip before the
+// first page.goto. AGENT_GH_TOKEN absent (CI with no secret, local shell with no
+// export) means there is no credential to present, so the half self-skips rather than
+// failing for a reason nobody can act on; the reason below names the missing variable
+// and says what this half pins. The plugin describes in this file still run either way.
+const GH_REPO = process.env.AGENT_GH_REPO || 'awingrove/VitaTrack';
+const GH_PROBE_BRANCH = 'feature/td010-probe';
+const ghToken = process.env.AGENT_GH_TOKEN;
+const ghSkipReason =
+  'Skipping — AGENT_GH_TOKEN not set in the environment. This half pins GitHub-side enforcement '
+  + 'of the agent identity (control login, [skip ci] probe commit, self-approve/merge/branch-delete '
+  + 'rejections) against real api.github.com with the machine token, so without the token there is '
+  + 'nothing to ask GitHub. Export AGENT_GH_TOKEN (CI: repo secret, same mechanism as LLM_API_KEY) '
+  + 'to enforce it; the plugin tests in this file run regardless.';
+
+async function githubRequest(pathname, init = {}) {
+  return fetch(`https://api.github.com${pathname}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${ghToken}`,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      // GitHub's API requires a User-Agent; Node's fetch does not send one on its own.
+      'User-Agent': 'VitaTrack-agent-identity-spec',
+      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(init.headers || {}),
+    },
+  });
+}
+
+// Shared across the serial group: what test 1 learned about the token's identity and
+// what test 2 learned about the PR it opened, so later tests address the PR test 2
+// actually created rather than a literal.
+let agentLogin = null;
+let probePullNumber = null;
+
+test.describe('agent GitHub enforcement (real GitHub)', () => {
+  // Serial, not a style choice: tests 2–5 share the PR number — test 2 creates the PR
+  // and the last three attack it. Under fullyParallel they could start before the PR
+  // exists and fail for a reason that has nothing to do with enforcement.
+  test.describe.configure({ mode: 'serial' });
+
+  test.skip(!ghToken, ghSkipReason);
+
+  // PINS: the token resolves to the machine account and never to the human — this is
+  // the control every later assertion stands on, so it runs before anything else and
+  // proves the credential under test is not the human's. AGENT_GH_LOGIN tightens it
+  // from "some account that is not the human" to the exact machine account when set.
+  test('the agent authenticates as the machine account, not the human', async () => {
+    const res = await githubRequest('/user');
+    expect(res.ok, `GET /user answered ${res.status()}`).toBe(true);
+    const user = await res.json();
+
+    expect(user.login).toBeTruthy();
+    expect(user.login).not.toBe('awingrove');
+    if (process.env.AGENT_GH_LOGIN) expect(user.login).toBe(process.env.AGENT_GH_LOGIN);
+    agentLogin = user.login;
+  });
+
+  // PINS: one small commit per run to the persistent probe branch, and every probe
+  // commit carries [skip ci] so spec runs do not spawn workflow runs (minutes + noise).
+  // The branch arrives only through this contents PUT — no local git, no ref GET, no
+  // force-push (force pushes are themselves blocked by the runbook's rulesets); the
+  // branch param is how the commit is aimed at the probe branch rather than main. The
+  // PR opened here is the one tests 3–5 attack: its number is kept for them, and its
+  // author is checked against the identity the control test verified.
+  test('every probe commit carries [skip ci]', async () => {
+    const stamp = new Date().toISOString();
+    const putRes = await githubRequest(
+      `/repos/${GH_REPO}/contents/agent-probe/${Date.now()}.txt`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({
+          message: `[skip ci] agent identity probe ${stamp}`,
+          content: Buffer.from(`agent identity probe ${stamp}\n`).toString('base64'),
+          branch: GH_PROBE_BRANCH,
+        }),
+      },
+    );
+    expect(putRes.ok, `contents PUT answered ${putRes.status()}`).toBe(true);
+    const created = await putRes.json();
+    expect(created.commit.message).toContain('[skip ci]');
+
+    const prRes = await githubRequest(`/repos/${GH_REPO}/pulls`, {
+      method: 'POST',
+      body: JSON.stringify({
+        title: `Agent identity probe ${stamp}`,
+        head: GH_PROBE_BRANCH,
+        base: 'main',
+        body: 'Acceptance-spec probe PR (TD-010). Closed by the spec after the rejection tests.',
+      }),
+    });
+    expect(prRes.ok, `POST pulls answered ${prRes.status()}`).toBe(true);
+    const pull = await prRes.json();
+    expect(pull.user.login).toBeTruthy();
+    // Guarded so this test still runs solo (-g on its title); in the normal serial path
+    // the control ran first and the PR author must be the very identity it verified.
+    if (agentLogin) expect(pull.user.login, 'probe PR author').toBe(agentLogin);
+    probePullNumber = pull.number;
+  });
+
+  // PINS: GitHub rejects the agent approving its own PR server-side — the DL-003-class
+  // guarantee that approval must come from an identity other than the author. Status
+  // varies with how the rejection is reached (403 ruleset/permission, 422 own-PR rule,
+  // 405 verb handling), so the pin is on the rejection, not on one code: NOT ok, with
+  // the observed status recorded in the message.
+  test('the agent cannot approve its own PR', async () => {
+    expect(probePullNumber, 'probe PR missing — test 2 must run first (serial group)').not.toBeNull();
+
+    const res = await githubRequest(`/repos/${GH_REPO}/pulls/${probePullNumber}/reviews`, {
+      method: 'POST',
+      body: JSON.stringify({ event: 'APPROVE' }),
+    });
+    expect(
+      res.ok,
+      `APPROVE review answered ${res.status()} (a rejection — 403/422/405 — is the pinned outcome)`,
+    ).toBe(false);
+  });
+
+  // PINS: merging the agent's own PR into main without an independent approval is
+  // rejected server-side. If this ever returns ok the merge already happened — the
+  // runbook's "require approval from someone other than the last pusher" rule is the
+  // thing that moved, and a red spec here is the tripwire by design.
+  test('the agent cannot merge to main without independent approval', async () => {
+    expect(probePullNumber, 'probe PR missing — test 2 must run first (serial group)').not.toBeNull();
+
+    const res = await githubRequest(`/repos/${GH_REPO}/pulls/${probePullNumber}/merge`, {
+      method: 'PUT',
+      body: JSON.stringify({}),
+    });
+    expect(
+      res.ok,
+      `PUT merge answered ${res.status()} (a rejection — 403/422/405 — is the pinned outcome)`,
+    ).toBe(false);
+  });
+
+  // PINS: the replay of DL-003 — deleting a feature branch with agent credentials — is
+  // rejected by GitHub itself (ruleset deletion rule), not merely discouraged. The
+  // probe branch is deliberately left standing after the run; that persistence is what
+  // this rejection exists to guarantee, and the runbook owns occasional cleanup of its
+  // accumulated commits.
+  test('the agent cannot delete a feature branch', async () => {
+    const res = await githubRequest(`/repos/${GH_REPO}/git/refs/heads/${GH_PROBE_BRANCH}`, {
+      method: 'DELETE',
+    });
+    expect(
+      res.ok,
+      `DELETE ref answered ${res.status()} (a rejection — 403/422/405 — is the pinned outcome)`,
+    ).toBe(false);
+  });
+
+  // DOCUMENTS: closing the probe PR is permitted (closing stays a human-and-agent
+  // right; only approve/merge/delete are pinned as rejections), and the PR is closed
+  // here regardless of which of tests 3–5 failed so the next run's test 2 does not
+  // trip over a stale open PR. The probe branch itself is left in place on purpose —
+  // test 5's rejection is the thing that guarantees it stays.
+  test.afterAll(async () => {
+    if (probePullNumber == null) return;
+    const res = await githubRequest(`/repos/${GH_REPO}/pulls/${probePullNumber}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ state: 'closed' }),
+    });
+    if (!res.ok) console.log(`afterAll: closing probe PR #${probePullNumber} answered ${res.status()}`);
+  });
+});

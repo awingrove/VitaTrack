@@ -17,6 +17,9 @@ if [[ -n "${CI:-}" ]]; then
     export LLM_API_KEY="${LLM_API_KEY:-}"
     export LLM_BASE_URL="${LLM_BASE_URL:-}"
     export LLM_MODEL="${LLM_MODEL:-}"
+    # Unset AGENT_GH_TOKEN secret resolves to empty → the GitHub-enforcement half of
+    # agent-identity.spec.js self-skips, same as the LLM_* trio.
+    export AGENT_GH_TOKEN="${AGENT_GH_TOKEN:-}"
 elif [[ -z "${LLM_API_KEY:-}" || -z "${LLM_BASE_URL:-}" || -z "${LLM_MODEL:-}" ]]; then
     # One prompt per variable that is actually missing, not one prompt for the key that
     # then asks for two things it cannot have. A developer with a key already exported
@@ -51,6 +54,15 @@ elif [[ -z "${LLM_API_KEY:-}" || -z "${LLM_BASE_URL:-}" || -z "${LLM_MODEL:-}" ]
         read -rp "> " LLM_MODEL
     fi
     export LLM_API_KEY LLM_BASE_URL LLM_MODEL
+fi
+
+# Interactive only: AGENT_GH_TOKEN is never prompted for (a PAT is not prompted for) — it comes from the same token file the plugin reads, ~/.config/opencode/gh-agent-token (runbook: docs/factory/agent-identity.md), or stays empty and the spec self-skips.
+if [[ -z "${CI:-}" ]]; then
+    if [[ -z "${AGENT_GH_TOKEN:-}" && -r "${HOME}/.config/opencode/gh-agent-token" ]]; then
+        export AGENT_GH_TOKEN="$(tr -d '[:space:]' < "${HOME}/.config/opencode/gh-agent-token")"
+    else
+        export AGENT_GH_TOKEN="${AGENT_GH_TOKEN:-}"
+    fi
 fi
 
 cd e2e-tests/playwright

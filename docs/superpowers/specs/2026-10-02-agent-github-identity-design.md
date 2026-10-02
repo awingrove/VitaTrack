@@ -91,9 +91,13 @@ One-time steps, then a short per-new-repo checklist.
 - **Token file**: `~/.config/opencode/gh-agent-token`, mode 600, outside any repo so
   it can never be committed. The human pastes the PAT once; the runbook documents
   rotation (replace file contents; no code change).
-- **Injection: global OpenCode plugin** at
+- **Injection: global OpenCode plugin** installed at
   `~/.config/opencode/plugins/agent-identity.ts`, listed in the global
-  `~/.config/opencode/opencode.json`. On load it reads the token file and sets in
+  `~/.config/opencode/opencode.json`. The **normative source lives in the runbook**
+  (`docs/factory/agent-identity.md`) as an inline listing; installation is a copy
+  step, so the plugin is reviewable and reproducible despite living outside the
+  repo. (If OpenCode accepts a file-path plugin specifier, pointing config at a
+  repo copy is a fine equivalent — resolved at plan time.) On load it reads the token file and sets in
   `process.env`:
   - `GH_TOKEN` — overrides the keyring entirely for `gh`, and flows through
     `credential.helper = gh auth git-credential` in `~/.gitconfig`, so `git push`
@@ -124,7 +128,8 @@ One-time steps, then a short per-new-repo checklist.
      proves the token is not the human's before anything is asserted.
   2. Append one commit to fixed probe branch `feature/td010-probe` (create if
      absent; never force-push — force pushes are themselves blocked). One small
-     commit per run; the branch is deliberately persistent.
+     commit per run; the branch is deliberately persistent. Probe commits carry
+     `[skip ci]` so spec runs do not spawn workflow runs (minutes + noise).
   3. Open a PR from the probe branch.
   4. Assert server-side rejections: submit an approving review on own PR → 4xx;
      attempt merge of `main`-bound PR without independent approval → 4xx;
@@ -148,10 +153,20 @@ One-time steps, then a short per-new-repo checklist.
   enforcement (rulesets + separate identity) and the runbook.
 - `docs/factory/technical-debt.yaml`: TD-010 moves to `closed` with `closed_in`
   naming the accepting commit — only after the spec is green locally and in CI.
-- Story map: untouched (no new user-facing story).
+- `storymap.yaml`: **must** carry an `e2e: <new-spec-stem>::<title fragment>` ref —
+  `StoryMapConsistencyTests` fails the build on any unreferenced `*.spec.js`. This
+  is non-UI work with no in-app entry point, so the story needs a precedent-correct
+  `entry_point` (research existing maintenance/infra stories first); if none
+  exists, a maintenance story with an honest non-app entry point is the fallback,
+  flagged to the human rather than faked.
 
 ## Testing
 
+- **Verify-first spikes, before any code lands** (ordering is a plan concern but the
+  risks are spec-level): (a) a plugin setting `process.env` is actually inherited by
+  `bash` tool shells — if not, §2's mechanism changes to the wrapper-function
+  fallback and the spec must be amended; (b) `git push` resolves through
+  `gh auth git-credential` to `GH_TOKEN`, proving the keyring is unreachable.
 - Unit/plugin: a small test or scripted check that the plugin sets the four git
   identity vars and `GH_TOKEN`, and fails closed on an absent token file (fixture
   path, not the real file).

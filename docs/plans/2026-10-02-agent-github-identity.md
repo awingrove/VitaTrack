@@ -233,22 +233,22 @@ git commit -m "docs: wire agent identity into story map, AGENTS.md, FACTORY.md (
 - Consumes: everything from Tasks 1–4 plus the human's GitHub-side setup (Task 2 runbook, section 2).
 - Produces: the evidence TD-010's closure cites.
 
-- [ ] **Step 1 (human): execute the runbook one-time setup** (account, PAT, collaborator, rulesets, token file, plugin constants) — runbook section 2.
+- [x] **Step 1 (human): execute the runbook one-time setup** (account, PAT, collaborator, rulesets, token file, plugin constants) — runbook section 2.
 
-- [ ] **Step 2 (agent): live plugin wiring smoke** — start a **new** OpenCode session, run `echo $GH_TOKEN` and `git config user.name` equivalents via the shell tool:
+- [x] **Step 2 (agent): live plugin wiring smoke** — start a **new** OpenCode session, run `echo $GH_TOKEN` and `git config user.name` equivalents via the shell tool:
 Expected: `GH_TOKEN` prints the machine token (not empty, not sentinel); a sentinel print means the token file path/permissions are wrong — runbook section 4.
 
-- [ ] **Step 3 (agent): prove the keyring is unreachable** — in the same session:
+- [x] **Step 3 (agent): prove the keyring is unreachable** — in the same session:
 (a) `gh api user` → machine login;
 (b) `printf 'protocol=https\nhost=github.com\n' | gh auth git-credential get` → the
 machine token, not the human's `gho_` token (this is the exact path `git push` uses
 through `~/.gitconfig`'s `credential.helper = gh auth git-credential`).
 Expected: machine account and machine token in both — `awingrove` or a `gho_` token here means the plugin is not reaching shell env (runbook section 4).
 
-- [ ] **Step 4: run the acceptance spec for real** — `export AGENT_GH_TOKEN=<machine token> AGENT_GH_LOGIN=<machine login>` (or rely on `test-e2e.sh` reading the token file), run `./test-e2e.sh`.
+- [x] **Step 4: run the acceptance spec for real** — `export AGENT_GH_TOKEN=<machine token> AGENT_GH_LOGIN=<machine login>` (or rely on `test-e2e.sh` reading the token file), run `./test-e2e.sh`.
 Expected: all five GitHub tests PASS (rejections observed), plugin tests PASS.
 
-- [ ] **Step 5: replay DL-003 by hand once** — with the machine token, attempt branch delete and self-merge via `gh api` exactly as in the incident; confirm 4xx and record the statuses in the PR description.
+- [x] **Step 5: replay DL-003 by hand once** — with the machine token, attempt branch delete and self-merge via `gh api` exactly as in the incident; confirm 4xx and record the statuses in the PR description.
 Expected: rejected at every step.
 
 ---
@@ -262,14 +262,14 @@ Expected: rejected at every step.
 - Consumes: Task 5 evidence.
 - Produces: register closed-entry shape (`id`, `title`, `closed`, `note`) per AGENTS.md rule 6.
 
-- [ ] **Step 1: move TD-010 from `open` to `closed`** — `closed: <date>`, `note: >-` citing: separate machine identity + `shell.env` plugin (fail-closed), rulesets with human-only bypass, acceptance spec `agent-identity.spec.js` pinning the DL-003 rejections, runbook `docs/factory/agent-identity.md`. Keep the old `what`/`interest` context in the note where it still earns its place; remove the `where`/`paydown` fields (closed shape).
+- [x] **Step 1: move TD-010 from `open` to `closed`** — `closed: 2026-10-02`, `note: >-` citing: separate machine identity + plugin (fail-closed), rulesets with human-only bypass, acceptance spec `agent-identity.spec.js` pinning the DL-003 rejections, runbook `docs/factory/agent-identity.md`. `paydown` dropped (delivered); `where`/`what`/`interest` kept as historical context — the register schema marks them optional for `closed`, and `TechnicalDebtRegisterTests` only path-checks open entries.
 
-- [ ] **Step 2: register gate**
+- [x] **Step 2: register gate**
 
 Run: `dotnet test VitaTrack.sln --filter TechnicalDebtRegisterTests`
 Expected: PASS — unique ids, no `open`/`closed` overlap, closed shape complete.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs/factory/technical-debt.yaml

@@ -275,37 +275,6 @@ open:
       compute per-type spans by matching braces rather than counting file lines, or
       at minimum document the attribution at the call site so the next failure is readable.
 
-  - id: TD-010
-    title: >-
-      Agent and human share one GitHub identity; PR approval not machine-enforced
-    where: >-
-      repo settings (branch protection / rulesets), local `gh` auth (the
-      `awingrove` keyring is inherited by agent sessions), agent harness config
-      (`.opencode/`), and the soft rule added in `FACTORY.md` step 7.
-    what: >-
-      controller sessions authenticate as the human's own account — push,
-      PR open, branch delete, and an attempted approve/merge all ran with human
-      credentials (DL-003). Nothing in the audit trail distinguishes agent actions from
-      human ones, and "the human approves the merge" is only a convention: the account
-      that authored the PR can attempt to merge it (branch protection declined the
-      attempt, but identity-based prevention — author cannot approve own PR — cannot
-      exist while author and approver are the same account).
-    interest: >-
-      every PR's "human review" is unverifiable; agents hold destructive
-      rights over the repo (DL-003: a mid-CI branch deletion auto-closed PR #19);
-      `human_interventions` in the ledger cannot distinguish a human click from an agent
-      one, so the headline metric slowly becomes unfalsifiable.
-    paydown: >-
-      (1) dedicated machine account or GitHub App installation for agent
-      sessions — token scoped to `contents: write` on feature branches +
-      `pull_requests: write`, with **no** merge/approve on protected refs and no
-      administration rights; (2) agent sessions run with `GH_CONFIG_DIR` / `GH_TOKEN`
-      pointed at those creds, never the human keyring; (3) `main` ruleset: require
-      approvals + dismiss stale reviews, so author-is-not-approver becomes enforceable
-      once identities differ; optionally CODEOWNERS requiring the human account;
-      (4) replay the DL-003 scenario as an acceptance test — agent creds must be
-      *rejected* at approve/merge, not merely deferred by convention.
-
   - id: TD-024
     title: >-
       `ServiceConnections` is deliberately unseeded, and nothing in code marks it
@@ -548,6 +517,43 @@ open:
       a ledger field nothing renders is the TD-020 shape.
 
 closed:
+  - id: TD-010
+    title: >-
+      Agent and human share one GitHub identity; PR approval not machine-enforced
+    where: >-
+      repo settings (branch protection / rulesets), local `gh` auth (the
+      `awingrove` keyring is inherited by agent sessions), agent harness config
+      (`.opencode/`), and the soft rule added in `FACTORY.md` step 7.
+    what: >-
+      controller sessions authenticate as the human's own account — push,
+      PR open, branch delete, and an attempted approve/merge all ran with human
+      credentials (DL-003). Nothing in the audit trail distinguishes agent actions from
+      human ones, and "the human approves the merge" is only a convention: the account
+      that authored the PR can attempt to merge it (branch protection declined the
+      attempt, but identity-based prevention — author cannot approve own PR — cannot
+      exist while author and approver are the same account).
+    interest: >-
+      every PR's "human review" is unverifiable; agents hold destructive
+      rights over the repo (DL-003: a mid-CI branch deletion auto-closed PR #19);
+      `human_interventions` in the ledger cannot distinguish a human click from an agent
+      one, so the headline metric slowly becomes unfalsifiable.
+    closed: 2026-10-02
+    note: >-
+      Shipped as a dedicated machine account `awingrove-opencode` with a classic PAT
+      (`repo`,`workflow` — fine-grained PATs cannot write collaborator repos, a
+      documented limitation live-verified as a 403 before switching), read per shell
+      creation by the OpenCode V2 plugin `.opencode/plugins/agent-identity.js`
+      (fail-closed sentinel on a missing token file, never falls through to the human
+      keyring). Server-side rulesets on all branches (deletion/force-push blocked,
+      human-only bypass) and on `main` (required PR + approval + dismiss-stale +
+      last-pusher rule) make approve/merge/delete attempts by agent credentials
+      REJECTED, not deferred. The acceptance spec
+      `e2e-tests/playwright/tests/agent-identity.spec.js` pins the DL-003 replay live
+      (self-approve 422, merge 405, delete 422 on probe PR #33). The runbook
+      `docs/factory/agent-identity.md` holds setup, rotation, and the per-new-repo
+      checklist. Paydown step (3)'s CODEOWNERS option was not needed — the last-pusher
+      rule plus distinct identities cover author-is-not-approver.
+
   - id: TD-012
     title: >-
       No architecture test asserts a non-empty selection

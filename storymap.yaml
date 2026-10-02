@@ -10,7 +10,7 @@
 meta:
   project: VitaTrack
   description: Vitamin and Supplement Tracking Application
-  last_updated: 2026-09-29
+  last_updated: 2026-10-02
 
 activities:
   - name: Manage Family Members
@@ -466,6 +466,22 @@ activities:
           - title: Show error page on unhandled exception
             status: done
             priority: high
+
+  - name: Repository Governance
+    tasks:
+      - id: SHELL-4
+        name: Agent GitHub identity
+        entry_point: n/a (agent credential identity, not a UI location)
+        stories:
+          - title: Agent sessions act as the machine account and are rejected at approve, merge, and delete
+            status: done
+            priority: high
+            tests:
+              - e2e: agent-identity::the agent authenticates as the machine account, not the human
+              - e2e: agent-identity::the agent cannot approve its own PR
+              - e2e: agent-identity::the agent cannot merge to main without independent approval
+              - e2e: agent-identity::the agent cannot delete a feature branch
+              - e2e: agent-identity::every probe commit carries [skip ci]
 
   - name: Service Connection
     tasks:

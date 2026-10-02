@@ -70,7 +70,7 @@ GH_TOKEN="$(cat ~/.config/opencode/gh-agent-token)" gh api user   # → awingrov
 means the fail-closed sentinel fired — `echo $GH_TOKEN` prints
 `__AGENT_TOKEN_FILE_MISSING_see_docs/factory/agent-identity.md` instead of a
 token, and the plugin logged `agent-identity: cannot read token file ...` to
-stderr at session start. The fix is restoring
+stderr at shell creation. The fix is restoring
 `~/.config/opencode/gh-agent-token`, not issuing new credentials.
 
 ## Rotation

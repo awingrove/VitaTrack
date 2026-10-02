@@ -95,8 +95,11 @@ One-time steps, then a short per-new-repo checklist.
   `.opencode/plugins/agent-identity.js` in each repo. Files in that directory are
   auto-loaded at startup (no config listing needed), so the plugin is version
   controlled, reviewable, and testable; the runbook tells future repos to copy it
-  into `~/.config/opencode/plugins/` for global coverage. On load its `shell.env`
-  hook — the documented seam for injecting env into all OpenCode shell execution —
+  into `~/.config/opencode/plugins/` for global coverage. *(Amended after
+  implementation: the plugin is OpenCode V2 shape — a default export whose
+  `ctx.shell.hook('create.before')` injects per shell creation, the earliest
+  per-shell seam — with the V1 `shell.env` named export kept in lockstep; the
+  spec tests drive both entrypoints at the same injection body.)* Each injection
   sets:
   - `GH_TOKEN` — overrides the keyring entirely for `gh`, and flows through
     `credential.helper = gh auth git-credential` in `~/.gitconfig`, so `git push`
@@ -105,8 +108,8 @@ One-time steps, then a short per-new-repo checklist.
     `GIT_COMMITTER_EMAIL` — machine account identity, so commit authorship
     distinguishes agent from human in the audit trail (and makes `human_interventions`
     attributable).
-  OpenCode's config schema has no session-level `environment` key, but plugin
-  `shell.env` is the documented seam for injecting env into all shell execution
+  OpenCode's config schema has no session-level `environment` key, but the plugin's
+  per-shell hook is the documented seam for injecting env into all shell execution
   (AI tools and integrated terminals); spawned shells inherit it. Chosen over a
   shell wrapper function because it covers every launch path (CLI, TUI, desktop) with
   no user discipline.
@@ -122,7 +125,10 @@ One-time steps, then a short per-new-repo checklist.
   `AGENT_GH_TOKEN` from `process.env`; absent → test **skips with a printed reason**
   (exact pattern of the `LLM_API_KEY` real-provider spec). CI gains an optional
   repository secret `AGENT_GH_TOKEN`, added as one line in the e2e step's existing
-  `env:` block beside the `LLM_*` secrets — no pipeline restructuring.
+  `env:` block beside the `LLM_*` secrets — no pipeline restructuring. The target
+  repo defaults to `awingrove/VitaTrack`, overridable via `AGENT_GH_REPO`; the
+  optional `AGENT_GH_LOGIN` tightens the control test from "not the human" to the
+  exact machine account.
 - Flow, every step authenticated with the machine token:
   1. Control: `gh api user` (or REST `/user`) resolves to the machine account —
      proves the token is not the human's before anything is asserted.
@@ -135,8 +141,12 @@ One-time steps, then a short per-new-repo checklist.
      attempt merge of `main`-bound PR without independent approval → 4xx;
      attempt `DELETE` on the probe branch → 4xx.
   5. Close the PR (closing stays permitted; the branch remains — its persistence is
-     part of what is pinned). Runbook notes occasional human cleanup of the probe
-     branch's accumulated commits.
+     part of what is pinned). The close runs in an `afterAll` so it happens whether or
+     not the rejection tests passed. Runbook notes occasional human cleanup of the probe
+     branch's accumulated commits. *(Amended after implementation: when the probe branch
+     is absent it is bootstrapped from `main`'s HEAD via `POST /git/refs` first — the
+     contents API cannot create a ref — and each run opens a fresh PR, since a stale
+     open PR would reject the next run's `POST /pulls`.)
 - Assertions are on GitHub's HTTP answers to real credentials — a replay of DL-003
   that GitHub itself rejects, re-run after any auth or ruleset change.
 - Spec must state in a comment that it pins GitHub-side enforcement and therefore
@@ -158,7 +168,13 @@ One-time steps, then a short per-new-repo checklist.
   is non-UI work with no in-app entry point, so the story needs a precedent-correct
   `entry_point` (research existing maintenance/infra stories first); if none
   exists, a maintenance story with an honest non-app entry point is the fallback,
-  flagged to the human rather than faked.
+  flagged to the human rather than faked. Landed as activity `Repository
+  Governance`, task `SHELL-4` with `entry_point: n/a (...)` — a `GOV-1` id would
+  demand a brand-new `GOV` shard (`ShardOwnershipTests` cross-checks every
+  story-map prefix against `shards.yaml`), and a new slice was ruled out for this
+  work — and the spec is claimed
+  in `shards.yaml` under the SHELL shard's `e2e_specs` — the same precedent as
+  `supplement-llm-integration.spec.js` under LLM.
 
 ## Testing
 

@@ -43,7 +43,7 @@
 - Consumes: nothing.
 - Produces: named export `AgentIdentityPlugin: () => Promise<{ "shell.env": (input: {cwd: string}, output: {env: Record<string,string>}) => Promise<void> }>`; module constants `AGENT_GIT_NAME`, `AGENT_GIT_EMAIL`, `SENTINEL_TOKEN`; env contract from Global Constraints. Tasks 3–4 import `AgentIdentityPlugin` and `SENTINEL_TOKEN` from this file.
 
-- [ ] **Step 1: Write the failing tests** in `e2e-tests/playwright/tests/agent-identity.spec.js`
+- [x] **Step 1: Write the failing tests** in `e2e-tests/playwright/tests/agent-identity.spec.js`
 
 Three tests under `test.describe('agent identity plugin', ...)`; each writes a fixture token file under `os.tmpdir()`, sets `process.env.AGENT_GH_TOKEN_FILE` to it (restored in `afterEach`), calls `const hooks = await AgentIdentityPlugin()`, then `await hooks["shell.env"]({ cwd: process.cwd() }, output)` with `const output = { env: {} }`:
 
@@ -63,26 +63,26 @@ test('PINS: picks up a rotated token file without a restart')
   // expect(second run output.env.GH_TOKEN).toBe('token_two')
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `cd e2e-tests/playwright && npx playwright test agent-identity -g "agent identity plugin"`
 Expected: FAIL — module `.opencode/plugins/agent-identity.js` not found.
 
-- [ ] **Step 3: Implement the plugin** in `.opencode/plugins/agent-identity.js`
+- [x] **Step 3: Implement the plugin** in `.opencode/plugins/agent-identity.js`
 
 ESM module, auto-loaded from this directory at OpenCode startup. Shape: `export const AgentIdentityPlugin = async () => ({ "shell.env": async (input, output) => { ... } })`. Behavior in the hook body: resolve token path from `process.env.AGENT_GH_TOKEN_FILE` or `path.join(os.homedir(), ".config/opencode/gh-agent-token")`; `readFileSync` + `.trim()`; on any read error set `output.env.GH_TOKEN = SENTINEL_TOKEN` and `console.error` one line naming the missing path and the runbook; otherwise set `output.env.GH_TOKEN` to the trimmed token. Always set the four `GIT_*` vars to the `AGENT_GIT_NAME` / `AGENT_GIT_EMAIL` constants. Export `SENTINEL_TOKEN` and the two identity constants (exported so tests and Task 4 compare against them). Read the token file **per hook invocation** (that is the rotation pickup; the file is tiny).
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `cd e2e-tests/playwright && npx playwright test agent-identity -g "agent identity plugin"`
 Expected: PASS, three tests green.
 
-- [ ] **Step 5: Verify the suite still runs this file with the rest**
+- [x] **Step 5: Verify the suite still runs this file with the rest**
 
 Run: `./test-e2e.sh` (accept `AGENT_GH_TOKEN` empty / blanks at prompts)
 Expected: all specs pass or self-skip; `agent-identity.spec.js` contributes three green plugin tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add .opencode/plugins/agent-identity.js e2e-tests/playwright/tests/agent-identity.spec.js
@@ -100,7 +100,7 @@ git commit -m "feat: agent identity plugin with fail-closed GH_TOKEN injection"
 - Consumes: plugin contract from Task 1 (for the install/verify sections).
 - Produces: the document AGENTS.md and FACTORY.md will point at (Task 4), and the GitHub-side procedure the human executes before Task 5.
 
-- [ ] **Step 1: Write the runbook** with exactly these sections:
+- [x] **Step 1: Write the runbook** with exactly these sections:
 
 1. **What this is** — one paragraph: agent sessions authenticate as the machine account; the human's keyring is unreachable from agent shells; enforcement is server-side (rulesets), not convention. Link the spec.
 2. **One-time setup** — (a) create machine GitHub account (2FA, `+alias` email); (b) invite as collaborator (write) on this repo; (c) fine-grained PAT issued by the machine account: all repositories the account can access, permissions **Contents RW, Pull requests RW, Workflows RW**, Metadata read, no admin, 1-year expiry; (d) paste token into `~/.config/opencode/gh-agent-token` (`chmod 600`); (e) edit `AGENT_GIT_NAME`/`AGENT_GIT_EMAIL` constants in `.opencode/plugins/agent-identity.js` to the machine account handle/email; (f) rulesets on the repo, **bypass actors = human account only**: `main` — require PR, ≥1 approving review, dismiss stale reviews, require approval from someone other than the last pusher, block force pushes, block deletions; all branches (`main`, `feature/**`, and the repo's other prefixes) — block deletions and force pushes.
@@ -110,7 +110,7 @@ git commit -m "feat: agent identity plugin with fail-closed GH_TOKEN injection"
 6. **Per-new-repo checklist** — copy `.opencode/plugins/agent-identity.js` to `~/.config/opencode/plugins/` (or into the new repo's `.opencode/plugins/`), invite collaborator, apply both rulesets, verify (PAT reaches the new repo without re-issue).
 7. **Probe cleanup** — `feature/td010-probe` accumulates one commit and one closed PR per acceptance run; human deletes it when it annoys (agent never can).
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add docs/factory/agent-identity.md
@@ -130,7 +130,7 @@ git commit -m "docs: agent identity runbook (TD-010)"
 - Consumes: `AGENT_GIT_NAME`/`SENTINEL_TOKEN` exports from Task 1's plugin module (for the plugin-plumbing assertion), probe branch name from Global Constraints.
 - Produces: `e2e: agent-identity::<title fragments>` for the story map (Task 4) — exact test titles: `the agent authenticates as the machine account, not the human`, `the agent cannot approve its own PR`, `the agent cannot merge to main without independent approval`, `the agent cannot delete a feature branch`, `every probe commit carries [skip ci]`.
 
-- [ ] **Step 1: Write the failing tests** — `test.describe('agent GitHub enforcement (real GitHub)', ...)`, guarded **before any network call** by `test.skip(!process.env.AGENT_GH_TOKEN, 'Skipping — AGENT_GH_TOKEN not set ...')` naming that this pins GitHub-side enforcement (comment claims use `PINS:`). All requests via Node `fetch` against `https://api.github.com` with `Authorization: Bearer <AGENT_GH_TOKEN>`; repo constant `awingrove/VitaTrack` with an `AGENT_GH_REPO` override. Five tests, titles exactly as listed in Interfaces:
+- [x] **Step 1: Write the failing tests** — `test.describe('agent GitHub enforcement (real GitHub)', ...)`, guarded **before any network call** by `test.skip(!process.env.AGENT_GH_TOKEN, 'Skipping — AGENT_GH_TOKEN not set ...')` naming that this pins GitHub-side enforcement (comment claims use `PINS:`). All requests via Node `fetch` against `https://api.github.com` with `Authorization: Bearer <AGENT_GH_TOKEN>`; repo constant `awingrove/VitaTrack` with an `AGENT_GH_REPO` override. Five tests, titles exactly as listed in Interfaces:
 
 1. control: `GET /user` → `login` is truthy, `!== 'awingrove'`, and `=== process.env.AGENT_GH_LOGIN` when that is set.
 2. probe: `PUT /repos/{repo}/contents/agent-probe/<timestamp>.txt` on branch `feature/td010-probe` (create-if-absent semantics: 404 on ref GET is fine, contents PUT with `branch` creates it), message `[skip ci] agent identity probe <ISO timestamp>`, body a short marker string; assert response `ok`, and assert the returned commit `message` contains `[skip ci]`. Then `POST /repos/{repo}/pulls` (head `feature/td010-probe`, base `main`, unique title with timestamp) → keep `number` and the returned `user.login` (the machine account).
@@ -140,21 +140,21 @@ git commit -m "docs: agent identity runbook (TD-010)"
 
 PR lifecycle: tests 2–5 are one serial describe (`describe.configure({ mode: 'serial' })` like the LLM spec, since they share the PR number); the PR is closed (`PATCH /repos/{repo}/pulls/{number}` `state:closed`) in an `afterAll`, and the probe branch is deliberately left in place (its persistence is what is pinned).
 
-- [ ] **Step 2: Run to verify they skip (not fail) without the secret**
+- [x] **Step 2: Run to verify they skip (not fail) without the secret**
 
 Run: `cd e2e-tests/playwright && npx playwright test agent-identity`
 Expected: plugin tests PASS; GitHub tests SKIP with the printed reason; exit 0.
 
-- [ ] **Step 3: Wire `AGENT_GH_TOKEN` through `test-e2e.sh`** — in the `if [[ -n "${CI:-}" ]]` branch add `export AGENT_GH_TOKEN="${AGENT_GH_TOKEN:-}"`; in the interactive path, if `AGENT_GH_TOKEN` is unset and `~/.config/opencode/gh-agent-token` exists and is readable, export its trimmed contents; otherwise export empty. **No prompt** — a PAT is not prompted for; the spec self-skips. One comment line saying the file is the same one the plugin reads (runbook pointer).
+- [x] **Step 3: Wire `AGENT_GH_TOKEN` through `test-e2e.sh`** — in the `if [[ -n "${CI:-}" ]]` branch add `export AGENT_GH_TOKEN="${AGENT_GH_TOKEN:-}"`; in the interactive path, if `AGENT_GH_TOKEN` is unset and `~/.config/opencode/gh-agent-token` exists and is readable, export its trimmed contents; otherwise export empty. **No prompt** — a PAT is not prompted for; the spec self-skips. One comment line saying the file is the same one the plugin reads (runbook pointer).
 
-- [ ] **Step 4: Wire the CI secret** — add `AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}` to the e2e step's `env:` block in `.github/workflows/ci.yml`, with one comment line: unset secret → empty → spec self-skips, same as the `LLM_*` trio.
+- [x] **Step 4: Wire the CI secret** — add `AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}` to the e2e step's `env:` block in `.github/workflows/ci.yml`, with one comment line: unset secret → empty → spec self-skips, same as the `LLM_*` trio.
 
-- [ ] **Step 5: Run the full suite**
+- [x] **Step 5: Run the full suite**
 
 Run: `./test-e2e.sh`
 Expected: exit 0, GitHub half skipping without the secret.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add e2e-tests/playwright/tests/agent-identity.spec.js test-e2e.sh .github/workflows/ci.yml
@@ -175,7 +175,7 @@ git commit -m "test: acceptance spec pinning GitHub-side agent identity enforcem
 - Consumes: exact test titles produced by Task 3 (fragments must literally appear in the spec file — `StoryMapConsistencyTests` checks that).
 - Produces: green `StoryMapConsistencyTests`; docs that name the runbook.
 
-- [ ] **Step 1: Add the story-map entry** — new activity `Repository Governance`, first task:
+- [x] **Step 1: Add the story-map entry** — new activity `Repository Governance`, first task:
 
 ```yaml
   - name: Repository Governance
@@ -197,23 +197,25 @@ git commit -m "test: acceptance spec pinning GitHub-side agent identity enforcem
 
 (Use `n/a` entry-point prefix exactly — `StoryMapConsistencyTests` accepts `entry_point` starting with `n/a`, precedent `SHELL-2`.)
 
-- [ ] **Step 2: Run the story-map gate**
+> **Landed differently:** the task id is `SHELL-4`, not `GOV-1`. `ShardOwnershipTests.ValidateStoryMapIds` requires every story-map id prefix to match a shard in `shards.yaml`, and the controller ruling forbade inventing a `GOV` slice — so the task rides the existing `SHELL` shard prefix and the spec is claimed in SHELL's `e2e_specs` (the `supplement-llm-integration.spec.js` precedent).
+
+- [x] **Step 2: Run the story-map gate**
 
 Run: `dotnet test VitaTrack.sln --filter StoryMapConsistencyTests`
 Expected: PASS. If the fragment match fails, fix the story ref to match the spec title exactly — never the reverse.
 
-- [ ] **Step 3: AGENTS.md — new "Agent GitHub identity" section** under the CLI & Git Workflow area: sessions authenticate as the machine account via `.opencode/plugins/agent-identity.js` (token file `~/.config/opencode/gh-agent-token`); fail-closed sentinel when the file is missing; agents may push feature branches and open PRs, never approve, merge, close, or delete branches — those are rejected server-side, so routing around a rejection is pointless; runbook `docs/factory/agent-identity.md` holds setup, rotation, and the per-new-repo checklist. Keep it to ~10 lines; no CI-derivable counts.
+- [x] **Step 3: AGENTS.md — new "Agent GitHub identity" section** under the CLI & Git Workflow area: sessions authenticate as the machine account via `.opencode/plugins/agent-identity.js` (token file `~/.config/opencode/gh-agent-token`); fail-closed sentinel when the file is missing; agents may push feature branches and open PRs, never approve, merge, close, or delete branches — those are rejected server-side, so routing around a rejection is pointless; runbook `docs/factory/agent-identity.md` holds setup, rotation, and the per-new-repo checklist. Keep it to ~10 lines; no CI-derivable counts.
 
-- [ ] **Step 4: FACTORY.md step 7** — replace the soft-rule wording ("The human approves and merges. An agent never approves...") so it cites the mechanical enforcement: the human approves and merges because GitHub **rejects** agent attempts at approve/merge/delete (rulesets + separate identity — see `docs/factory/agent-identity.md`), and the gate-rejection rule (one rejection → fix named cause; second → stop and report) is now backed by identity, not just convention.
+- [x] **Step 4: FACTORY.md step 7** — replace the soft-rule wording ("The human approves and merges. An agent never approves...") so it cites the mechanical enforcement: the human approves and merges because GitHub **rejects** agent attempts at approve/merge/delete (rulesets + separate identity — see `docs/factory/agent-identity.md`), and the gate-rejection rule (one rejection → fix named cause; second → stop and report) is now backed by identity, not just convention.
 
-- [ ] **Step 5: Spec amendment** — if any detail landed differently than the spec's §2/§3 wording (e.g. `AGENT_GH_REPO` override, `afterAll` PR close), update the spec in the same commit. Spec must stay true to what shipped.
+- [x] **Step 5: Spec amendment** — if any detail landed differently than the spec's §2/§3 wording (e.g. `AGENT_GH_REPO` override, `afterAll` PR close), update the spec in the same commit. Spec must stay true to what shipped.
 
-- [ ] **Step 6: Full gates**
+- [x] **Step 6: Full gates**
 
 Run: `./format-check.sh && dotnet test`
 Expected: all green.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add storymap.yaml AGENTS.md FACTORY.md docs/superpowers/specs/

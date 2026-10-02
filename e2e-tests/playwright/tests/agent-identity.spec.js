@@ -309,9 +309,10 @@ test.describe('agent GitHub enforcement (real GitHub)', () => {
   // probe branch is deliberately left standing after the run; that persistence is what
   // this rejection exists to guarantee, and the runbook owns occasional cleanup of its
   // accumulated commits.
-  // PINS: branch existence is guaranteed by the bootstrap in test 2 — a 404 here can
-  // no longer mean "the branch was never there", so a not-ok answer is GitHub refusing
-  // the delete, not a nonexistent-ref pass-through.
+  // DOCUMENTS: in the serial run, branch existence is guaranteed by the bootstrap in
+  // test 2 — a 404 here can no longer mean "the branch was never there", so a not-ok
+  // answer is GitHub refusing the delete, not a nonexistent-ref pass-through. A solo
+  // -g run skips the bootstrap, so this states a precondition rather than asserting.
   test('the agent cannot delete a feature branch', async () => {
     const res = await githubRequest(`/repos/${GH_REPO}/git/refs/heads/${GH_PROBE_BRANCH}`, {
       method: 'DELETE',

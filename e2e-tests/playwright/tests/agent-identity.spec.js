@@ -345,24 +345,35 @@ test.describe('agent GitHub enforcement (real GitHub)', () => {
 
   // PINS: force-updating a protected branch with agent credentials is rejected
   // server-side by the ruleset's block-force-pushes rule (human-only bypass) —
-  // the history-rewrite counterpart to the deletion rejection above. The current
-  // probe sha is read first so the PATCH is a real force update against a live
-  // ref rather than a guess; the pin is on the rejection, with the observed
-  // status recorded in the message (status varies by how the ruleset answers).
+  // the history-rewrite counterpart to the deletion rejection above. The attempt
+  // must be a genuine rewind: the ref is read, its tip commit's PARENT sha is
+  // fetched, and the PATCH targets that — a same-sha PATCH with force:true is a
+  // 200 no-op update and pins nothing (the live run proved exactly that). The
+  // pin is on the rejection, with the observed status recorded in the message
+  // (status varies by how the ruleset answers).
   test('the agent cannot force-push a protected branch', async () => {
     const refRes = await githubRequest(`/repos/${GH_REPO}/git/refs/heads/${GH_PROBE_BRANCH}`);
     expect(refRes.ok, `GET probe ref answered ${refRes.status} (force-push precondition)`).toBe(
       true,
     );
-    const currentSha = (await refRes.json()).object.sha;
+    const tipSha = (await refRes.json()).object.sha;
+
+    const commitRes = await githubRequest(`/repos/${GH_REPO}/commits/${tipSha}`);
+    expect(
+      commitRes.ok,
+      `GET probe tip commit answered ${commitRes.status} (force-push precondition)`,
+    ).toBe(true);
+    const parents = (await commitRes.json()).parents;
+    const parentSha = parents[0] && parents[0].sha;
+    expect(parentSha, 'probe tip commit has no parent — nothing to rewind to').toBeTruthy();
 
     const res = await githubRequest(`/repos/${GH_REPO}/git/refs/heads/${GH_PROBE_BRANCH}`, {
       method: 'PATCH',
-      body: JSON.stringify({ force: true, sha: currentSha }),
+      body: JSON.stringify({ force: true, sha: parentSha }),
     });
     expect(
       res.ok,
-      `PATCH force update answered ${res.status} (a rejection — 403/422 — is the pinned outcome)`,
+      `PATCH force rewind answered ${res.status} (a rejection — 403/422 — is the pinned outcome)`,
     ).toBe(false);
   });
 

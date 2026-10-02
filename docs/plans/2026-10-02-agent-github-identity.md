@@ -14,7 +14,7 @@
 
 - Branch: `feature/td010-agent-identity` (all commits ride this branch; remote rejects direct pushes to `main`).
 - Token file: `~/.config/opencode/gh-agent-token`, mode 600, raw token text, trimmed on read. Test-only override: `AGENT_GH_TOKEN_FILE`.
-- Sentinel (fail-closed value): `__AGENT_TOKEN_FILE_MISSING_see_docs/factory-agent-identity.md`.
+- Sentinel (fail-closed value): `__AGENT_TOKEN_FILE_MISSING_see_docs/factory/agent-identity.md`.
 - Env contract set by the plugin on every shell: `GH_TOKEN`, `GIT_AUTHOR_NAME`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_NAME`, `GIT_COMMITTER_EMAIL`. `GH_TOKEN` is **never** left unset once the hook runs.
 - Machine git identity: two constants at the top of the plugin (`AGENT_GIT_NAME`, `AGENT_GIT_EMAIL`) — set to the machine account's handle and email at install time (runbook step).
 - Probe branch: `feature/td010-probe`; every probe commit message contains `[skip ci]`.

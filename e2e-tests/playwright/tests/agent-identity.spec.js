@@ -17,17 +17,19 @@ function writeFixtureTokenFile(contents) {
   return file;
 }
 
-// Both plugin shapes funnel into injectAgentIdentity; tests drive it directly and
-// drive the V2 default export's setup(ctx) with a stub ctx that hands back the
-// registered hook, so what is exercised is the same path OpenCode v2 invokes.
+// DOCUMENTS: both plugin shapes funnel into injectAgentIdentity; tests drive it
+// directly and drive the V2 default export's setup(ctx) with a stub ctx that
+// hands back the registered hook, so what is exercised is the same path
+// OpenCode v2 invokes.
 async function loadInjection() {
   const mod = await import(PLUGIN_PATH);
   return mod;
 }
 
-// Under Playwright's CJS context the ESM named exports surface one level down
-// (the module namespace is wrapped); OpenCode itself loads the file natively and
-// sees the plain shape, so the test reaches through the wrapper to the same code.
+// DOCUMENTS: under Playwright's CJS context the ESM named exports surface one
+// level down (the module namespace is wrapped); OpenCode itself loads the file
+// natively and sees the plain shape, so the test reaches through the wrapper to
+// the same code.
 function demangle(mod) {
   return mod.default && mod.default.injectAgentIdentity ? mod.default : mod;
 }
@@ -43,11 +45,9 @@ async function runViaSetup(tokenFilePath) {
       },
     },
   };
-  /**
-   * Guards the last reference before binding — `mod.default` visibility differs
-   * between Node-native ESM (plain shape) and Playwright's CJS interop (one
-   * level deeper); demangle() resolves both to the same module object.
-   */
+  // Guards the last reference before binding — `mod.default` visibility differs
+  // between Node-native ESM (plain shape) and Playwright's CJS interop (one
+  // level deeper); demangle() resolves both to the same module object.
   mod.default.setup(stubCtx);
   const event = { env: {} };
   await captured(event);

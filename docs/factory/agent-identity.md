@@ -16,10 +16,10 @@ key — see Verify). Enforcement — the human approves every merge, the agent n
 deletes or force-pushes — is server-side (GitHub rulesets), not convention.
 The plugin at `.opencode/plugins/agent-identity.js` is OpenCode V2 shape
 (v2.0.21: default export with `ctx.shell.hook('create.before')`); it injects
-`GH_TOKEN` plus the machine `GIT_AUTHOR_*`/`GIT_COMMITTER_*` identity into
+`GH_TOKEN`, the isolated agent `GH_CONFIG_DIR`, and the machine `GIT_AUTHOR_*`/`GIT_COMMITTER_*` identity into
 every shell a session runs, and fails closed to the sentinel
 `__AGENT_TOKEN_FILE_MISSING_see_docs/factory/agent-identity.md` when the token
-file is missing or unreadable. Spec:
+file is missing, unreadable, or empty. Spec:
 `docs/superpowers/specs/2026-10-02-agent-github-identity-design.md`.
 
 ## One-time setup
@@ -74,7 +74,7 @@ GH_TOKEN="$(cat ~/.config/opencode/gh-agent-token)" gh api user   # → awingrov
 ## Failure signature
 
 `gh` or `git push` failing 401 "Bad credentials" after a token-file problem
-means the fail-closed sentinel fired — `echo $GH_TOKEN` prints
+means the fail-closed sentinel fired (missing/unreadable logs `cannot read token file`; an empty file logs `token file ... is empty`) — `echo $GH_TOKEN` prints
 `__AGENT_TOKEN_FILE_MISSING_see_docs/factory/agent-identity.md` instead of a
 token, and the plugin logged `agent-identity: cannot read token file ...` to
 stderr at shell creation. The fix is restoring

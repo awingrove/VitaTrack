@@ -222,7 +222,7 @@ let agentLogin = null;
 let probePullNumber = null;
 
 test.describe('agent GitHub enforcement (real GitHub)', () => {
-  // Serial, not a style choice: tests 2–5 share the PR number — test 2 creates the PR
+  // Serial, not a style choice: tests 2–6 share the PR number — test 2 creates the PR
   // and the last three attack it. Under fullyParallel they could start before the PR
   // exists and fail for a reason that has nothing to do with enforcement.
   test.describe.configure({ mode: 'serial' });
@@ -250,7 +250,7 @@ test.describe('agent GitHub enforcement (real GitHub)', () => {
   // (bootstrapProbeBranch — the contents API cannot create a ref itself), then aimed
   // at by this contents PUT through the branch param — no local git, never force-pushed
   // (the runbook's rulesets block force-push), never deleted (test 5 pins the
-  // rejection). The PR opened here is the one tests 3–5 attack: its number is kept for
+  // rejection). The PR opened here is the one tests 3–6 attack: its number is kept for
   // them, and its author is checked against the identity the control test verified.
   test('every probe commit carries [skip ci]', async () => {
     await bootstrapProbeBranch();
@@ -368,7 +368,7 @@ test.describe('agent GitHub enforcement (real GitHub)', () => {
 
   // DOCUMENTS: closing the probe PR is permitted (closing stays a human-and-agent
   // right; only approve/merge/delete/force-push are pinned as rejections), and the PR is closed
-  // here regardless of which of tests 3–5 failed so the next run's test 2 does not
+  // here regardless of which of tests 3–6 failed so the next run's test 2 does not
   // trip over a stale open PR. The probe branch itself is left in place on purpose —
   // test 5's rejection is the thing that guarantees it stays.
   test.afterAll(async () => {

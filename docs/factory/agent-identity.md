@@ -67,6 +67,12 @@ GH_TOKEN="$(cat ~/.config/opencode/gh-agent-token)" gh api user   # → awingrov
 - `origin` must be HTTPS (`git remote -v`); an SSH remote authenticates with
   the human's SSH key — the ruleset bypass actor — and defeats identity
   isolation.
+- The global OpenCode permission config (in `~/.config/opencode/opencode.json`)
+  denies `gh auth token` / `gh auth login` / `gh auth refresh`,
+  `git credential fill|approve|reject`, and `secret-tool` in agent shells —
+  the keyring's remaining read paths are blocked at the harness, not merely
+  discouraged. Verify with `gh auth token` in a new session: it must be
+  permission-rejected before `gh` runs.
 - In a **new** OpenCode session, `echo $GH_TOKEN` prints the token. Plugins in
   `.opencode/plugins/` auto-load at startup: a running session does not see a
   newly added plugin, only new sessions do.

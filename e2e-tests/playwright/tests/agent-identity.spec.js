@@ -172,6 +172,29 @@ async function githubRequest(pathname, init = {}) {
   });
 }
 
+// DOCUMENTS: the probe branch's real arrival path. The contents API does NOT create a
+// missing ref — a PUT with a branch param against a nonexistent branch answers 422 — so
+// the branch is bootstrapped here first: absent → created from main's current HEAD via
+// POST /git/refs (Contents RW permits ref creation on a feature branch; the runbook's
+// rulesets block deletion and force-push, not creation); present → nothing to do.
+// Called from test 2, so it lives in the skipped-by-default half: no ref is ever
+// touched while AGENT_GH_TOKEN is absent.
+async function bootstrapProbeBranch() {
+  const refRes = await githubRequest(`/repos/${GH_REPO}/git/ref/heads/${GH_PROBE_BRANCH}`);
+  if (refRes.status === 404) {
+    const mainRes = await githubRequest(`/repos/${GH_REPO}/git/ref/heads/main`);
+    expect(mainRes.ok, `GET main ref answered ${mainRes.status()}`).toBe(true);
+    const mainSha = (await mainRes.json()).object.sha;
+    const createRes = await githubRequest(`/repos/${GH_REPO}/git/refs`, {
+      method: 'POST',
+      body: JSON.stringify({ ref: `refs/heads/${GH_PROBE_BRANCH}`, sha: mainSha }),
+    });
+    expect(createRes.ok, `POST git/refs (bootstrap) answered ${createRes.status()}`).toBe(true);
+    return;
+  }
+  expect(refRes.ok, `GET probe ref answered ${refRes.status()}`).toBe(true);
+}
+
 // Shared across the serial group: what test 1 learned about the token's identity and
 // what test 2 learned about the PR it opened, so later tests address the PR test 2
 // actually created rather than a literal.
@@ -203,12 +226,15 @@ test.describe('agent GitHub enforcement (real GitHub)', () => {
 
   // PINS: one small commit per run to the persistent probe branch, and every probe
   // commit carries [skip ci] so spec runs do not spawn workflow runs (minutes + noise).
-  // The branch arrives only through this contents PUT — no local git, no ref GET, no
-  // force-push (force pushes are themselves blocked by the runbook's rulesets); the
-  // branch param is how the commit is aimed at the probe branch rather than main. The
-  // PR opened here is the one tests 3–5 attack: its number is kept for them, and its
-  // author is checked against the identity the control test verified.
+  // The branch's real arrival path: bootstrapped from main's HEAD when absent
+  // (bootstrapProbeBranch — the contents API cannot create a ref itself), then aimed
+  // at by this contents PUT through the branch param — no local git, never force-pushed
+  // (the runbook's rulesets block force-push), never deleted (test 5 pins the
+  // rejection). The PR opened here is the one tests 3–5 attack: its number is kept for
+  // them, and its author is checked against the identity the control test verified.
   test('every probe commit carries [skip ci]', async () => {
+    await bootstrapProbeBranch();
+
     const stamp = new Date().toISOString();
     const putRes = await githubRequest(
       `/repos/${GH_REPO}/contents/agent-probe/${Date.now()}.txt`,
@@ -283,6 +309,9 @@ test.describe('agent GitHub enforcement (real GitHub)', () => {
   // probe branch is deliberately left standing after the run; that persistence is what
   // this rejection exists to guarantee, and the runbook owns occasional cleanup of its
   // accumulated commits.
+  // PINS: branch existence is guaranteed by the bootstrap in test 2 — a 404 here can
+  // no longer mean "the branch was never there", so a not-ok answer is GitHub refusing
+  // the delete, not a nonexistent-ref pass-through.
   test('the agent cannot delete a feature branch', async () => {
     const res = await githubRequest(`/repos/${GH_REPO}/git/refs/heads/${GH_PROBE_BRANCH}`, {
       method: 'DELETE',

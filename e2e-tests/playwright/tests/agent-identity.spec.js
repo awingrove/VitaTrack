@@ -183,16 +183,16 @@ async function bootstrapProbeBranch() {
   const refRes = await githubRequest(`/repos/${GH_REPO}/git/ref/heads/${GH_PROBE_BRANCH}`);
   if (refRes.status === 404) {
     const mainRes = await githubRequest(`/repos/${GH_REPO}/git/ref/heads/main`);
-    expect(mainRes.ok, `GET main ref answered ${mainRes.status()}`).toBe(true);
+    expect(mainRes.ok, `GET main ref answered ${mainRes.status}`).toBe(true);
     const mainSha = (await mainRes.json()).object.sha;
     const createRes = await githubRequest(`/repos/${GH_REPO}/git/refs`, {
       method: 'POST',
       body: JSON.stringify({ ref: `refs/heads/${GH_PROBE_BRANCH}`, sha: mainSha }),
     });
-    expect(createRes.ok, `POST git/refs (bootstrap) answered ${createRes.status()}`).toBe(true);
+    expect(createRes.ok, `POST git/refs (bootstrap) answered ${createRes.status}`).toBe(true);
     return;
   }
-  expect(refRes.ok, `GET probe ref answered ${refRes.status()}`).toBe(true);
+  expect(refRes.ok, `GET probe ref answered ${refRes.status}`).toBe(true);
 }
 
 // Shared across the serial group: what test 1 learned about the token's identity and
@@ -215,7 +215,7 @@ test.describe('agent GitHub enforcement (real GitHub)', () => {
   // from "some account that is not the human" to the exact machine account when set.
   test('the agent authenticates as the machine account, not the human', async () => {
     const res = await githubRequest('/user');
-    expect(res.ok, `GET /user answered ${res.status()}`).toBe(true);
+    expect(res.ok, `GET /user answered ${res.status}`).toBe(true);
     const user = await res.json();
 
     expect(user.login).toBeTruthy();
@@ -247,7 +247,7 @@ test.describe('agent GitHub enforcement (real GitHub)', () => {
         }),
       },
     );
-    expect(putRes.ok, `contents PUT answered ${putRes.status()}`).toBe(true);
+    expect(putRes.ok, `contents PUT answered ${putRes.status}`).toBe(true);
     const created = await putRes.json();
     expect(created.commit.message).toContain('[skip ci]');
 
@@ -260,7 +260,7 @@ test.describe('agent GitHub enforcement (real GitHub)', () => {
         body: 'Acceptance-spec probe PR (TD-010). Closed by the spec after the rejection tests.',
       }),
     });
-    expect(prRes.ok, `POST pulls answered ${prRes.status()}`).toBe(true);
+    expect(prRes.ok, `POST pulls answered ${prRes.status}`).toBe(true);
     const pull = await prRes.json();
     expect(pull.user.login).toBeTruthy();
     // Guarded so this test still runs solo (-g on its title); in the normal serial path
@@ -283,7 +283,7 @@ test.describe('agent GitHub enforcement (real GitHub)', () => {
     });
     expect(
       res.ok,
-      `APPROVE review answered ${res.status()} (a rejection — 403/422/405 — is the pinned outcome)`,
+      `APPROVE review answered ${res.status} (a rejection — 403/422/405 — is the pinned outcome)`,
     ).toBe(false);
   });
 
@@ -300,7 +300,7 @@ test.describe('agent GitHub enforcement (real GitHub)', () => {
     });
     expect(
       res.ok,
-      `PUT merge answered ${res.status()} (a rejection — 403/422/405 — is the pinned outcome)`,
+      `PUT merge answered ${res.status} (a rejection — 403/422/405 — is the pinned outcome)`,
     ).toBe(false);
   });
 
@@ -319,7 +319,7 @@ test.describe('agent GitHub enforcement (real GitHub)', () => {
     });
     expect(
       res.ok,
-      `DELETE ref answered ${res.status()} (a rejection — 403/422/405 — is the pinned outcome)`,
+      `DELETE ref answered ${res.status} (a rejection — 403/422/405 — is the pinned outcome)`,
     ).toBe(false);
   });
 
@@ -334,6 +334,6 @@ test.describe('agent GitHub enforcement (real GitHub)', () => {
       method: 'PATCH',
       body: JSON.stringify({ state: 'closed' }),
     });
-    if (!res.ok) console.log(`afterAll: closing probe PR #${probePullNumber} answered ${res.status()}`);
+    if (!res.ok) console.log(`afterAll: closing probe PR #${probePullNumber} answered ${res.status}`);
   });
 });

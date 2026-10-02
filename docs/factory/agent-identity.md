@@ -29,13 +29,14 @@ Human-only, in the browser, once per machine (steps a–e) and once per repo
   human's address).
 - **(b) Repo access** — invite the machine account as **collaborator (write)**
   on this repo; accept the invite from the machine account's email.
-- **(c) Fine-grained PAT**, issued by the machine account:
-  - Repositories: **all repositories the account can access** — a future repo
-    then needs only the collaborator invite, no new token.
-  - Permissions: **Contents read/write, Pull requests read/write, Workflows
-    read/write** (Workflows is the fine-grained equivalent of the classic
-    `workflow` scope; without it future `ci.yml` edits fail), **Metadata
-    read**. No admin, no `delete_repo`.
+- **(c) Classic PAT**, issued by the machine account. Classic rather than
+  fine-grained because fine-grained PATs have a documented limitation — they
+  cannot write to repositories where the account is only an outside
+  collaborator — and that is exactly this bot's position on the human-owned
+  repo, as well as the multi-repo design's per-repo access model (a future
+  collaborator repo must be writable without re-issuing the token).
+  - Scopes: **`repo`** + **`workflow`** (without it future `ci.yml` edits
+    fail). No other scopes — no admin, no `delete_repo`.
   - Expiration: 1 year (max practical); rotation is below.
 - **(d) Token file** — paste the PAT into `~/.config/opencode/gh-agent-token`
   (outside any repo, so it can never be committed), then `chmod 600` it.
@@ -75,7 +76,7 @@ stderr at shell creation. The fix is restoring
 
 ## Rotation
 
-1. Issue a replacement PAT (same permissions as One-time setup (c)) and
+1. Issue a replacement classic PAT (same scopes as One-time setup (c)) and
    replace the contents of `~/.config/opencode/gh-agent-token` (keep mode
    `600`). The plugin reads the file per shell — the next shell picks it up,
    no OpenCode restart.
@@ -90,8 +91,9 @@ stderr at shell creation. The fix is restoring
 2. Invite the machine account as collaborator (write); accept from its email.
 3. Apply both rulesets from One-time setup (f), bypass = human account only.
 4. Verify: `GH_TOKEN="$(cat ~/.config/opencode/gh-agent-token)" gh api user`
-   resolves the machine account and repo access works — the PAT was issued for
-   all repositories the account can access, so no re-issue is needed.
+   resolves the machine account and repo access works — the classic `repo`
+   scope covers every repo the account can reach, owned or collaborator, so
+   the invite is the only credential step.
 
 ## Probe cleanup
 

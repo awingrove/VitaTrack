@@ -26,10 +26,15 @@ Success criteria:
 
 ## Decisions (settled during brainstorming)
 
-- **Identity: second personal account ("machine account") + fine-grained PAT.**
-  Chosen over a GitHub App: single-dev pragmatism, and GitHub's built-in
+- **Identity: second personal account ("machine account") + classic PAT
+  (`repo`, `workflow`).** Chosen over a GitHub App: single-dev pragmatism, and GitHub's built-in
   author-cannot-approve semantics need a real user account to work on. GitHub App
-  remains the org-scale option; not needed here.
+  remains the org-scale option; not needed here. *(Amended after issuance: first
+  written as a fine-grained PAT — fine-grained PATs are documented as unable to
+  write to repositories where the account is only an outside collaborator, which
+  is this bot's status on the human-owned repo and the multi-repo design's
+  per-repo access model, so the credential was re-issued as a classic PAT with
+  `repo` + `workflow`.)*
 - **One machine account serves all future repos** (user has more repos landing soon).
 - **Bitwarden Secrets Manager: out of scope** (deferred by the user; revisit as an
   optional storage/rotation layer later, not part of TD-010).
@@ -68,15 +73,19 @@ One-time steps, then a short per-new-repo checklist.
 2. **Repo access**: invite the machine account as **collaborator (write)** on
    VitaTrack and on each future repo; the invite is accepted from the machine
    account's email. Per-new-repo.
-3. **Fine-grained PAT**, issued by the machine account:
-   - Resource owner: the machine account; repositories: **all repositories the
-     account can access** (editable later — a future repo then needs only the
-     collaborator invite, no new token).
-   - Permissions: **Contents read/write, Pull requests read/write, Workflows
-     read/write** (Workflows is the fine-grained equivalent of the classic `workflow`
-     scope; without it future `ci.yml` edits fail), Metadata read.
-   - No administration, no `delete_repo`. Expiration: max practical (1 year);
-     rotation is a runbook step.
+3. **Classic PAT**, issued by the machine account:
+   - Scopes: **`repo`** + **`workflow`** (without it future `ci.yml` edits
+     fail). No other scopes — no admin scope, no `delete_repo`. Expiration: max
+     practical (1 year); rotation is a runbook step.
+   - Why classic, not fine-grained: fine-grained PATs have a documented
+     limitation — they cannot write to repositories where the account is only
+     an outside collaborator — and every future repo joins the machine account
+     that way, so the multi-repo design needs collaborator-repo write the
+     fine-grained token cannot grant. The wider scope is accepted: destructive
+     protection is server-side (rulesets), not token-side.
+   - Live-verified against the real repo as `awingrove-opencode`: `POST
+     /git/refs`, contents `PUT`, and PR create all succeed; approve, merge, and
+     delete are rejected (422/405/422 on PR #33).
 4. **Rulesets** on each repo — both with **bypass actors = the human account only**:
    - `main`: require pull request, require ≥1 approving review, dismiss stale
      reviews, **require approval from someone other than the last pusher**, block

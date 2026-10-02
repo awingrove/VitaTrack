@@ -91,14 +91,13 @@ One-time steps, then a short per-new-repo checklist.
 - **Token file**: `~/.config/opencode/gh-agent-token`, mode 600, outside any repo so
   it can never be committed. The human pastes the PAT once; the runbook documents
   rotation (replace file contents; no code change).
-- **Injection: global OpenCode plugin** installed at
-  `~/.config/opencode/plugins/agent-identity.ts`, listed in the global
-  `~/.config/opencode/opencode.json`. The **normative source lives in the runbook**
-  (`docs/factory/agent-identity.md`) as an inline listing; installation is a copy
-  step, so the plugin is reviewable and reproducible despite living outside the
-  repo. (If OpenCode accepts a file-path plugin specifier, pointing config at a
-  repo copy is a fine equivalent — resolved at plan time.) On load it reads the token file and sets in
-  `process.env`:
+- **Injection: project-level OpenCode plugin** at
+  `.opencode/plugins/agent-identity.js` in each repo. Files in that directory are
+  auto-loaded at startup (no config listing needed), so the plugin is version
+  controlled, reviewable, and testable; the runbook tells future repos to copy it
+  into `~/.config/opencode/plugins/` for global coverage. On load its `shell.env`
+  hook — the documented seam for injecting env into all OpenCode shell execution —
+  sets:
   - `GH_TOKEN` — overrides the keyring entirely for `gh`, and flows through
     `credential.helper = gh auth git-credential` in `~/.gitconfig`, so `git push`
     over HTTPS resolves to the same machine token. Keyring never reached.
@@ -106,8 +105,9 @@ One-time steps, then a short per-new-repo checklist.
     `GIT_COMMITTER_EMAIL` — machine account identity, so commit authorship
     distinguishes agent from human in the audit trail (and makes `human_interventions`
     attributable).
-  OpenCode's config schema has no session-level `environment` key; a plugin setting
-  `process.env` is the supported seam, and spawned shells inherit it. Chosen over a
+  OpenCode's config schema has no session-level `environment` key, but plugin
+  `shell.env` is the documented seam for injecting env into all shell execution
+  (AI tools and integrated terminals); spawned shells inherit it. Chosen over a
   shell wrapper function because it covers every launch path (CLI, TUI, desktop) with
   no user discipline.
 - **Fail-closed**: token file missing or unreadable → plugin sets `GH_TOKEN` to a

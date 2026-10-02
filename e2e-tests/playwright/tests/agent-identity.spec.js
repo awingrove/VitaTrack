@@ -100,6 +100,19 @@ test.describe('agent identity plugin (V2 shell.hook entrypoint)', () => {
     expect(event.env.GH_TOKEN).toBe(SENTINEL_TOKEN);
   });
 
+  // PINS: fails closed with a sentinel GH_TOKEN when the token file is readable
+  // but empty (or whitespace-only) — gh treats GH_TOKEN='' as unset, which would
+  // fall through to the human keyring, so an empty file must not pass a blank
+  // credential through.
+  test('PINS: fails closed with a sentinel GH_TOKEN when the token file is empty', async () => {
+    const { SENTINEL_TOKEN } = await loadInjection();
+    const tokenFile = writeFixtureTokenFile(' \n');
+
+    const event = await runViaSetup(tokenFile);
+
+    expect(event.env.GH_TOKEN).toBe(SENTINEL_TOKEN);
+  });
+
   // PINS: picks up a rotated token file without a restart
   test('PINS: picks up a rotated token file without a restart', async () => {
     const mod = await loadInjection();
@@ -119,7 +132,12 @@ test.describe('agent identity plugin (V1 named export stays in lockstep)', () =>
   // PINS: the V1 shape delegates to the same injection body, so the two
   // entrypoints cannot drift apart — the first env contract test runs both.
   test('PINS: V1 shell.env hook injects the identical env contract', async () => {
-    const { AGENT_GIT_NAME, AGENT_GIT_EMAIL, injectAgentIdentity } = await loadInjection();
+    const {
+      AGENT_GIT_NAME,
+      AGENT_GIT_EMAIL,
+      AGENT_GH_CONFIG_DIR,
+      injectAgentIdentity,
+    } = await loadInjection();
     const tokenFile = writeFixtureTokenFile('ghp_fixture_token\n');
 
     const direct = { env: {} };
@@ -128,14 +146,16 @@ test.describe('agent identity plugin (V1 named export stays in lockstep)', () =>
     const viaHook = await runViaV1Hook(tokenFile);
 
     expectIdentityEnv(viaHook.env, 'ghp_fixture_token', AGENT_GIT_NAME, AGENT_GIT_EMAIL);
+    expect(viaHook.env.GH_CONFIG_DIR).toBe(AGENT_GH_CONFIG_DIR);
     expect(viaHook.env).toEqual(direct.env);
   });
 });
 
 // ── GitHub enforcement half ─────────────────────────────────────────────────────
 //
-// The plugin describes above prove what the plugin *injects*; these five prove what
-// GitHub itself *answers* when that identity is used. API-only (Node fetch against
+// DOCUMENTS: the plugin describes above prove what the plugin *injects*; the
+// GitHub-enforcement tests below prove what GitHub itself *answers* when that
+// identity is used. API-only (Node fetch against
 // api.github.com — no browser, no app under test) because the enforcement under test
 // lives server-side in GitHub's rulesets, not in this codebase. Nothing here is a
 // double: real endpoint, real credentials, real answers (per AGENTS.md's no-mock
@@ -152,7 +172,7 @@ const GH_PROBE_BRANCH = 'feature/td010-probe';
 const ghToken = process.env.AGENT_GH_TOKEN;
 const ghSkipReason =
   'Skipping — AGENT_GH_TOKEN not set in the environment. This half pins GitHub-side enforcement '
-  + 'of the agent identity (control login, [skip ci] probe commit, self-approve/merge/branch-delete '
+  + 'of the agent identity (control login, [skip ci] probe commit, self-approve/merge/branch-delete/force-push '
   + 'rejections) against real api.github.com with the machine token, so without the token there is '
   + 'nothing to ask GitHub. Export AGENT_GH_TOKEN (CI: repo secret, same mechanism as LLM_API_KEY) '
   + 'to enforce it; the plugin tests in this file run regardless.';
@@ -323,8 +343,31 @@ test.describe('agent GitHub enforcement (real GitHub)', () => {
     ).toBe(false);
   });
 
+  // PINS: force-updating a protected branch with agent credentials is rejected
+  // server-side by the ruleset's block-force-pushes rule (human-only bypass) —
+  // the history-rewrite counterpart to the deletion rejection above. The current
+  // probe sha is read first so the PATCH is a real force update against a live
+  // ref rather than a guess; the pin is on the rejection, with the observed
+  // status recorded in the message (status varies by how the ruleset answers).
+  test('the agent cannot force-push a protected branch', async () => {
+    const refRes = await githubRequest(`/repos/${GH_REPO}/git/refs/heads/${GH_PROBE_BRANCH}`);
+    expect(refRes.ok, `GET probe ref answered ${refRes.status} (force-push precondition)`).toBe(
+      true,
+    );
+    const currentSha = (await refRes.json()).object.sha;
+
+    const res = await githubRequest(`/repos/${GH_REPO}/git/refs/heads/${GH_PROBE_BRANCH}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ force: true, sha: currentSha }),
+    });
+    expect(
+      res.ok,
+      `PATCH force update answered ${res.status} (a rejection — 403/422 — is the pinned outcome)`,
+    ).toBe(false);
+  });
+
   // DOCUMENTS: closing the probe PR is permitted (closing stays a human-and-agent
-  // right; only approve/merge/delete are pinned as rejections), and the PR is closed
+  // right; only approve/merge/delete/force-push are pinned as rejections), and the PR is closed
   // here regardless of which of tests 3–5 failed so the next run's test 2 does not
   // trip over a stale open PR. The probe branch itself is left in place on purpose —
   // test 5's rejection is the thing that guarantees it stays.

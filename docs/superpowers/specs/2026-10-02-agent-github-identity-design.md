@@ -1,7 +1,7 @@
 # Design: Agent GitHub Identity (TD-010)
 
 Date: 2026-10-02
-Status: awaiting spec review
+Status: shipped, TD-010 closed 2026-10-02
 Closes: TD-010 (`docs/factory/technical-debt.yaml`), on acceptance-spec green
 
 ## Intent
@@ -15,7 +15,10 @@ replaying it with agent credentials must be *rejected by GitHub*, not deferred.
 Success criteria:
 
 1. Every OpenCode session authenticates to GitHub as the machine account — for both
-   `gh` calls and `git push` over HTTPS — with no path to the human keyring token.
+   `gh` calls and `git push` over HTTPS — and agent shells never *use* the human
+   keyring token: `GH_TOKEN` plus an isolated `GH_CONFIG_DIR` carry the credential,
+   deliberately reading the keyring from an agent shell is a DL-class incident, and
+   `origin` must be HTTPS (an SSH remote authenticates with the human's key).
 2. A missing/rotated token fails **closed**: agent operations error loudly instead of
    silently falling back to human credentials.
 3. Server-side rulesets reject, with agent credentials: approving the agent's own PR,
@@ -68,8 +71,8 @@ Success criteria:
 
 One-time steps, then a short per-new-repo checklist.
 
-1. **Machine account**: second GitHub personal account (suggested handle
-   `awingrove-bot`), 2FA enabled, unique email (catch-all or `+alias`).
+1. **Machine account**: second personal account (shipped as
+   `awingrove-opencode`), 2FA enabled, unique email (catch-all or `+alias`).
 2. **Repo access**: invite the machine account as **collaborator (write)** on
    VitaTrack and on each future repo; the invite is accepted from the machine
    account's email. Per-new-repo.
@@ -170,8 +173,9 @@ One-time steps, then a short per-new-repo checklist.
   cleanup note.
 - `FACTORY.md` step 7: amend wording from soft convention to cite the mechanical
   enforcement (rulesets + separate identity) and the runbook.
-- `docs/factory/technical-debt.yaml`: TD-010 moves to `closed` with `closed_in`
-  naming the accepting commit — only after the spec is green locally and in CI.
+- `docs/factory/technical-debt.yaml`: TD-010 moves to `closed` carrying the shipped
+  register's debt shape — `closed:` date plus a `note` (`closed_in` is the defect
+  shape, not the debt shape) — only after the spec is green locally and in CI.
 - `storymap.yaml`: **must** carry an `e2e: <new-spec-stem>::<title fragment>` ref —
   `StoryMapConsistencyTests` fails the build on any unreferenced `*.spec.js`. This
   is non-UI work with no in-app entry point, so the story needs a precedent-correct

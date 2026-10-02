@@ -8,8 +8,11 @@ browser — the agent must never perform them with human credentials.
 ## What this is
 
 Agent sessions authenticate to GitHub as the machine account
-(`awingrove-opencode`), the human's keyring token is unreachable from agent
-shells, and enforcement — the human approves every merge, the agent never
+(`awingrove-opencode`), and agent shells never *use* the human's keyring token:
+the plugin's `GH_TOKEN` plus an isolated `GH_CONFIG_DIR` carry the credential,
+deliberately reading the keyring from an agent shell is a DL-class incident,
+and `origin` must be HTTPS (an SSH remote authenticates with the human's SSH
+key — see Verify). Enforcement — the human approves every merge, the agent never
 deletes or force-pushes — is server-side (GitHub rulesets), not convention.
 The plugin at `.opencode/plugins/agent-identity.js` is OpenCode V2 shape
 (v2.0.21: default export with `ctx.shell.hook('create.before')`); it injects
@@ -61,6 +64,9 @@ GH_TOKEN="$(cat ~/.config/opencode/gh-agent-token)" gh api user   # → awingrov
 - With the PAT, attempt approve (on the machine account's own PR), merge to
   `main` without an independent approval, and branch delete — every attempt
   must be rejected with a 4xx.
+- `origin` must be HTTPS (`git remote -v`); an SSH remote authenticates with
+  the human's SSH key — the ruleset bypass actor — and defeats identity
+  isolation.
 - In a **new** OpenCode session, `echo $GH_TOKEN` prints the token. Plugins in
   `.opencode/plugins/` auto-load at startup: a running session does not see a
   newly added plugin, only new sessions do.

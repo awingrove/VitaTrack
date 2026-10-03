@@ -104,7 +104,7 @@ One-time steps, then a short per-new-repo checklist.
   it can never be committed. The human pastes the PAT once; the runbook documents
   rotation (replace file contents; no code change).
 - **Injection: project-level OpenCode plugin** at
-  `.opencode/plugins/agent-identity.js` in each repo. Files in that directory are
+  `.opencode/plugins/agent-identity.mjs` in each repo. Files in that directory are
   auto-loaded at startup (no config listing needed), so the plugin is version
   controlled, reviewable, and testable; the runbook tells future repos to copy it
   into `~/.config/opencode/plugins/` for global coverage. *(Amended after

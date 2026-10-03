@@ -4,7 +4,7 @@ const os = require('os');
 const path = require('path');
 
 // The plugin under test lives outside this suite's tree: repo-root .opencode/plugins/.
-const PLUGIN_PATH = path.resolve(__dirname, '../../../.opencode/plugins/agent-identity.js');
+const PLUGIN_PATH = path.resolve(__dirname, '../../../.opencode/plugins/agent-identity.mjs');
 
 const originalTokenFileEnv = process.env.AGENT_GH_TOKEN_FILE;
 const fixtureDirs = [];

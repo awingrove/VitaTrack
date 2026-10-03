@@ -32,7 +32,7 @@ the code-level rules live in `AGENTS.md` (root) and the per-project `AGENTS.md` 
 7. **Ship** — agent pushes the branch, opens the PR, and reports it ready with green
    checks. **The human approves and merges** — because GitHub mechanically **rejects**
    agent attempts to approve, merge, delete, or force-push: the agent session holds
-   its own machine identity (`.opencode/plugins/agent-identity.js`) and the repo's
+   its own machine identity (`.opencode/plugins/agent-identity.mjs`) and the repo's
    rulesets carry a human-only bypass (see `docs/factory/agent-identity.md`). Closing
    its own PRs is permitted. That approval is the last human review before the trust
    boundary (see Human gates).

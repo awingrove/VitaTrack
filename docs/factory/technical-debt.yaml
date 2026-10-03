@@ -542,7 +542,7 @@ closed:
       Shipped as a dedicated machine account `awingrove-opencode` with a classic PAT
       (`repo`,`workflow` — fine-grained PATs cannot write collaborator repos, a
       documented limitation live-verified as a 403 before switching), read per shell
-      creation by the OpenCode V2 plugin `.opencode/plugins/agent-identity.js`
+      creation by the OpenCode V2 plugin `.opencode/plugins/agent-identity.mjs`
       (fail-closed sentinel on a missing token file, never falls through to the human
       keyring). Server-side rulesets on all branches (deletion/force-push blocked,
       human-only bypass) and on `main` (required PR + approval + dismiss-stale +

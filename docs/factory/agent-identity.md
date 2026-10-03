@@ -14,7 +14,7 @@ deliberately reading the keyring from an agent shell is a DL-class incident,
 and `origin` must be HTTPS (an SSH remote authenticates with the human's SSH
 key — see Verify). Enforcement — the human approves every merge, the agent never
 deletes or force-pushes — is server-side (GitHub rulesets), not convention.
-The plugin at `.opencode/plugins/agent-identity.js` is OpenCode V2 shape
+The plugin at `.opencode/plugins/agent-identity.mjs` is OpenCode V2 shape
 (v2.0.21: default export with `ctx.shell.hook('create.before')`); it injects
 `GH_TOKEN`, the isolated agent `GH_CONFIG_DIR`, and the machine `GIT_AUTHOR_*`/`GIT_COMMITTER_*` identity into
 every shell a session runs, and fails closed to the sentinel
@@ -44,7 +44,7 @@ Human-only, in the browser, once per machine (steps a–e) and once per repo
 - **(d) Token file** — paste the PAT into `~/.config/opencode/gh-agent-token`
   (outside any repo, so it can never be committed), then `chmod 600` it.
 - **(e) Identity constants** — edit `AGENT_GIT_NAME` / `AGENT_GIT_EMAIL` in
-  `.opencode/plugins/agent-identity.js` to the machine account handle/email
+  `.opencode/plugins/agent-identity.mjs` to the machine account handle/email
   (shipped as `awingrove-opencode` /
   `awingrove-opencode@users.noreply.github.com`).
 - **(f) Rulesets** — repo Settings → Rules → Rulesets, **bypass actors = the
@@ -97,7 +97,7 @@ stderr at shell creation. The fix is restoring
 
 ## Per-new-repo checklist
 
-1. Copy `.opencode/plugins/agent-identity.js` to
+1. Copy `.opencode/plugins/agent-identity.mjs` to
    `~/.config/opencode/plugins/` (global coverage) or into the new repo's
    `.opencode/plugins/` (versioned with the repo).
 2. Invite the machine account as collaborator (write); accept from its email.

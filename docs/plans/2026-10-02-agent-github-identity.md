@@ -36,7 +36,7 @@
 ### Task 1: Agent identity plugin + unit tests
 
 **Files:**
-- Create: `.opencode/plugins/agent-identity.js`
+- Create: `.opencode/plugins/agent-identity.mjs`
 - Create: `e2e-tests/playwright/tests/agent-identity.spec.js` (plugin half only in this task)
 
 **Interfaces:**
@@ -66,9 +66,9 @@ test('PINS: picks up a rotated token file without a restart')
 - [x] **Step 2: Run the tests to verify they fail**
 
 Run: `cd e2e-tests/playwright && npx playwright test agent-identity -g "agent identity plugin"`
-Expected: FAIL — module `.opencode/plugins/agent-identity.js` not found.
+Expected: FAIL — module `.opencode/plugins/agent-identity.mjs` not found.
 
-- [x] **Step 3: Implement the plugin** in `.opencode/plugins/agent-identity.js`
+- [x] **Step 3: Implement the plugin** in `.opencode/plugins/agent-identity.mjs`
 
 ESM module, auto-loaded from this directory at OpenCode startup. Shape: `export const AgentIdentityPlugin = async () => ({ "shell.env": async (input, output) => { ... } })`. Behavior in the hook body: resolve token path from `process.env.AGENT_GH_TOKEN_FILE` or `path.join(os.homedir(), ".config/opencode/gh-agent-token")`; `readFileSync` + `.trim()`; on any read error set `output.env.GH_TOKEN = SENTINEL_TOKEN` and `console.error` one line naming the missing path and the runbook; otherwise set `output.env.GH_TOKEN` to the trimmed token. Always set the four `GIT_*` vars to the `AGENT_GIT_NAME` / `AGENT_GIT_EMAIL` constants. Export `SENTINEL_TOKEN` and the two identity constants (exported so tests and Task 4 compare against them). Read the token file **per hook invocation** (that is the rotation pickup; the file is tiny).
 
@@ -85,7 +85,7 @@ Expected: all specs pass or self-skip; `agent-identity.spec.js` contributes thre
 - [x] **Step 6: Commit**
 
 ```bash
-git add .opencode/plugins/agent-identity.js e2e-tests/playwright/tests/agent-identity.spec.js
+git add .opencode/plugins/agent-identity.mjs e2e-tests/playwright/tests/agent-identity.spec.js
 git commit -m "feat: agent identity plugin with fail-closed GH_TOKEN injection"
 ```
 
@@ -103,11 +103,11 @@ git commit -m "feat: agent identity plugin with fail-closed GH_TOKEN injection"
 - [x] **Step 1: Write the runbook** with exactly these sections:
 
 1. **What this is** — one paragraph: agent sessions authenticate as the machine account; the human's keyring is unreachable from agent shells; enforcement is server-side (rulesets), not convention. Link the spec.
-2. **One-time setup** — (a) create machine GitHub account (2FA, `+alias` email); (b) invite as collaborator (write) on this repo; (c) fine-grained PAT issued by the machine account **(landed as classic PAT, see runbook — fine-grained cannot write collaborator repos)**: all repositories the account can access, permissions **Contents RW, Pull requests RW, Workflows RW**, Metadata read, no admin, 1-year expiry; (d) paste token into `~/.config/opencode/gh-agent-token` (`chmod 600`); (e) edit `AGENT_GIT_NAME`/`AGENT_GIT_EMAIL` constants in `.opencode/plugins/agent-identity.js` to the machine account handle/email; (f) rulesets on the repo, **bypass actors = human account only**: `main` — require PR, ≥1 approving review, dismiss stale reviews, require approval from someone other than the last pusher, block force pushes, block deletions; all branches (`main`, `feature/**`, and the repo's other prefixes) — block deletions and force pushes.
+2. **One-time setup** — (a) create machine GitHub account (2FA, `+alias` email); (b) invite as collaborator (write) on this repo; (c) fine-grained PAT issued by the machine account **(landed as classic PAT, see runbook — fine-grained cannot write collaborator repos)**: all repositories the account can access, permissions **Contents RW, Pull requests RW, Workflows RW**, Metadata read, no admin, 1-year expiry; (d) paste token into `~/.config/opencode/gh-agent-token` (`chmod 600`); (e) edit `AGENT_GIT_NAME`/`AGENT_GIT_EMAIL` constants in `.opencode/plugins/agent-identity.mjs` to the machine account handle/email; (f) rulesets on the repo, **bypass actors = human account only**: `main` — require PR, ≥1 approving review, dismiss stale reviews, require approval from someone other than the last pusher, block force pushes, block deletions; all branches (`main`, `feature/**`, and the repo's other prefixes) — block deletions and force pushes.
 3. **Verify** — `gh api user` with the token returns the machine account; approve/merge/delete attempts with the token are rejected (4xx); `echo $GH_TOKEN` in a **new** OpenCode session prints the token (plugins load at startup — a running session does not see a new plugin).
 4. **Failure signature** — `gh`/`git push` 401 "Bad credentials" after a token-file problem means fail-closed fired; the fix is the token file, not new credentials.
 5. **Rotation** — replace file contents; next shell picks it up (no restart). Rotate the CI secret `AGENT_GH_TOKEN` in the same pass or the acceptance spec silently stops enforcing.
-6. **Per-new-repo checklist** — copy `.opencode/plugins/agent-identity.js` to `~/.config/opencode/plugins/` (or into the new repo's `.opencode/plugins/`), invite collaborator, apply both rulesets, verify (PAT reaches the new repo without re-issue).
+6. **Per-new-repo checklist** — copy `.opencode/plugins/agent-identity.mjs` to `~/.config/opencode/plugins/` (or into the new repo's `.opencode/plugins/`), invite collaborator, apply both rulesets, verify (PAT reaches the new repo without re-issue).
 7. **Probe cleanup** — `feature/td010-probe` accumulates one commit and one closed PR per acceptance run; human deletes it when it annoys (agent never can).
 
 - [x] **Step 2: Commit**
@@ -204,7 +204,7 @@ git commit -m "test: acceptance spec pinning GitHub-side agent identity enforcem
 Run: `dotnet test VitaTrack.sln --filter StoryMapConsistencyTests`
 Expected: PASS. If the fragment match fails, fix the story ref to match the spec title exactly — never the reverse.
 
-- [x] **Step 3: AGENTS.md — new "Agent GitHub identity" section** under the CLI & Git Workflow area: sessions authenticate as the machine account via `.opencode/plugins/agent-identity.js` (token file `~/.config/opencode/gh-agent-token`); fail-closed sentinel when the file is missing; agents may push feature branches and open PRs, never approve, merge, close, or delete branches — those are rejected server-side, so routing around a rejection is pointless; runbook `docs/factory/agent-identity.md` holds setup, rotation, and the per-new-repo checklist. Keep it to ~10 lines; no CI-derivable counts.
+- [x] **Step 3: AGENTS.md — new "Agent GitHub identity" section** under the CLI & Git Workflow area: sessions authenticate as the machine account via `.opencode/plugins/agent-identity.mjs` (token file `~/.config/opencode/gh-agent-token`); fail-closed sentinel when the file is missing; agents may push feature branches and open PRs, never approve, merge, close, or delete branches — those are rejected server-side, so routing around a rejection is pointless; runbook `docs/factory/agent-identity.md` holds setup, rotation, and the per-new-repo checklist. Keep it to ~10 lines; no CI-derivable counts.
 
 - [x] **Step 4: FACTORY.md step 7** — replace the soft-rule wording ("The human approves and merges. An agent never approves...") so it cites the mechanical enforcement: the human approves and merges because GitHub **rejects** agent attempts at approve/merge/delete (rulesets + separate identity — see `docs/factory/agent-identity.md`), and the gate-rejection rule (one rejection → fix named cause; second → stop and report) is now backed by identity, not just convention.
 

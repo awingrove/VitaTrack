@@ -90,6 +90,8 @@ jobs:
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
           LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
           LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          # Unset secret resolves to empty → agent-identity's GitHub half self-skips, same as the LLM_* trio.
+          AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
         run: ./test-e2e.sh
 
       - name: Upload Playwright report

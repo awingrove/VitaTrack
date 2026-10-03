@@ -30,9 +30,12 @@ the code-level rules live in `AGENTS.md` (root) and the per-project `AGENTS.md` 
 6. **Record** — update metrics, log escaped defects, and (for the pilot) write a Lessons
    Learnt section that gates rollout.
 7. **Ship** — agent pushes the branch, opens the PR, and reports it ready with green
-   checks. **The human approves and merges.** An agent never approves, merges, closes,
-   or force-drives a PR into `main` — that approval is the last human review before
-   the trust boundary (see Human gates).
+   checks. **The human approves and merges** — because GitHub mechanically **rejects**
+   agent attempts to approve, merge, delete, or force-push: the agent session holds
+   its own machine identity (`.opencode/plugins/agent-identity.mjs`) and the repo's
+   rulesets carry a human-only bypass (see `docs/factory/agent-identity.md`). Closing
+   its own PRs is permitted. That approval is the last human review before the trust
+   boundary (see Human gates).
 
 ## Human gates
 
@@ -51,7 +54,10 @@ because every one of them has been skipped at least once:
 **Gate-rejection rule:** a gate that rejects the work (branch protection, failing
 required check, declined push) is the system working, not an obstacle. One rejection
 → fix the named cause. A second rejection of the same gate → **stop and report to
-the human** — never hunt for another route around a gate.
+the human** — never hunt for another route around a gate. Since TD-010 the worst of
+these gates is identity-backed, not convention: approve/merge/delete rejections come
+from GitHub itself against the agent's credentials (`docs/factory/agent-identity.md`),
+so no retry or reroute changes the answer.
 
 ## Skills
 

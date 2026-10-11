@@ -4,7 +4,11 @@ const os = require('os');
 const path = require('path');
 
 // The plugin under test lives outside this suite's tree: repo-root .opencode/plugins/.
-const PLUGIN_PATH = path.resolve(__dirname, '../../../.opencode/plugins/agent-identity.mjs');
+// OpenCode's project-plugin loader picks up *.js only (DL-007), so the plugin is
+// agent-identity.js; Node needs ESM-by-extension to import it because
+// .opencode/package.json (type: module) is gitignored and absent on CI — hence the
+// temp *.mjs copy in loadInjection() below.
+const PLUGIN_PATH = path.resolve(__dirname, '../../../.opencode/plugins/agent-identity.js');
 
 const originalTokenFileEnv = process.env.AGENT_GH_TOKEN_FILE;
 const fixtureDirs = [];
@@ -22,7 +26,14 @@ function writeFixtureTokenFile(contents) {
 // hands back the registered hook, so what is exercised is the same path
 // OpenCode v2 invokes.
 async function loadInjection() {
-  const mod = await import(PLUGIN_PATH);
+  // DOCUMENTS: copy to a temp *.mjs before importing so CI's Node parses the
+  // module as ESM regardless of the (gitignored) .opencode/package.json; the
+  // content under test is byte-identical to the repo file.
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-identity-mod-'));
+  fixtureDirs.push(dir);
+  const target = path.join(dir, 'agent-identity.mjs');
+  fs.copyFileSync(PLUGIN_PATH, target);
+  const mod = await import(target);
   return mod;
 }
 

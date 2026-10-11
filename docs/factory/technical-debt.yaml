@@ -1096,3 +1096,29 @@ defects:
       not a gate. The transferable rule for the next agent: a comment being rewritten is a
       claim under review, and the mutation that checks it is to invert the sentence and
       re-run.
+
+  - id: DL-007
+    title: >-
+      `.mjs` rename silently disabled agent-identity injection in every session (2026-10-03 → 2026-10-11)
+    found: 2026-10-11
+    injection_stage: >-
+      2026-10-03 TD-010 hardening renamed the plugin `agent-identity.js` → `.mjs`
+      so CI's Node 20 would import it as ESM by extension. OpenCode v2.0.26's
+      project-plugin loader scans `.opencode/plugins/*.js` only — a `*.mjs` plugin
+      is silently never loaded — so identity injection (GH_TOKEN, isolated
+      GH_CONFIG_DIR, machine git author) stopped reaching any session; shells
+      authenticated to GitHub as the human account, the exact failure TD-010 was
+      built to prevent.
+    detection_stage: >-
+      factory-kit Phase 0 identity verification (fresh-session `gh api user`
+      resolved `awingrove` instead of the machine account), pinned by twin
+      .js/.mjs probe plugins — only the .js logged `loading plugin`. No gate
+      caught it for eight days: the acceptance spec imports the module directly,
+      so it tested the file, not the loading of it.
+    systemic_gap: >-
+      nothing asserted that the plugin actually loads — the runbook's Verify rule
+      checked credentials and file shape, not loadability, and the spec's import
+      bypasses the loader. Closed in `docs/factory/agent-identity.md` (the file
+      must stay `.js`; ESM via `.opencode/package.json` type: module locally and
+      a temp `*.mjs` copy in the spec on CI) and in the plugin header comment.
+    closed_in: docs/factory/agent-identity.md

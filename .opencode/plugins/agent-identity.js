@@ -3,6 +3,15 @@
 // shell an OpenCode session runs. Fail-closed sentinel and setup runbook:
 // docs/factory/agent-identity.md
 //
+// DOCUMENTS: this file is `.js`, not `.mjs`, because OpenCode v2.0.26's
+// project-plugin loader scans .opencode/plugins/*.js only — a *.mjs plugin is
+// silently never loaded (verified 2026-10-11 with twin .js/.mjs probe plugins;
+// the 2026-10-03 rename to .mjs had disabled identity injection in every
+// session until DL-007). Node still parses the file as ESM here because
+// .opencode/package.json declares "type": "module" — but that file is
+// gitignored, so on CI the acceptance spec imports this module via a temp
+// *.mjs copy (ESM-by-extension) instead of the repo path.
+//
 // PINS: both plugin entrypoints call the one shared injection body, so the V1
 // and V2 shapes cannot drift — the lockstep test "PINS: V1 shell.env hook
 // injects the identical env contract" in agent-identity.spec.js pins the

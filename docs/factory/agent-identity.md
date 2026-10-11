@@ -14,13 +14,19 @@ deliberately reading the keyring from an agent shell is a DL-class incident,
 and `origin` must be HTTPS (an SSH remote authenticates with the human's SSH
 key — see Verify). Enforcement — the human approves every merge, the agent never
 deletes or force-pushes — is server-side (GitHub rulesets), not convention.
-The plugin at `.opencode/plugins/agent-identity.mjs` is OpenCode V2 shape
+The plugin at `.opencode/plugins/agent-identity.js` is OpenCode V2 shape
 (v2.0.21: default export with `ctx.shell.hook('create.before')`); it injects
 `GH_TOKEN`, the isolated agent `GH_CONFIG_DIR`, and the machine `GIT_AUTHOR_*`/`GIT_COMMITTER_*` identity into
 every shell a session runs, and fails closed to the sentinel
 `__AGENT_TOKEN_FILE_MISSING_see_docs/factory/agent-identity.md` when the token
 file is missing, unreadable, or empty. Spec:
 `docs/superpowers/specs/2026-10-02-agent-github-identity-design.md`.
+**The file must stay `.js`, not `.mjs`** (DL-007): OpenCode v2.0.26's
+project-plugin loader scans `.opencode/plugins/*.js` only — a `*.mjs` plugin
+is silently never loaded, which disabled injection in every session from the
+2026-10-03 rename until DL-007's fix. ESM for Node comes from
+`.opencode/package.json` `type: module` (gitignored, local convenience) and,
+on CI, from the acceptance spec's temp `*.mjs` copy.
 
 ## One-time setup
 
@@ -44,7 +50,7 @@ Human-only, in the browser, once per machine (steps a–e) and once per repo
 - **(d) Token file** — paste the PAT into `~/.config/opencode/gh-agent-token`
   (outside any repo, so it can never be committed), then `chmod 600` it.
 - **(e) Identity constants** — edit `AGENT_GIT_NAME` / `AGENT_GIT_EMAIL` in
-  `.opencode/plugins/agent-identity.mjs` to the machine account handle/email
+  `.opencode/plugins/agent-identity.js` to the machine account handle/email
   (shipped as `awingrove-opencode` /
   `awingrove-opencode@users.noreply.github.com`).
 - **(f) Rulesets** — repo Settings → Rules → Rulesets, **bypass actors = the
@@ -97,7 +103,7 @@ stderr at shell creation. The fix is restoring
 
 ## Per-new-repo checklist
 
-1. Copy `.opencode/plugins/agent-identity.mjs` to
+1. Copy `.opencode/plugins/agent-identity.js` to
    `~/.config/opencode/plugins/` (global coverage) or into the new repo's
    `.opencode/plugins/` (versioned with the repo).
 2. Invite the machine account as collaborator (write); accept from its email.

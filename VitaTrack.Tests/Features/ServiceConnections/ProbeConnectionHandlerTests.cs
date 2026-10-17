@@ -159,6 +159,26 @@ public class ProbeConnectionHandlerTests : SqliteTestBase
         Assert.AreEqual(0, (await _repository.GetAllAsync()).Count, "a probe with nothing to probe must not write a row");
     }
 
+    [TestMethod]
+    public async Task ProbeAsync_VerifiedProbe_WhenModelIsUnset_SelectsPreferredOrFirstCatalogModel()
+    {
+        var firstId = await SaveAsync();
+        await Handler(Catalog("deepseek-v4.1-flash", "glm-5.3-flash", "kimi-k3")).ProbeAsync();
+        Assert.AreEqual("glm-5.3-flash", (await ActiveAsync()).Model);
+
+        // Deleted rather than reconnected: a blank-model reconnect carries the previous
+        // row's Model forward (HandleAsync_Reconnect_PreservesTheExistingModel), so it
+        // would arrive at the probe already named and the auto-select would not fire.
+        await _repository.DeleteAsync(firstId);
+        await SaveAsync();
+        await Handler(Catalog("stub-model-a", "stub-model-b")).ProbeAsync();
+        Assert.AreEqual("stub-model-a", (await ActiveAsync()).Model);
+
+        await _save.HandleAsync(new ConnectServiceRequest { BaseUrl = BaseUrl, ApiKey = ApiKey, Model = "custom-model" });
+        await Handler(Catalog("glm-5.3-flash", "stub-model-a")).ProbeAsync();
+        Assert.AreEqual("custom-model", (await ActiveAsync()).Model);
+    }
+
     private static ModelCatalog Catalog(params string[] models) => new(models, true);
 
     private ProbeConnectionHandler Handler(ModelCatalog catalog)

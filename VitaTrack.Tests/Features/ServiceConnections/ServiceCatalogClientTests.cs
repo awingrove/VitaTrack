@@ -142,7 +142,30 @@ public class ServiceCatalogClientTests
 
         var uri = handler.LastRequest!.RequestUri!;
         Assert.IsTrue(uri.IsAbsoluteUri, "the request URI is absolute: no HttpClient.BaseAddress is involved");
-        Assert.AreEqual("http://h/v1/v1/models", uri.ToString());
+        Assert.AreEqual("http://h/v1/models", uri.ToString());
+    }
+
+    [TestMethod]
+    public async Task ListModelsAsync_NormalizesTrailingVersionAndOpenAiSegments()
+    {
+        string[] inputs =
+        [
+            "https://opencode.ai/inference/go",
+            "https://opencode.ai/inference/go/",
+            "https://opencode.ai/inference/go/v1",
+            "https://opencode.ai/inference/go/openai",
+            "https://opencode.ai/inference/go/openai/v1",
+        ];
+
+        foreach (var input in inputs)
+        {
+            var handler = new RecordingHandler(HttpStatusCode.OK, CatalogBody);
+            await Client(handler).ListModelsAsync(Connection(input));
+            Assert.AreEqual(
+                "https://opencode.ai/inference/go/v1/models",
+                handler.LastRequest!.RequestUri!.ToString(),
+                $"input '{input}' should normalize to the gateway root");
+        }
     }
 
     [TestMethod]

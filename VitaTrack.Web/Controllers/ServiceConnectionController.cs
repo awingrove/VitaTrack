@@ -85,8 +85,8 @@ public partial class ServiceConnectionController(
     }
 
     /// <summary>What the connect form shows. Each field takes the typed value if there is
-    /// one, else what is already saved, so a rejected submit never silently swaps the
-    /// user's half-typed URL for the saved one — they could not tell which value the
+    /// one, else what is already saved, else the descriptor's default — so a rejected submit
+    /// never silently swaps the user's half-typed URL for the saved one — they could not tell which value the
     /// form was about to save.
     /// <para>
     /// The key is never one of those: it comes back empty on every path, including the
@@ -95,13 +95,18 @@ public partial class ServiceConnectionController(
     /// accident of the control type, not a rule of this code. Delete this line before
     /// ever putting the key back.
     /// </para></summary>
-    private static ConnectServiceRequest PrefilledForm(ConnectServiceRequest form, ServiceConnection? active) => new()
+    private static ConnectServiceRequest PrefilledForm(ConnectServiceRequest form, ServiceConnection? active)
     {
-        Service = string.IsNullOrWhiteSpace(form.Service) ? active?.Service ?? form.Service : form.Service,
-        BaseUrl = string.IsNullOrWhiteSpace(form.BaseUrl) ? active?.BaseUrl ?? string.Empty : form.BaseUrl,
-        ApiKey = string.Empty,
-        Model = string.IsNullOrWhiteSpace(form.Model) ? active?.Model : form.Model,
-    };
+        var service = string.IsNullOrWhiteSpace(form.Service) ? active?.Service ?? form.Service : form.Service;
+        var fallbackUrl = active?.BaseUrl ?? ServiceDescriptorRegistry.Find(service)?.DefaultBaseUrl ?? string.Empty;
+        return new()
+        {
+            Service = service,
+            BaseUrl = string.IsNullOrWhiteSpace(form.BaseUrl) ? fallbackUrl : form.BaseUrl,
+            ApiKey = string.Empty,
+            Model = string.IsNullOrWhiteSpace(form.Model) ? active?.Model : form.Model,
+        };
+    }
 
     /// <summary>Everything but the last few characters. A key no longer than that is
     /// masked whole — showing its last four would be showing all of it.</summary>

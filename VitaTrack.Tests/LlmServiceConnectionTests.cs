@@ -153,7 +153,7 @@ public class LlmServiceConnectionTests
         Assert.AreEqual($"Bearer {LlmTestData.ApiKey}",
             completion.SentRequest().Headers.GetValues("Authorization").Single(),
             "the key that went out is the one on the resolved connection");
-        Assert.AreEqual("https://svc.example/v1/v1/chat/completions",
+        Assert.AreEqual("https://svc.example/v1/chat/completions",
             completion.SentRequestUri().ToString(),
             "the host that was called is the resolved connection's, not a configured default");
         Assert.AreEqual("chosen-model", completion.SentBody().GetProperty("model").GetString(),

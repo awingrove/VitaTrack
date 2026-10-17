@@ -83,7 +83,7 @@ Respond with ONLY this JSON structure (no markdown, no code fences):
 For each nutrient found on the label, extract:
 1. genericName - the common nutrient name (e.g., 'Vitamin C', 'Zinc', 'Magnesium')
 2. specificForm - the specific chemical form (e.g., 'Ascorbic Acid', 'Zinc Picolinate', 'Magnesium Glycinate')
-3. dosage - the amount per serving as shown on label (e.g., '500mg', '15mg', '1000 IU')
+3. dosage - a single number and unit per serving using ONLY one of: mg, mcg, µg, g, ml, tsp, tbsp, tab, IU (e.g., '500mg', '15µg', '1000 IU'). If the label lists multiple equivalent units (such as both IU and µg/mg) or qualifiers (such as 'Retinol Equivalent' or 'RE'), output ONLY one number and unit (e.g., '500µg', never '1667iu 500µg' or '500µg RE').
 4. unit (optional) - the unit if separable (e.g., 'mg', 'mcg', 'IU')
 5. amountPerServing (optional) - numeric value only (e.g., 500, 15, 1000)
 

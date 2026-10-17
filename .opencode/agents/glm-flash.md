@@ -22,7 +22,9 @@ reading list. Follow its execution order, gate commands, and hard rules exactly.
 
 - NEVER weaken a guardrail, test, threshold, or manifest to make it pass. If a test
   fails, fix the code or the slice — not the test. Editing a test's *assertions* is
-  forbidden; editing `using` lines and namespaces after file moves is expected.
+  forbidden EXCEPT where the briefing explicitly mandates a contract change (e.g.
+  report records re-typed) — the briefing names those tests and the semantics to
+  preserve; editing `using` lines and namespaces after file moves is expected.
 - NEVER commit with `--no-verify`. NEVER push to `main`. Push only the branch the
   briefing names.
 - No debug scaffolding in commits (temporary logging, throwaway scripts, probe code).

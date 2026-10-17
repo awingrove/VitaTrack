@@ -173,12 +173,11 @@ public class ServiceDescriptorRegistryTests
     }
 
     [TestMethod]
-    public void OpenCodeDescriptor_DefaultBaseUrl_IsEmpty()
+    public void OpenCodeDescriptor_DefaultBaseUrl_IsOpenCodeGoGateway()
     {
         var descriptor = ServiceDescriptorRegistry.Find("opencode");
 
         Assert.IsNotNull(descriptor);
-        Assert.AreEqual(string.Empty, descriptor!.DefaultBaseUrl,
-            "the gateway URL is the user's to supply; assuming one would silently point the app at the wrong host");
+        Assert.AreEqual(ServiceDescriptorRegistry.OpenCodeDefaultBaseUrl, descriptor!.DefaultBaseUrl);
     }
 }

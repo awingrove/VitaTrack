@@ -46,11 +46,11 @@ elif [[ -z "${LLM_API_KEY:-}" || -z "${LLM_BASE_URL:-}" || -z "${LLM_MODEL:-}" ]
         # dropping it would change nothing observable. It is there so the next person who
         # adds a prompt does not have to rediscover the question. That is not a cosmetic
         # bug: this is the only place the base-URL rule is taught.
-        echo "Provider base URL, gateway root with no /v1 on the end (e.g. https://gateway.example):"
+        echo "Provider base URL, gateway root with no /v1 on the end (e.g. https://opencode.ai/inference/go):"
         read -rp "> " LLM_BASE_URL
     fi
     if [[ -z "${LLM_MODEL:-}" ]]; then
-        echo "Model that provider expects (e.g. kimi-k2.7-code):"
+        echo "Model that provider expects (e.g. glm-5.3-flash):"
         read -rp "> " LLM_MODEL
     fi
     export LLM_API_KEY LLM_BASE_URL LLM_MODEL

@@ -347,6 +347,20 @@ the connect that discovered its models. Reasoning effort is always a
 `form-select` of the registry's fixed seven values, with help text saying not every
 service uses one.
 
+The connect form arrives prefilled, not blank: its `Base URL` takes the shipped
+descriptor's `DefaultBaseUrl` (`https://opencode.ai/inference/go`), the gateway
+root of the one service that ships, and `ServiceEndpoint.Resolve` normalizes
+trailing `/v1` and `/openai` segments off whatever is saved — a URL pasted out of
+a provider README with `/v1` or `/openai/v1` still attached lands on the same
+root, though the page shows what was typed rather than the normalized form. And
+when a probe verifies a connection whose `Model` was left blank,
+`ProbeConnectionHandler` auto-selects `glm-5.3-flash` (the model the gateway
+lists by default when it lists it, else the first model in the catalog) so the
+connection is immediately ready for enrichment without a second submit. That is
+a first-connect behaviour, not a steady-state override: a reconnect that leaves
+the model blank keeps the model already saved, because `SaveConnectionHandler`
+carries the replaced row's `Model` forward.
+
 Both forms carry `asp-action`/`asp-controller`/`method` *as well as* `hx-post`.
 htmx is the enhancement, not the mechanism: a form carrying only `hx-post`
 degrades to a GET of the current URL, which discards the user's choice with no

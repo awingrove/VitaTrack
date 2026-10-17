@@ -72,7 +72,7 @@ public class LlmClientRequestTests
         await client.PostChatAsync("s", "u", LlmTestData.Connection("https://two.example/v1"), LlmTestData.Settings());
 
         Assert.AreEqual(
-            "https://two.example/v1/v1/chat/completions",
+            "https://two.example/v1/chat/completions",
             handler.SentRequestUri().ToString(),
             "the connection's host wins over the pooled client's BaseAddress");
     }

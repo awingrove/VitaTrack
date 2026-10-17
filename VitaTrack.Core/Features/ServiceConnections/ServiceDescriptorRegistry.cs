@@ -23,6 +23,17 @@ public static class ServiceDescriptorRegistry
     /// the descriptor's business — it is set on the request instead.</summary>
     public const string UserAgent = "VitaTrack/1.0 (+https://github.com/awingrove/VitaTrack)";
 
+    /// <summary>The gateway root the shipped descriptor prefills into the connect form,
+    /// so a user pasting only the key does not have to know the URL. <see
+    /// cref="ServiceEndpoint.Resolve"/> strips trailing <c>/v1</c> and <c>/openai</c>
+    /// segments, so the pasted-with-suffix forms land on this same root.</summary>
+    public const string OpenCodeDefaultBaseUrl = "https://opencode.ai/inference/go";
+
+    /// <summary>The model auto-selected on a verified probe when the connection named
+    /// none: the shipped default when the catalog lists it, with the first listed model
+    /// as the fallback (see <see cref="ProbeConnectionHandler"/>).</summary>
+    public const string DefaultCatalogModel = "glm-5.3-flash";
+
     /// <summary>The session id for this process: every request the app makes in a run
     /// carries it, and a restart begins a new one. Public because the singleton the
     /// completion client takes must be this same value — a second id generated
@@ -32,7 +43,7 @@ public static class ServiceDescriptorRegistry
 
     public static IReadOnlyList<ServiceDescriptor> All { get; } =
     [
-        new ServiceDescriptor(OpenCodeServiceId, "OpenCode", string.Empty, OpenCodeHeaders)
+        new ServiceDescriptor(OpenCodeServiceId, "OpenCode", OpenCodeDefaultBaseUrl, OpenCodeHeaders)
     ];
 
     /// <summary>The variant vocabulary, exactly: what <c>reasoning_effort</c> accepts

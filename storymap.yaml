@@ -10,7 +10,7 @@
 meta:
   project: VitaTrack
   description: Vitamin and Supplement Tracking Application
-  last_updated: 2026-10-02
+  last_updated: 2026-10-17
 
 activities:
   - name: Manage Family Members
@@ -384,6 +384,7 @@ activities:
             priority: medium
             tests:
               - unit: LlmServiceTests.EnrichSupplementAsync_ExtractsNutrients_WhenApiReturnsValidResponse
+              - unit: SupplementLabelParserTests.ExtractNutrientsAsync_PromptSpecifiesSingleRecognizedDosageUnit
               - e2e: supplement-llm-integration::should extract nutrients from a real product URL using LLM
               - e2e: service-connection::should post the chosen model and reasoning effort to the connection when enriching
           - title: Extract blends with nested children from product labels
@@ -525,6 +526,7 @@ activities:
               - unit: SaveConnectionHandlerTests.HandleAsync_SetsVerificationToUnverified_BecauseNoProbeExistsYet
               - unit: ServiceConnectionControllerTests.Index_WithNoConnection_RendersTheConnectForm
               - unit: ServiceConnectionControllerTests.Connect_ValidRequest_SavesAndRedirectsToIndex
+              - unit: ServiceDescriptorRegistryTests.OpenCodeDescriptor_DefaultBaseUrl_IsOpenCodeGoGateway
               - e2e: service-connection::should save a connection from the Settings page and show it after reload
           - title: Show the saved key masked, never in full
             status: done
@@ -583,6 +585,7 @@ activities:
               - unit: ServiceConnectionControllerCancellationTests.Connect_ProbesWithTheTokenTheActionWasGiven_NotAFreshOne
               - unit: ServiceConnectionControllerProbeTests.Connect_ValidProbe_StoresTheVerificationItReports
               - unit: ServiceConnectionControllerTests.Index_DoesNotProbe_TheServiceOnEveryPageLoad
+              - unit: ServiceCatalogClientTests.ListModelsAsync_NormalizesTrailingVersionAndOpenAiSegments
               - e2e: service-connection::should verify a connection against a service that lists its models, and pick one of them
               - e2e: service-connection::should probe the same path for either form of the base URL trailing slash
               - e2e: service-connection::should leave a connection unverified when the service answers with nothing usable, and still save it
@@ -611,6 +614,7 @@ activities:
             tests:
               - unit: ServiceConnectionControllerProbeTests.Connect_ValidProbe_RendersModelPickerWithCatalogModels
               - unit: ServiceConnectionControllerTests.Index_WithActiveConnection_RendersTheModelPicker
+              - unit: ProbeConnectionHandlerTests.ProbeAsync_VerifiedProbe_WhenModelIsUnset_SelectsPreferredOrFirstCatalogModel
               - e2e: service-connection::should save a model and reasoning effort from the picker, then disconnect
               - e2e: service-connection::should verify a connection against a service that lists its models, and pick one of them
               - e2e: service-connection::should post the chosen model and reasoning effort to the connection when enriching

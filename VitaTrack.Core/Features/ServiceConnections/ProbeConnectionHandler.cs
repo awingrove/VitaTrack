@@ -49,6 +49,9 @@ public class ProbeConnectionHandler(
 
         var stamped = connection with
         {
+            Model = string.IsNullOrWhiteSpace(connection.Model)
+                ? DefaultModelFromCatalog(catalog)
+                : connection.Model,
             Verification = catalog.Verified ? ServiceConnection.Verified : ServiceConnection.Unverified,
             // Cleared on the unverified path rather than left in place: the pair is read
             // together everywhere, and a stale VerifiedAt beside an unverified flag is a
@@ -60,5 +63,20 @@ public class ProbeConnectionHandler(
         return id == IServiceConnectionRepository.NoRowWritten
             ? ProbeConnectionResult.Failed(StampFailed)
             : new ProbeConnectionResult(catalog, null);
+    }
+
+    /// <summary>The model to record when the user left the field blank: the shipped
+    /// default when the verified catalog lists it, else the first model the service
+    /// named. Null when the probe did not verify or listed nothing — an unverified
+    /// connection has no catalog to choose from, and inventing a model nobody offered
+    /// would spend the user's requests against a guess.</summary>
+    private static string? DefaultModelFromCatalog(ModelCatalog catalog)
+    {
+        if (!catalog.Verified || catalog.Models.Count == 0)
+            return null;
+
+        return catalog.Models.FirstOrDefault(
+                   m => string.Equals(m, ServiceDescriptorRegistry.DefaultCatalogModel, StringComparison.OrdinalIgnoreCase))
+               ?? catalog.Models[0];
     }
 }

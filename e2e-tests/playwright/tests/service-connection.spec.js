@@ -61,6 +61,10 @@ test.describe.serial('Service Connection', () => {
     await expect(page.locator('h2')).toHaveText('Settings');
     await screenshot(page, testInfo, 'service-connection-empty');
 
+    // The empty page's connect form prefills the shipped descriptor's default gateway
+    // root, so a user pasting only the key does not have to know the URL.
+    await expect(page.getByLabel('Base URL')).toHaveValue('https://opencode.ai/inference/go');
+
     const baseUrl = 'https://api.example.com';
     const apiKey = 'sk-tracer-abcd1234';
 
@@ -511,34 +515,39 @@ test.describe.serial('Service Connection', () => {
   });
 
   test('should probe the same path for either form of the base URL trailing slash', async ({ page }) => {
-    // ServiceEndpoint promises the two slash forms collapse to one URI, and a user types
-    // both — a pasted gateway URL usually arrives with its trailing slash. A
-    // form-sensitive combine would send "//v1/models" to one and "/v1/models" to the
-    // other, and the failure would depend on the typo.
+    // ServiceEndpoint collapses the trailing-slash, trailing-/v1 and trailing-/openai
+    // forms onto one gateway root, and a user pastes all of them — a URL copied out of
+    // a provider README often arrives with /v1 or /openai/v1 still attached. A
+    // form-sensitive combine would send "//v1/models" or a doubled version segment to
+    // one form and not the others, and the failure would depend on the typo.
     //
-    // The two forms are the origin itself and the origin with a slash, which is the
-    // ambiguity that reaches the served path. A base URL carrying its own "/v1" is a
-    // different question and not this test: the app appends its own "v1/models", so that
-    // base asks for "/v1/v1/models" and the stub answers 404. The first draft of this
-    // test used that base and failed on an unverified badge — which is the stub's 404
-    // doing its job, and the reason the negative case below is a real observation
-    // rather than an assumption.
+    // The /v1 form is the discriminating one (the case TD-025 recorded): the app appends
+    // its own "v1/models", so only normalization stops the /v1 paste asking for
+    // /v1/v1/models, which the stub answers 404. The first draft of this test carried
+    // only the two slash forms, and a /v1 paste failed on an unverified badge — the
+    // stub's 404 doing its job until the question got its decision and this loop
+    // grew the two normalized forms.
     const service = await startStub();
     const apiKey = 'sk-stub-slash-1234';
 
     await page.goto('/ServiceConnection/Index');
-    for (const baseUrl of [service.baseUrl, `${service.baseUrl}/`]) {
+    for (const baseUrl of [service.baseUrl, `${service.baseUrl}/`, `${service.baseUrl}/v1`, `${service.baseUrl}/openai/v1`]) {
       await connectViaForm(page, baseUrl, apiKey, 'verified');
       // The user-visible half of the promise too: the same two models, in the same
-      // order, from a base URL that differs only in one character.
+      // order, from a base URL that differs only in its suffix.
       await expect(page.getByLabel('Model', { exact: true }).locator('option'))
         .toHaveText(['stub-model-a', 'stub-model-b']);
     }
 
-    // Both requests, exactly, in order, and neither of them doubled or truncated. The
+    // All four requests, exactly, in order, and none of them doubled or truncated. The
     // stub answers 404 for a path it does not serve, so a wrong URI would have shown
     // up as an unverified badge above rather than as a silently accepted 404.
-    expect(service.requests.map(request => request.path)).toEqual(['/v1/models', '/v1/models']);
+    expect(service.requests.map(request => request.path)).toEqual([
+      '/v1/models',
+      '/v1/models',
+      '/v1/models',
+      '/v1/models',
+    ]);
   });
 
   test('should leave a connection unverified when the service answers with nothing usable, and still save it', async ({ page }, testInfo) => {
@@ -691,6 +700,11 @@ test.describe.serial('Service Connection', () => {
 
     await page.goto('/ServiceConnection/Index');
     await connectViaForm(page, service.baseUrl, apiKey, 'verified');
+    // The fresh connect arrived with Model (optional) blank — the test above
+    // disconnected, so nothing was carried forward into the form — and the verified
+    // probe auto-selected the first catalog model and saved it. The picker below
+    // overrides it with stub-model-b, which is why this reads the saved state now.
+    await expect(page.locator('#connection-state table')).toContainText('stub-model-a');
 
     // The picker's dropdown, not the free-text field: `selectOption` throws on anything
     // that is not a <select>, so a probe that stopped listing models fails here rather

@@ -35,7 +35,7 @@ public class ServiceConnectionControllerTests
 
         Assert.IsNull(model.Saved, "with nothing saved there is no saved state to render");
         Assert.IsNotNull(model.Form);
-        Assert.AreEqual(string.Empty, model.Form.BaseUrl);
+        Assert.AreEqual(ServiceDescriptorRegistry.OpenCodeDefaultBaseUrl, model.Form.BaseUrl);
         Assert.IsNull(model.ModelPicker, "there is nothing to pick a model for before a connection exists");
     }
 

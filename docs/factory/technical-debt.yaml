@@ -297,55 +297,6 @@ open:
       coverage is the e2e spec, which creates its connection through the UI rather
       than reading a seed row.
 
-  - id: TD-025
-    title: >-
-      Should the app normalise a base URL that already ends in `/v1`? Both answers are
-      defensible and the product has deliberately picked neither
-    where: >-
-      `VitaTrack.Core/Features/ServiceConnections/ServiceEndpoint.cs`
-      (`ServiceEndpoint.Resolve`),
-      `VitaTrack.Web/Views/ServiceConnection/_ConnectForm.cshtml`
-    what: >-
-      `ServiceEndpoint.Resolve` appends its own `v1/models` and the connect form says so,
-      so a user who pastes the base URL out of a provider's README — which overwhelmingly
-      reads `https://host/v1` — gets `https://host/v1/v1/models`, a 404, and a connection
-      saved as `unverified`. The completion then posts to `/v1/v1/chat/completions` and
-      404s as well, so enrichment writes no nutrient rows at all. The app now *reports*
-      the state truthfully: the unverified note and the badge `title` each name three of
-      the causes the app cannot tell apart, and the e2e pins both strings. "Three of",
-      not "all three": the note names an endpoint with no model list, a base URL the
-      service does not serve, and a rejected key, but a refused connection, a timeout and
-      a 2xx whose body is not a readable catalog all reach the same state as well
-      (`ServiceCatalogClient` answers `ModelCatalog.Unverified` for a non-2xx, for an
-      empty or wholly unusable catalog, and from its catch-all), so the honest count is
-      **at least** three and the e2e's own cases (a) no model list served, (b) a base URL
-      the service does not serve and (c) a refused connection are three of them. It does
-      not prevent the case, and whether it should is open. Two branches: never rewrite a
-      typed URL and say so in the form's help, or strip a trailing `/v1` before appending.
-    interest: >-
-      **Both branches are reasonable, which is exactly why this may not be settled in
-      passing.** Never rewriting is defensible because the URL is the user's own, and a
-      gateway that wants `/v1` inside its own base is misconfigured against
-      `ServiceEndpoint`'s contract — rewriting it would paper over a real
-      misconfiguration. Stripping is defensible because OpenAI-compatible gateways
-      overwhelmingly serve `{root}/v1/...` while the value a user has to hand is the one
-      printed in the README, so "never rewrite" makes the most common paste on the
-      internet fail quietly. The cost of stripping is that it silently changes the request
-      target and would break a real, if rare, service that genuinely lives at
-      `{root}/v1/v1/...`. The decision belongs to a human specifically because it changes
-      what the app does with a value the user typed; a fix round whose scope was copy and
-      gates is the wrong place to answer it, and a behaviour change hidden inside a copy
-      fix is the worst available outcome.
-    paydown: >-
-      take the decision in an ADR — appending a new document under `docs/adr/`, never
-      editing an existing one — or as a `DESIGN.md` amendment, and land the e2e for
-      whichever branch is chosen in the same change. The discriminating test is a spec
-      that types `{stub}/v1` into the connect form and asserts the path the stub
-      **recorded**; today nothing pins that, which is why the case can only be handled by
-      copy. Do not change `ServiceEndpoint.Resolve` itself without that record: its
-      URI-building is already unit-pinned, and a rewrite there would break those pins
-      while the design question it answers is still open.
-
   - id: TD-028
     title: >-
       A superseded API key stays in `ServiceConnections` forever, and the product has
@@ -517,6 +468,63 @@ open:
       a ledger field nothing renders is the TD-020 shape.
 
 closed:
+  - id: TD-025
+    title: >-
+      Should the app normalise a base URL that already ends in `/v1`? Both answers are
+      defensible and the product has deliberately picked neither
+    where: >-
+      `VitaTrack.Core/Features/ServiceConnections/ServiceEndpoint.cs`
+      (`ServiceEndpoint.Resolve`),
+      `VitaTrack.Web/Views/ServiceConnection/_ConnectForm.cshtml`
+    what: >-
+      `ServiceEndpoint.Resolve` appends its own `v1/models` and the connect form says so,
+      so a user who pastes the base URL out of a provider's README — which overwhelmingly
+      reads `https://host/v1` — gets `https://host/v1/v1/models`, a 404, and a connection
+      saved as `unverified`. The completion then posts to `/v1/v1/chat/completions` and
+      404s as well, so enrichment writes no nutrient rows at all. The app now *reports*
+      the state truthfully: the unverified note and the badge `title` each name three of
+      the causes the app cannot tell apart, and the e2e pins both strings. "Three of",
+      not "all three": the note names an endpoint with no model list, a base URL the
+      service does not serve, and a rejected key, but a refused connection, a timeout and
+      a 2xx whose body is not a readable catalog all reach the same state as well
+      (`ServiceCatalogClient` answers `ModelCatalog.Unverified` for a non-2xx, for an
+      empty or wholly unusable catalog, and from its catch-all), so the honest count is
+      **at least** three and the e2e's own cases (a) no model list served, (b) a base URL
+      the service does not serve and (c) a refused connection are three of them. It does
+      not prevent the case, and whether it should is open. Two branches: never rewrite a
+      typed URL and say so in the form's help, or strip a trailing `/v1` before appending.
+    interest: >-
+      **Both branches are reasonable, which is exactly why this may not be settled in
+      passing.** Never rewriting is defensible because the URL is the user's own, and a
+      gateway that wants `/v1` inside its own base is misconfigured against
+      `ServiceEndpoint`'s contract — rewriting it would paper over a real
+      misconfiguration. Stripping is defensible because OpenAI-compatible gateways
+      overwhelmingly serve `{root}/v1/...` while the value a user has to hand is the one
+      printed in the README, so "never rewrite" makes the most common paste on the
+      internet fail quietly. The cost of stripping is that it silently changes the request
+      target and would break a real, if rare, service that genuinely lives at
+      `{root}/v1/v1/...`. The decision belongs to a human specifically because it changes
+      what the app does with a value the user typed; a fix round whose scope was copy and
+      gates is the wrong place to answer it, and a behaviour change hidden inside a copy
+      fix is the worst available outcome.
+    closed: 2026-10-17
+    note: >-
+      Closed by the second branch, decided by the human at the design-before-code gate.
+      `ServiceEndpoint.Resolve` now strips a trailing `/v1` and `/openai` segment before
+      appending `v1/models` or `v1/chat/completions` — applied in that order, so an
+      `/openai/v1` paste strips both — and the shipped `opencode` descriptor prefills
+      `https://opencode.ai/inference/go` as `DefaultBaseUrl`, so pasting only the key
+      already lands on a working gateway root. Because a hand-typed URL can still miss, a
+      verified probe whose connection has no `Model` auto-selects `glm-5.3-flash`
+      (`ServiceDescriptorRegistry.DefaultCatalogModel`), or `catalog.Models[0]` when the
+      catalog does not list it, so the connection is immediately ready for enrichment; a
+      blank-model reconnect keeps the saved model, because `SaveConnectionHandler`
+      carries `Model` forward. The stripping cost named in `interest` is accepted and
+      taught: the base URL is framed as the gateway root in the test-e2e prompt text, and
+      the decision is pinned rather than copy — by
+      `ServiceCatalogClientTests.ListModelsAsync_NormalizesTrailingVersionAndOpenAiSegments`
+      on the unit side, and by the e2e loop that types the bare root, the trailing-slash,
+      `/v1` and `/openai/v1` forms and reads the recorded paths off the stub.
   - id: TD-010
     title: >-
       Agent and human share one GitHub identity; PR approval not machine-enforced

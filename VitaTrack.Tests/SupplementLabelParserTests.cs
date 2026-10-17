@@ -123,6 +123,31 @@ public class SupplementLabelParserTests
     }
 
     [TestMethod]
+    public async Task ExtractNutrientsAsync_PromptSpecifiesSingleRecognizedDosageUnit()
+    {
+        // The prompt's single-unit wording was reworded after live verification showed
+        // the model emitting compound readings like "1667iu 500µg" and "500µg Retinol
+        // Equivalent", which the dosage-shape validator downstream rejects. The two
+        // phrases below are the load-bearing parts of the rewording, read off what
+        // actually reached the model rather than off what BuildExtractionPrompt
+        // returns — a refactor that reassembled the prompt from named parts would
+        // otherwise pass a constructor-level assertion while losing the instruction.
+        string? userPrompt = null;
+        var llmClient = new Mock<ILlmClient>();
+        llmClient.Setup(c => c.PostChatAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<ServiceConnection>(), It.IsAny<LlmRequestSettings>()))
+            .ReturnsAsync(new LlmCompletion(NutrientJson, null))
+            .Callback<string, string, ServiceConnection, LlmRequestSettings>((_, prompt, _, _) => userPrompt = prompt);
+        var parser = new SupplementLabelParser(llmClient.Object, new RecordingLogger<SupplementLabelParser>());
+
+        await ParseAsync(parser, "Vitamin A", "BioCare");
+
+        Assert.IsNotNull(userPrompt, "the extraction call never reached the client");
+        StringAssert.Contains(userPrompt, "mg, mcg, µg, g, ml, tsp, tbsp, tab, IU");
+        StringAssert.Contains(userPrompt, "ONLY one number and unit");
+    }
+
+    [TestMethod]
     public async Task ExtractNutrientsAsync_ChildrenArray_ParsesChildDosageFormsAndOptionals()
     {
         var parser = CreateParser("""

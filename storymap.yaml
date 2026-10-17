@@ -384,6 +384,7 @@ activities:
             priority: medium
             tests:
               - unit: LlmServiceTests.EnrichSupplementAsync_ExtractsNutrients_WhenApiReturnsValidResponse
+              - unit: SupplementLabelParserTests.ExtractNutrientsAsync_PromptSpecifiesSingleRecognizedDosageUnit
               - e2e: supplement-llm-integration::should extract nutrients from a real product URL using LLM
               - e2e: service-connection::should post the chosen model and reasoning effort to the connection when enriching
           - title: Extract blends with nested children from product labels

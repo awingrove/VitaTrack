@@ -276,6 +276,33 @@ Do not weaken or remove any other test assertion.
 
 ---
 
+## Step 3 — Align `SupplementLabelParser` Extraction Prompt with `Dosage.IsWellFormed` (Commit 3)
+
+Live verification against OpenCode Go (`glm-5.3-flash`) on the BioCare Children's Mindlinxr label (`Vitamin A 1667iu 500µg Retinol Equivalent`, `Vitamin D3 400iu 10µg`) revealed that `SupplementLabelParser.BuildExtractionPrompt` (`VitaTrack.Core/Features/LlmEnrichment/SupplementLabelParser.cs:86`) asks for `"the amount per serving as shown on label"`, causing the LLM to emit compound strings like `"1667iu (500µg)"` or `"500µg Retinol Equivalent"` that `Dosage.IsWellFormed` (`PersistHierarchyAsync`) rejects.
+
+### 3A. `VitaTrack.Core/Features/LlmEnrichment/SupplementLabelParser.cs`
+- Update item 3 in `BuildExtractionPrompt` (`:86`) so the prompt states the single-unit rule `Dosage.IsWellFormed` enforces:
+  ```csharp
+  3. dosage - a single number and unit per serving using ONLY one of: mg, mcg, µg, g, ml, tsp, tbsp, tab, IU (e.g., '500mg', '15µg', '1000 IU'). If the label lists multiple equivalent units (such as both IU and µg/mg) or qualifiers (such as 'Retinol Equivalent' or 'RE'), output ONLY one number and unit (e.g., '500µg', never '1667iu 500µg' or '500µg RE').
+  ```
+
+### 3B. `VitaTrack.Tests/SupplementLabelParserTests.cs`
+- Add test method `ExtractNutrientsAsync_PromptSpecifiesSingleRecognizedDosageUnit` asserting that the `userPrompt` passed to `ILlmClient.PostChatAsync` contains `"mg, mcg, µg, g, ml, tsp, tbsp, tab, IU"` and `"ONLY one number and unit"`.
+- Add `- unit: SupplementLabelParserTests.ExtractNutrientsAsync_PromptSpecifiesSingleRecognizedDosageUnit` to `storymap.yaml` under `LLM-1` -> story `"Scrape manufacturer URL and extract nutrients from the connected service"`.
+
+### 3C. Gate & Commit 3
+1. `dotnet format VitaTrack.sln`
+2. `./format-check.sh`
+3. `dotnet test VitaTrack.sln -c Release`
+4. `python3 scripts/generate-factory-dashboard.py && python3 scripts/generate-factory-dashboard.py --check`
+5. Commit:
+   ```bash
+   git add VitaTrack.Core/Features/LlmEnrichment/SupplementLabelParser.cs VitaTrack.Tests/SupplementLabelParserTests.cs storymap.yaml docs/factory/dashboard.html docs/plans/2026-10-17-opencode-go-enrichment.md
+   git commit -m "fix: instruct LLM extraction prompt to emit a single recognized dosage unit"
+   ```
+
+---
+
 ## Escalation Triggers
 
 Stop, leave the working tree clean, and escalate in your final message if:
